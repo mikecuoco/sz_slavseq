@@ -1,6 +1,6 @@
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
-individuals: config/individuals.tsv
+# individuals: config/individuals.tsv
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
-cells: config/cells.tsv
+samples: config/samples.tsv
 
 ref: hs37d5 # options: hsd37d5 or GRCh38
