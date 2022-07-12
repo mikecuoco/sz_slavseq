@@ -1,6 +1,6 @@
 rule get_ref:
     output:
-        multiext("resources/{ref}", ".fa", "fa.amb", "fa.ann", "fa.bwt", "fa.fai", "fa.pac", "fa.sa", "genome")
+        multiext("resources/{ref}", ".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome")
     log:
         "results/{ref}.log"
     conda:
