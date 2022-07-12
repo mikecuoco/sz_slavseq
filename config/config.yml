@@ -5,3 +5,12 @@ cells: config/cells.tsv
 
 # options: hsd37d5 or GRCh38
 ref: hs37d5
+
+extensions:
+  a: .fa
+  b: .fa.amb
+  c: .fa.ann
+  d: .fa.bwt
+  e: .fa.fai
+  f: .fa.pac
+  g: .fa.sa
