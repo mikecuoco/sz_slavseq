@@ -1,185 +1,93 @@
-filename	individual_id	sample_id	sample_type
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/BulkSamples/gDNA_usd7_R1.fastq.gz	7	gDNA_usd7	bulk
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/BulkSamples/gDNA_usd7_R2.fastq.gz	7	gDNA_usd7	bulk
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C5_S117_R1_001.fastq.gz	7	USD7_C5_S117	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B6_S124_R1_001.fastq.gz	7	USD7_B6_S124	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C3_S104_R2_001.fastq.gz	7	USD7_C3_S104	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A1_S87_R1_001.fastq.gz	7	USD7_A1_S87	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A1_S87_R2_001.fastq.gz	7	USD7_A1_S87	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C4_S112_R2_001.fastq.gz	7	USD7_C4_S112	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E1_S91_R2_001.fastq.gz	7	USD7_E1_S91	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A2_S95_R2_001.fastq.gz	7	USD7_A2_S95	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D3_S105_R2_001.fastq.gz	7	USD7_D3_S105	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A2_S95_R1_001.fastq.gz	7	USD7_A2_S95	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C1_S89_R2_001.fastq.gz	7	USD7_C1_S89	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A3_S103_R1_001.fastq.gz	7	USD7_A3_S103	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D4_S113_R2_001.fastq.gz	7	USD7_D4_S113	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A3_S103_R2_001.fastq.gz	7	USD7_A3_S103	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A4_S110_R1_001.fastq.gz	7	USD7_A4_S110	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A4_S110_R2_001.fastq.gz	7	USD7_A4_S110	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C1_S89_R1_001.fastq.gz	7	USD7_C1_S89	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D1_S90_R1_001.fastq.gz	7	USD7_D1_S90	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A6_S123_R1_001.fastq.gz	7	USD7_A6_S123	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D4_S113_R1_001.fastq.gz	7	USD7_D4_S113	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B6_S124_R2_001.fastq.gz	7	USD7_B6_S124	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A6_S123_R2_001.fastq.gz	7	USD7_A6_S123	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A5_S115_R1_001.fastq.gz	7	USD7_A5_S115	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E1_S91_R1_001.fastq.gz	7	USD7_E1_S91	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A5_S115_R2_001.fastq.gz	7	USD7_A5_S115	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D1_S90_R2_001.fastq.gz	7	USD7_D1_S90	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B1_S88_R1_001.fastq.gz	7	USD7_B1_S88	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D5_S118_R1_001.fastq.gz	7	USD7_D5_S118	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B1_S88_R2_001.fastq.gz	7	USD7_B1_S88	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D5_S118_R2_001.fastq.gz	7	USD7_D5_S118	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B2_S96_R2_001.fastq.gz	7	USD7_B2_S96	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B2_S96_R1_001.fastq.gz	7	USD7_B2_S96	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B4_S111_R1_001.fastq.gz	7	USD7_B4_S111	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C6_S125_R2_001.fastq.gz	7	USD7_C6_S125	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B4_S111_R2_001.fastq.gz	7	USD7_B4_S111	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C2_S97_R2_001.fastq.gz	7	USD7_C2_S97	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B5_S116_R2_001.fastq.gz	7	USD7_B5_S116	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E2_S99_R1_001.fastq.gz	7	USD7_E2_S99	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C2_S97_R1_001.fastq.gz	7	USD7_C2_S97	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D2_S98_R2_001.fastq.gz	7	USD7_D2_S98	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C3_S104_R1_001.fastq.gz	7	USD7_C3_S104	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D2_S98_R1_001.fastq.gz	7	USD7_D2_S98	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B5_S116_R1_001.fastq.gz	7	USD7_B5_S116	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C4_S112_R1_001.fastq.gz	7	USD7_C4_S112	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C6_S125_R1_001.fastq.gz	7	USD7_C6_S125	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E2_S99_R2_001.fastq.gz	7	USD7_E2_S99	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C5_S117_R2_001.fastq.gz	7	USD7_C5_S117	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D3_S105_R1_001.fastq.gz	7	USD7_D3_S105	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H3_S109_R1_001.fastq.gz	7	USD7_H3_S109	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H6_S126_R2_001.fastq.gz	7	USD7_H6_S126	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E3_S106_R1_001.fastq.gz	7	USD7_E3_S106	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E3_S106_R2_001.fastq.gz	7	USD7_E3_S106	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E5_S119_R1_001.fastq.gz	7	USD7_E5_S119	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E5_S119_R2_001.fastq.gz	7	USD7_E5_S119	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F1_S92_R2_001.fastq.gz	7	USD7_F1_S92	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F1_S92_R1_001.fastq.gz	7	USD7_F1_S92	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F2_S100_R1_001.fastq.gz	7	USD7_F2_S100	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F2_S100_R2_001.fastq.gz	7	USD7_F2_S100	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F3_S107_R1_001.fastq.gz	7	USD7_F3_S107	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F3_S107_R2_001.fastq.gz	7	USD7_F3_S107	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F5_S120_R2_001.fastq.gz	7	USD7_F5_S120	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F5_S120_R1_001.fastq.gz	7	USD7_F5_S120	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G1_S93_R1_001.fastq.gz	7	USD7_G1_S93	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G1_S93_R2_001.fastq.gz	7	USD7_G1_S93	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G2_S101_R2_001.fastq.gz	7	USD7_G2_S101	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G2_S101_R1_001.fastq.gz	7	USD7_G2_S101	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G5_S121_R1_001.fastq.gz	7	USD7_G5_S121	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G3_S108_R2_001.fastq.gz	7	USD7_G3_S108	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G3_S108_R1_001.fastq.gz	7	USD7_G3_S108	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G5_S121_R2_001.fastq.gz	7	USD7_G5_S121	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H1_S94_R2_001.fastq.gz	7	USD7_H1_S94	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H1_S94_R1_001.fastq.gz	7	USD7_H1_S94	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H2_S102_R1_001.fastq.gz	7	USD7_H2_S102	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H2_S102_R2_001.fastq.gz	7	USD7_H2_S102	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H3_S109_R2_001.fastq.gz	7	USD7_H3_S109	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H4_S114_R1_001.fastq.gz	7	USD7_H4_S114	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H4_S114_R2_001.fastq.gz	7	USD7_H4_S114	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H5_S122_R1_001.fastq.gz	7	USD7_H5_S122	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H5_S122_R2_001.fastq.gz	7	USD7_H5_S122	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H6_S126_R1_001.fastq.gz	7	USD7_H6_S126	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B5_S166_R1_001.fastq.gz	7	ush07_B5_S166	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B6_S174_R2_001.fastq.gz	7	ush07_B6_S174	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D5_S168_R1_001.fastq.gz	7	ush07_D5_S168	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A1_S133_R2_001.fastq.gz	7	ush07_A1_S133	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C4_S159_R2_001.fastq.gz	7	ush07_C4_S159	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A1_S133_R1_001.fastq.gz	7	ush07_A1_S133	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A2_S141_R1_001.fastq.gz	7	ush07_A2_S141	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C7_S306_R1_001.fastq.gz	7	ush07_C7_S306	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B7_S305_R1_001.fastq.gz	7	ush07_B7_S305	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C3_S151_R2_001.fastq.gz	7	ush07_C3_S151	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A2_S141_R2_001.fastq.gz	7	ush07_A2_S141	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F4_S162_R2_001.fastq.gz	7	ush07_F4_S162	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A3_S149_R2_001.fastq.gz	7	ush07_A3_S149	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B6_S174_R1_001.fastq.gz	7	ush07_B6_S174	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D5_S168_R2_001.fastq.gz	7	ush07_D5_S168	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C2_S143_R2_001.fastq.gz	7	ush07_C2_S143	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A4_S157_R1_001.fastq.gz	7	ush07_A4_S157	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A3_S149_R1_001.fastq.gz	7	ush07_A3_S149	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D1_S136_R1_001.fastq.gz	7	ush07_D1_S136	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D4_S160_R2_001.fastq.gz	7	ush07_D4_S160	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A4_S157_R2_001.fastq.gz	7	ush07_A4_S157	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D1_S136_R2_001.fastq.gz	7	ush07_D1_S136	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A5_S165_R2_001.fastq.gz	7	ush07_A5_S165	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C6_S175_R2_001.fastq.gz	7	ush07_C6_S175	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A5_S165_R1_001.fastq.gz	7	ush07_A5_S165	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A6_S173_R1_001.fastq.gz	7	ush07_A6_S173	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C2_S143_R1_001.fastq.gz	7	ush07_C2_S143	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C6_S175_R1_001.fastq.gz	7	ush07_C6_S175	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A6_S173_R2_001.fastq.gz	7	ush07_A6_S173	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C1_S135_R2_001.fastq.gz	7	ush07_C1_S135	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D3_S152_R1_001.fastq.gz	7	ush07_D3_S152	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B1_S134_R1_001.fastq.gz	7	ush07_B1_S134	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B1_S134_R2_001.fastq.gz	7	ush07_B1_S134	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D6_S176_R1_001.fastq.gz	7	ush07_D6_S176	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A7_S304_R2_001.fastq.gz	7	ush07_A7_S304	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D6_S176_R2_001.fastq.gz	7	ush07_D6_S176	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A7_S304_R1_001.fastq.gz	7	ush07_A7_S304	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B2_S142_R2_001.fastq.gz	7	ush07_B2_S142	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D2_S144_R2_001.fastq.gz	7	ush07_D2_S144	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B2_S142_R1_001.fastq.gz	7	ush07_B2_S142	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B3_S150_R2_001.fastq.gz	7	ush07_B3_S150	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D7_S307_R1_001.fastq.gz	7	ush07_D7_S307	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B3_S150_R1_001.fastq.gz	7	ush07_B3_S150	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F6_S178_R1_001.fastq.gz	7	ush07_F6_S178	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D3_S152_R2_001.fastq.gz	7	ush07_D3_S152	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B4_S158_R2_001.fastq.gz	7	ush07_B4_S158	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B7_S305_R2_001.fastq.gz	7	ush07_B7_S305	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C3_S151_R1_001.fastq.gz	7	ush07_C3_S151	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B4_S158_R1_001.fastq.gz	7	ush07_B4_S158	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F1_S138_R1_001.fastq.gz	7	ush07_F1_S138	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B5_S166_R2_001.fastq.gz	7	ush07_B5_S166	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D2_S144_R1_001.fastq.gz	7	ush07_D2_S144	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E3_S153_R1_001.fastq.gz	7	ush07_E3_S153	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C1_S135_R1_001.fastq.gz	7	ush07_C1_S135	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D7_S307_R2_001.fastq.gz	7	ush07_D7_S307	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C4_S159_R1_001.fastq.gz	7	ush07_C4_S159	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C5_S167_R1_001.fastq.gz	7	ush07_C5_S167	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C7_S306_R2_001.fastq.gz	7	ush07_C7_S306	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C5_S167_R2_001.fastq.gz	7	ush07_C5_S167	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D4_S160_R1_001.fastq.gz	7	ush07_D4_S160	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G6_S179_R1_001.fastq.gz	7	ush07_G6_S179	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H5_S172_R2_001.fastq.gz	7	ush07_H5_S172	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E1_S137_R2_001.fastq.gz	7	ush07_E1_S137	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E1_S137_R1_001.fastq.gz	7	ush07_E1_S137	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E2_S145_R2_001.fastq.gz	7	ush07_E2_S145	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H4_S164_R1_001.fastq.gz	7	ush07_H4_S164	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E2_S145_R1_001.fastq.gz	7	ush07_E2_S145	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E5_S169_R1_001.fastq.gz	7	ush07_E5_S169	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E3_S153_R2_001.fastq.gz	7	ush07_E3_S153	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E5_S169_R2_001.fastq.gz	7	ush07_E5_S169	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E6_S177_R2_001.fastq.gz	7	ush07_E6_S177	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E6_S177_R1_001.fastq.gz	7	ush07_E6_S177	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F1_S138_R2_001.fastq.gz	7	ush07_F1_S138	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H3_S156_R1_001.fastq.gz	7	ush07_H3_S156	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F2_S146_R1_001.fastq.gz	7	ush07_F2_S146	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F2_S146_R2_001.fastq.gz	7	ush07_F2_S146	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F3_S154_R1_001.fastq.gz	7	ush07_F3_S154	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F3_S154_R2_001.fastq.gz	7	ush07_F3_S154	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H4_S164_R2_001.fastq.gz	7	ush07_H4_S164	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F4_S162_R1_001.fastq.gz	7	ush07_F4_S162	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F5_S170_R1_001.fastq.gz	7	ush07_F5_S170	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F5_S170_R2_001.fastq.gz	7	ush07_F5_S170	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H2_S148_R2_001.fastq.gz	7	ush07_H2_S148	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H5_S172_R1_001.fastq.gz	7	ush07_H5_S172	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G6_S179_R2_001.fastq.gz	7	ush07_G6_S179	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H3_S156_R2_001.fastq.gz	7	ush07_H3_S156	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F6_S178_R2_001.fastq.gz	7	ush07_F6_S178	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G1_S139_R1_001.fastq.gz	7	ush07_G1_S139	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G1_S139_R2_001.fastq.gz	7	ush07_G1_S139	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H2_S148_R1_001.fastq.gz	7	ush07_H2_S148	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G2_S147_R1_001.fastq.gz	7	ush07_G2_S147	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G2_S147_R2_001.fastq.gz	7	ush07_G2_S147	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H6_S180_R2_001.fastq.gz	7	ush07_H6_S180	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G3_S155_R2_001.fastq.gz	7	ush07_G3_S155	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G3_S155_R1_001.fastq.gz	7	ush07_G3_S155	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G4_S163_R1_001.fastq.gz	7	ush07_G4_S163	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H1_S140_R1_001.fastq.gz	7	ush07_H1_S140	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H6_S180_R1_001.fastq.gz	7	ush07_H6_S180	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G4_S163_R2_001.fastq.gz	7	ush07_G4_S163	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G5_S171_R1_001.fastq.gz	7	ush07_G5_S171	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G5_S171_R2_001.fastq.gz	7	ush07_G5_S171	single_cell
-/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H1_S140_R2_001.fastq.gz	7	ush07_H1_S140	single_cell
+donor_id	sample_id	sample_type	R1	R2
+7	gDNA_usd7	bulk	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/BulkSamples/gDNA_usd7_R1.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/BulkSamples/gDNA_usd7_R2.fastq.gz
+7	USD7_C5_S117	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C5_S117_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C5_S117_R2_001.fastq.gz
+7	USD7_B6_S124	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B6_S124_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B6_S124_R2_001.fastq.gz
+7	USD7_C3_S104	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C3_S104_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C3_S104_R2_001.fastq.gz
+7	USD7_A1_S87	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A1_S87_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A1_S87_R2_001.fastq.gz
+7	USD7_C4_S112	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C4_S112_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C4_S112_R2_001.fastq.gz
+7	USD7_E1_S91	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E1_S91_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E1_S91_R2_001.fastq.gz
+7	USD7_A2_S95	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A2_S95_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A2_S95_R2_001.fastq.gz
+7	USD7_D3_S105	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D3_S105_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D3_S105_R2_001.fastq.gz
+7	USD7_C1_S89	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C1_S89_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C1_S89_R2_001.fastq.gz
+7	USD7_A3_S103	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A3_S103_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A3_S103_R2_001.fastq.gz
+7	USD7_D4_S113	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D4_S113_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D4_S113_R2_001.fastq.gz
+7	USD7_A4_S110	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A4_S110_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A4_S110_R2_001.fastq.gz
+7	USD7_D1_S90	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D1_S90_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D1_S90_R2_001.fastq.gz
+7	USD7_A6_S123	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A6_S123_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A6_S123_R2_001.fastq.gz
+7	USD7_A5_S115	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A5_S115_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_A5_S115_R2_001.fastq.gz
+7	USD7_B1_S88	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B1_S88_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B1_S88_R2_001.fastq.gz
+7	USD7_D5_S118	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D5_S118_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D5_S118_R2_001.fastq.gz
+7	USD7_B2_S96	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B2_S96_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B2_S96_R2_001.fastq.gz
+7	USD7_B4_S111	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B4_S111_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B4_S111_R2_001.fastq.gz
+7	USD7_C6_S125	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C6_S125_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C6_S125_R2_001.fastq.gz
+7	USD7_C2_S97	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C2_S97_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_C2_S97_R2_001.fastq.gz
+7	USD7_B5_S116	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B5_S116_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_B5_S116_R2_001.fastq.gz
+7	USD7_E2_S99	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E2_S99_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E2_S99_R2_001.fastq.gz
+7	USD7_D2_S98	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D2_S98_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_D2_S98_R2_001.fastq.gz
+7	USD7_H3_S109	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H3_S109_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H3_S109_R2_001.fastq.gz
+7	USD7_H6_S126	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H6_S126_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H6_S126_R2_001.fastq.gz
+7	USD7_E3_S106	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E3_S106_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E3_S106_R2_001.fastq.gz
+7	USD7_E5_S119	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E5_S119_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_E5_S119_R2_001.fastq.gz
+7	USD7_F1_S92	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F1_S92_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F1_S92_R2_001.fastq.gz
+7	USD7_F2_S100	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F2_S100_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F2_S100_R2_001.fastq.gz
+7	USD7_F3_S107	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F3_S107_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F3_S107_R2_001.fastq.gz
+7	USD7_F5_S120	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F5_S120_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_F5_S120_R2_001.fastq.gz
+7	USD7_G1_S93	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G1_S93_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G1_S93_R2_001.fastq.gz
+7	USD7_G2_S101	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G2_S101_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G2_S101_R2_001.fastq.gz
+7	USD7_G5_S121	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G5_S121_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G5_S121_R2_001.fastq.gz
+7	USD7_G3_S108	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G3_S108_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_G3_S108_R2_001.fastq.gz
+7	USD7_H1_S94	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H1_S94_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H1_S94_R2_001.fastq.gz
+7	USD7_H2_S102	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H2_S102_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H2_S102_R2_001.fastq.gz
+7	USD7_H4_S114	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H4_S114_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H4_S114_R2_001.fastq.gz
+7	USD7_H5_S122	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H5_S122_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USD7/USD7_H5_S122_R2_001.fastq.gz
+7	ush07_B5_S166	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B5_S166_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B5_S166_R2_001.fastq.gz
+7	ush07_B6_S174	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B6_S174_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B6_S174_R2_001.fastq.gz
+7	ush07_D5_S168	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D5_S168_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D5_S168_R2_001.fastq.gz
+7	ush07_A1_S133	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A1_S133_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A1_S133_R2_001.fastq.gz
+7	ush07_C4_S159	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C4_S159_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C4_S159_R2_001.fastq.gz
+7	ush07_A2_S141	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A2_S141_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A2_S141_R2_001.fastq.gz
+7	ush07_C7_S306	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C7_S306_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C7_S306_R2_001.fastq.gz
+7	ush07_B7_S305	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B7_S305_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B7_S305_R2_001.fastq.gz
+7	ush07_C3_S151	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C3_S151_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C3_S151_R2_001.fastq.gz
+7	ush07_F4_S162	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F4_S162_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F4_S162_R2_001.fastq.gz
+7	ush07_A3_S149	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A3_S149_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A3_S149_R2_001.fastq.gz
+7	ush07_C2_S143	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C2_S143_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C2_S143_R2_001.fastq.gz
+7	ush07_A4_S157	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A4_S157_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A4_S157_R2_001.fastq.gz
+7	ush07_D1_S136	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D1_S136_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D1_S136_R2_001.fastq.gz
+7	ush07_D4_S160	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D4_S160_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D4_S160_R2_001.fastq.gz
+7	ush07_A5_S165	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A5_S165_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A5_S165_R2_001.fastq.gz
+7	ush07_C6_S175	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C6_S175_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C6_S175_R2_001.fastq.gz
+7	ush07_A6_S173	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A6_S173_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A6_S173_R2_001.fastq.gz
+7	ush07_C1_S135	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C1_S135_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C1_S135_R2_001.fastq.gz
+7	ush07_D3_S152	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D3_S152_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D3_S152_R2_001.fastq.gz
+7	ush07_B1_S134	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B1_S134_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B1_S134_R2_001.fastq.gz
+7	ush07_D6_S176	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D6_S176_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D6_S176_R2_001.fastq.gz
+7	ush07_A7_S304	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A7_S304_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_A7_S304_R2_001.fastq.gz
+7	ush07_B2_S142	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B2_S142_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B2_S142_R2_001.fastq.gz
+7	ush07_D2_S144	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D2_S144_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D2_S144_R2_001.fastq.gz
+7	ush07_B3_S150	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B3_S150_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B3_S150_R2_001.fastq.gz
+7	ush07_D7_S307	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D7_S307_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_D7_S307_R2_001.fastq.gz
+7	ush07_F6_S178	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F6_S178_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F6_S178_R2_001.fastq.gz
+7	ush07_B4_S158	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B4_S158_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_B4_S158_R2_001.fastq.gz
+7	ush07_F1_S138	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F1_S138_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F1_S138_R2_001.fastq.gz
+7	ush07_E3_S153	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E3_S153_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E3_S153_R2_001.fastq.gz
+7	ush07_C5_S167	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C5_S167_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_C5_S167_R2_001.fastq.gz
+7	ush07_G6_S179	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G6_S179_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G6_S179_R2_001.fastq.gz
+7	ush07_H5_S172	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H5_S172_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H5_S172_R2_001.fastq.gz
+7	ush07_E1_S137	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E1_S137_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E1_S137_R2_001.fastq.gz
+7	ush07_E2_S145	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E2_S145_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E2_S145_R2_001.fastq.gz
+7	ush07_H4_S164	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H4_S164_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H4_S164_R2_001.fastq.gz
+7	ush07_E5_S169	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E5_S169_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E5_S169_R2_001.fastq.gz
+7	ush07_E6_S177	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E6_S177_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_E6_S177_R2_001.fastq.gz
+7	ush07_H3_S156	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H3_S156_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H3_S156_R2_001.fastq.gz
+7	ush07_F2_S146	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F2_S146_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F2_S146_R2_001.fastq.gz
+7	ush07_F3_S154	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F3_S154_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F3_S154_R2_001.fastq.gz
+7	ush07_F5_S170	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F5_S170_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_F5_S170_R2_001.fastq.gz
+7	ush07_H2_S148	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H2_S148_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H2_S148_R2_001.fastq.gz
+7	ush07_G1_S139	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G1_S139_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G1_S139_R2_001.fastq.gz
+7	ush07_G2_S147	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G2_S147_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G2_S147_R2_001.fastq.gz
+7	ush07_H6_S180	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H6_S180_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H6_S180_R2_001.fastq.gz
+7	ush07_G3_S155	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G3_S155_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G3_S155_R2_001.fastq.gz
+7	ush07_G4_S163	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G4_S163_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G4_S163_R2_001.fastq.gz
+7	ush07_H1_S140	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H1_S140_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_H1_S140_R2_001.fastq.gz
+7	ush07_G5_S171	cell	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G5_S171_R1_001.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH07/ush07_G5_S171_R2_001.fastq.gz
