@@ -6,4 +6,4 @@ rule get_ref:
     conda:
         "../envs/ref.yml"
     shell:
-        "if [[ {config[ref]} == 'GRCh38' ]]; then workflow/scripts/hg38.sh > {log} 2>&1; else workflow/scripts/hs37d5.sh > {log} 2>&1; fi"
+        "if [[ {config[ref]} == 'GRCh38' ]]; then workflow/scripts/GRCh38.sh > {log} 2>&1; else workflow/scripts/hs37d5.sh > {log} 2>&1; fi"

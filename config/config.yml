@@ -3,4 +3,4 @@ individuals: config/individuals.tsv
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
 cells: config/cells.tsv
 
-ref: GRCh38 # options: hsd37d5 or GRCh38
+ref: hs37d5 # options: hsd37d5 or GRCh38
