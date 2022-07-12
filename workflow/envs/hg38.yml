@@ -1,0 +1,2 @@
+dependencies:
+  - conda-forge::wget>=1.20.3
