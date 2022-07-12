@@ -1,9 +1,9 @@
 rule get_ref:
     output:
-        expand("resources/{ref}{ext}", ext=extensions, ref=config["ref"])
+        multiext("resources/{ref}", ".fa", "fa.amb", "fa.ann", "fa.bwt", "fa.fai", "fa.pac", "fa.sa", "genome")
     log:
-        expand("results/{ref}.log", ref=config["ref"])
+        "results/{ref}.log"
     conda:
         "../envs/ref.yml"
     shell:
-        "if [[ {config[ref]} == 'GRCh38' ]]; then workflow/scripts/GRCh38.sh > {log} 2>&1; else workflow/scripts/hs37d5.sh > {log} 2>&1; fi"
+        "if [[ {wildcards.ref} == 'GRCh38' ]]; then workflow/scripts/GRCh38.sh > {log} 2>&1; else workflow/scripts/hs37d5.sh > {log} 2>&1; fi"
