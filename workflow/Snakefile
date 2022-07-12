@@ -7,11 +7,11 @@ min_version("7.8.5")
 # https://snakemake.readthedocs.io/en/stable/snakefiles/best_practices.html,
 # in particular regarding the standardized folder structure mentioned there. 
 
-extensions = [".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa"]
-include: "rules/hg38.smk"
+configfile: "config/config.yml"
+
+extensions = [".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome"]
+include: "rules/ref.smk"
 
 rule all:
     input:
-        expand("resources/GRCh38_full_analysis_set_plus_decoy_hla{ext}", ext=extensions),
-        "resources/hg38.genome"
-
+        expand("resources/{ref}{ext}", ext=extensions, ref=config["ref"])
