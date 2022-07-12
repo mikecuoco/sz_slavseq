@@ -1,3 +1,3 @@
-# SZ SLAVseq project
+# SLAV-seq Snakemake Pipeline
 
-Adopted from work by Apua Paquola and Ricardo Jacomini
+Adapted from work by Apua Paquola and Ricardo Jacomini
