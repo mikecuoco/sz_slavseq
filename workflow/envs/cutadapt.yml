@@ -1,0 +1,2 @@
+dependencies:
+  - bioconda::cutadapt>=4.1
