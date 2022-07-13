@@ -9,7 +9,7 @@ rule cutadapt:
         log1 = "results/cutadapt/{sample}/{donor}_{type}.log",
         log2 = "results/cutadapt/{sample}/{donor}_{type}.log"
     threads: 4
-    conda: "../envs/cutadapt.yml"
+    conda: "../envs/env.yml"
     shell:
         ''' 
         function rc () {{

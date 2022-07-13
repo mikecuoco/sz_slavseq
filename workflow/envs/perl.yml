@@ -1,3 +1,0 @@
-dependencies:
-  - conda-forge::perl
-  - bioconda::perl-bio-db-hts
