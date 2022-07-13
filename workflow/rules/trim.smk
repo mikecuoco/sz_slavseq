@@ -8,7 +8,8 @@ rule cutadapt:
     log:
         log1 = "results/cutadapt/{sample}/{donor}_{type}.log",
         log2 = "results/cutadapt/{sample}/{donor}_{type}.log"
-    threads: 8
+    threads: 4
+    conda: "../envs/cutadapt.yml"
     shell:
         ''' 
         function rc () {{
@@ -55,4 +56,4 @@ rule cutadapt:
             > {log.log2} 2>&1
 
         rm -f tmp.2.{wildcards.sample}.fastq tmp.1.{wildcards.sample}.fastq
-        '''
+        '''    
