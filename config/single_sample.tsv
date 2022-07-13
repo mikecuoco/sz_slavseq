@@ -1,0 +1,2 @@
+donor_id	sample_id	sample_type	R1	R2
+7	gDNA_usd7	bulk	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/BulkSamples/gDNA_usd7_R1.fastq.gz	/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/BulkSamples/gDNA_usd7_R2.fastq.gz
