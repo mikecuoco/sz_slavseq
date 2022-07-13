@@ -25,7 +25,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Biopython
-      run: pip install biopython
+      run: sudo pip install biopython
     - name: Lint workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
@@ -41,7 +41,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Biopython
-      run: pip install biopython
+      run: sudo pip install biopython
     - name: Test workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
