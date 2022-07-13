@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Install Biopython
+      run: apt-get install python-biopython
     - name: Lint workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
@@ -38,7 +40,8 @@ jobs:
       - Formatting
     steps:
     - uses: actions/checkout@v2
-
+    - name: Install Biopython
+      run: apt-get install python-biopython
     - name: Test workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
