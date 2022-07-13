@@ -25,3 +25,11 @@ rule test_rmdup:
                sample=samples['sample_id'],
                donor=samples['donor_id'],
                type=samples['sample_type'])
+
+rule test_tags:
+    input:
+        expand("results/tags/{sample}/{donor}_{type}.bam",
+               zip,
+               sample=samples['sample_id'],
+               donor=samples['donor_id'],
+               type=samples['sample_type'])
