@@ -1,6 +1,6 @@
 rule bwa_mem:
     input:
-        reads=[rules.cutadapt.output.r1, rules.cutadapt.output.r2],
+        reads=[rules.cutadapt2.output.r1, rules.cutadapt2.output.r2],
         idx=expand("resources/{ref}.fa{ext}", ext=[".amb", ".ann", ".bwt", ".pac", ".sa"], ref=config["ref"])
     output: "results/bwa_mam/{sample}/{donor}_{type}.bam"
     log: "results/bwa_mam/{sample}/{donor}_{type}.log"
