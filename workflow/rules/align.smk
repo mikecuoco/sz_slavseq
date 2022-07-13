@@ -36,7 +36,7 @@ rule tags:
 
             (samtools view -h {input.bam} | \
                 workflow/scripts/add_tags_hts.pl \
-                    --genome_fasta_file {ref} \
+                    --genome_fasta_file {input.ref} \
                     --prefix_length ${{PREFIX_LENGTH}} \
                     --consensus ${{CONSENSUS}} \
                     --r1_flank_length ${{R1_FLANK_LENGTH}} \
