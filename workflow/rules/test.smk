@@ -17,3 +17,11 @@ rule test_bwa_mem:
                sample=samples['sample_id'],
                donor=samples['donor_id'],
                type=samples['sample_type'])
+
+rule test_rmdup:
+    input:
+        expand("results/rmdup/{sample}/{donor}_{type}.bam",
+               zip,
+               sample=samples['sample_id'],
+               donor=samples['donor_id'],
+               type=samples['sample_type'])

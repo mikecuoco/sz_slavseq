@@ -10,3 +10,11 @@ rule bwa_mem:
     threads: 4
     wrapper:
         "v1.7.0/bio/bwa/mem"
+
+rule rmdup:
+    input: rules.bwa_mem.output
+    output: "results/rmdup/{sample}/{donor}_{type}.bam"
+    log: "results/rmdup/{sample}/{donor}_{type}.log"
+    conda: "../envs/perl.yml"
+    shell:
+        "workflow/scripts/slavseq_rmdup_hts.pl {input} {output}"
