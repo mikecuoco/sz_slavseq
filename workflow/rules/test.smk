@@ -9,3 +9,11 @@ rule test_cutadapt:
                sample=samples['sample_id'],
                donor=samples['donor_id'],
                type=samples['sample_type'])
+
+rule test_bwa_mem:
+    input:
+        expand("results/bwa_mam/{sample}/{donor}_{type}.bam",
+               zip,
+               sample=samples['sample_id'],
+               donor=samples['donor_id'],
+               type=samples['sample_type'])

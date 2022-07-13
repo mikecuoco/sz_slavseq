@@ -14,5 +14,6 @@ extensions = [".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa
 include: "rules/common.smk"
 include: "rules/ref.smk"
 include: "rules/trim.smk"
+include: "rules/align.smk"
 include: "rules/test.smk"
 
