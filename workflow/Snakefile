@@ -9,9 +9,10 @@ min_version("7.8.5")
 
 configfile: "config/config.yml"
 
-extensions = ["fa", "fa.amb", "fa.ann", "fa.bwt", "fa.fai", "fa.pac", "fa.sa", "genome"]
-include: "rules/ref.smk"
+extensions = [".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome"]
 
-rule all:
-    input:
-        expand("resources/{ref}.{ext}", ext=extensions, ref=config["ref"])
+include: "rules/common.smk"
+include: "rules/ref.smk"
+include: "rules/trim.smk"
+include: "rules/test.smk"
+
