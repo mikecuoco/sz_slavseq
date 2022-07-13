@@ -1,4 +1,4 @@
-        rule cutadapt:
+rule cutadapt:
     input:
         r1 = lambda wildcards: samples.loc[wildcards.sample, "R1"],
         r2 = lambda wildcards: samples.loc[wildcards.sample, "R2"]
