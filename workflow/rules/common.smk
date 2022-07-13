@@ -1,6 +1,7 @@
 import pandas as pd 
+from Bio.Seq import Seq
 
-# read sample sheet
+# read sample sheet 
 samples = (
     pd.read_csv(config["samples"], sep="\t", dtype={"sample_id": str})
     .set_index("sample_id", drop=False)

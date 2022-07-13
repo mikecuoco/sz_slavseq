@@ -1,6 +1,11 @@
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
 # individuals: config/individuals.tsv
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
-samples: config/samples.tsv
+samples: config/single_sample.tsv
 
 ref: hs37d5 # options: hsd37d5 or GRCh38
+
+adapters:
+  r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
+  r2_adapter: 'CAAGCAGAAGACGGCATACGAGANNNNNNNGTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT'
+  nested_primer: 'TAACTAACCTGCACAATGTGCAC'
