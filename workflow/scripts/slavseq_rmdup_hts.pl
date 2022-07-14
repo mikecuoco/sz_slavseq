@@ -103,8 +103,8 @@ sub prio_pair_rmdup
 		
 		# pos is 0-based leftmost coordinate of the aligned sequence on the reference sequence, calend is rightmost
 		# 16 = read reverse strand
-		my $r1pos=($r1->flag & 16)?$r1->calend+1:$r1->pos+1; # shifting read by 1 position
-		my $r1strand=($r1->flag & 16)?'-':'+'; # making a reverse-aligned read to be forward-aligned
+		my $r1pos=($r1->flag & 16)?$r1->calend+1:$r1->pos+1; # convert from 0-based to 1-based coordinates
+		my $r1strand=($r1->flag & 16)?'-':'+'; # marking strand
 		
 		#my $r2pos=($r2->flag & 4)?'*':($r2->flag & 16)?$r2->calend+1:$r2->pos+1;
 		#my $r2strand=($r2->flag & 4)?'*':($r2->flag & 16)?'-':'+';
