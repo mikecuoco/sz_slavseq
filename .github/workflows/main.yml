@@ -28,7 +28,7 @@ jobs:
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .
-        stagein: conda install -c conda-forge biopython
+        stagein: mamba install -c conda-forge biopython -y
         snakefile: workflow/Snakefile
         args: "--lint"
 
@@ -43,7 +43,7 @@ jobs:
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .test
-        stagein: conda install -c conda-forge biopython
+        stagein: mamba install -c conda-forge biopython -y
         snakefile: workflow/Snakefile
         args: "--use-conda --show-failed-logs --cores 3 --conda-cleanup-pkgs cache --all-temp"
 
