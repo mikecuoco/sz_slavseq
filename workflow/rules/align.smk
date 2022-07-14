@@ -17,7 +17,7 @@ rule rmdup:
     log: "results/rmdup/{sample}/{donor}_{type}.log"
     conda: "../envs/env.yml"
     shell:
-        "../scripts/slavseq_rmdup_hts.pl {input} {output}"
+        "../scripts/slavseq_rmdup_hts.pl {input} {output} > {log} 2>&1"
 
 rule tags:
     input: 
