@@ -6,4 +6,4 @@ rule get_ref:
     conda:
         "../envs/env.yml"
     shell:
-        "if [[ {wildcards.ref} == 'GRCh38' ]]; then workflow/scripts/GRCh38.sh > {log} 2>&1; else workflow/scripts/hs37d5.sh > {log} 2>&1; fi"
+        "if [[ {wildcards.ref} == 'GRCh38' ]]; then ../scripts/GRCh38.sh > {log} 2>&1; else ../scripts/hs37d5.sh > {log} 2>&1; fi"

@@ -17,7 +17,7 @@ rule rmdup:
     log: "results/rmdup/{sample}/{donor}_{type}.log"
     conda: "../envs/env.yml"
     shell:
-        "workflow/scripts/slavseq_rmdup_hts.pl {input} {output}"
+        "../scripts/slavseq_rmdup_hts.pl {input} {output}"
 
 rule tags:
     input: 
@@ -35,7 +35,7 @@ rule tags:
             SOFT_CLIP_LENGTH_THRESHOLD=5
 
             (samtools view -h {input.bam} | \
-                workflow/scripts/add_tags_hts.pl \
+                ../scripts/add_tags_hts.pl \
                     --genome_fasta_file {input.ref} \
                     --prefix_length ${{PREFIX_LENGTH}} \
                     --consensus ${{CONSENSUS}} \
