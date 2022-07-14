@@ -17,3 +17,11 @@ include: "rules/trim.smk"
 include: "rules/align.smk"
 include: "rules/test.smk"
 
+
+rule all:
+    input:
+        expand("results/tags/{sample}/{donor}_{type}.bam",
+               zip,
+               sample=samples['sample_id'],
+               donor=samples['donor_id'],
+               type=samples['sample_type'])
