@@ -5,5 +5,5 @@ rule get_ref:
         "resources/{ref}.log"
     conda:
         "../envs/env.yml"
-    shell:
-        "if [[ {wildcards.ref} == 'GRCh38' ]]; then ../scripts/GRCh38.sh > {log} 2>&1; else ../scripts/hs37d5.sh > {log} 2>&1; fi"
+    script:
+        "../scripts/{wildcards.ref}.sh"
