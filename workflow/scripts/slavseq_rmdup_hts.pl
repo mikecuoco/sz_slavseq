@@ -66,6 +66,9 @@ sub prio_pair_rmdup
     {
 	# filter out secondary matches (bwa mem compatibility)
 	# secondary matches won't be used in selection
+	#	256 = not primary alignment
+	#	2048 = supplementary alignment
+	# see https://broadinstitute.github.io/picard/explain-flags.html for SAM flags info
 	next if ($r2->flag & 256) || ($r2->flag & 2048); # continue to next iteration if true; flag is SAM bitwise flag field
 	
 
@@ -73,7 +76,7 @@ sub prio_pair_rmdup
 	{
 	    if(
 		($r2->qname ne $r1->qname) || # if read names are not the same...
-		(($r1->flag & 4) && ($r1->flag & 64)) # drop if R1 unmapped
+		(($r1->flag & 4) && ($r1->flag & 64)) # drop if R1 unmapped. 4 = unmapped, 64 = first in pair
 		)
 		
 	    {
@@ -83,7 +86,7 @@ sub prio_pair_rmdup
 	    {
 		#we got a good pair here.
 
-		if($r1->flag & 128)
+		if($r1->flag & 128) # 128 = second in pair
 		{
 			# switch values of r1 and r2
 		    my $tmp=$r1;
@@ -91,6 +94,7 @@ sub prio_pair_rmdup
 		    $r2=$tmp;
 		}
 
+		# quality scores are at each base, so summing across bases of the read
 		my $sumqual=0;
 		for my $q ($r1->qscore, $r2->qscore)
 		{
