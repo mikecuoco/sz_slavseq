@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pysam
 import subprocess
 import sys
@@ -11,23 +13,24 @@ import locale
 
 def prio_pair_rmdup(filename, out_filename):
     bam = pysam.AlignmentFile(filename, "rb") # read input bam file
-    outfile = open(out_filename, "w+") # open output file for writing
+    outfile = open(out_filename, "a+") # open output file for writing
 
     r1 = None
     r2 = None
 
-    while r2 = bam.fetch(until_eof = True):
-        
+    for r2 in bam.fetch(until_eof = True):
+
         # filter out secondary (and supplementary) matches (bwa mem compatibility)
 	    # secondary matches won't be used in selection
         if (r2.is_secondary) or (r2.is_supplementary):
             continue # continue to next iteration if true
-        
-        else if r1 != None:
-            if (r2.qname != r1.qname) or ((r1.is_unmapped) and (r1.is_read1)):
-                # if read names are not the same or if R1 is unmapped, 
-                # do nothing
-            else: # this is a good pair
+
+        if r1 != None:
+            if r2.qname != r1.qname or (r1.is_unmapped and r1.is_read1):
+                # if read names are not the same or if R1 is unmapped, do nothing
+                r1 = r2
+                continue
+            else:
                 if r1.is_read2:
                     # switch values of r1 and r2
                     tmp = r1
@@ -55,8 +58,9 @@ def prio_pair_rmdup(filename, out_filename):
                     input=all_fields, stdout=outfile, shell=True, check=True, text=True)
 
                 r2 = None
+                r1 = r2
         
-        r1 = r2
+        # r1 = r2
 
     outfile.close()
 
@@ -76,22 +80,24 @@ locale.setlocale(locale.LC_ALL, "C")
 # os.chdir(tmpdir)
 
 prio_pair_rmdup(
-    "results/" + input_bam_fn, 
-    "results/" + input_bam_fn.replace(".bam", "_") + "selected.txt")
+    input_bam_fn, 
+    "results/selected.txt")
 
-input_bam = open("results/" + input_bam_fn, "r")
-header = open("results/" + input_bam_fn.replace(".bam", "_") + "header.txt", "w+")
-output_bam = open("results" + output_bam_fn, "w+")
+input_bam = open(input_bam_fn, "r")
+header = open("results/header.txt", "w+")
+output_bam = open(output_bam_fn, "w+")
 
 subprocess.run(["samtools", "view", "-H", "-"], stdin=input_bam, stdout=header, check=True, text=True)
-subprocess.run(
-    "samtools view - | sort -T ./ -S 1500M -s -k 1,1 |" +
+
+p1 = subprocess.Popen(["samtools", "view", "-"], stdin=input_bam, stdout=subprocess.PIPE, text=True)
+p2 = subprocess.run(
+    "sort -T ./ -S 1500M -s -k 1,1 - |" +
     "join -t '\t' - results/selected.txt | cat results/header.txt - | samtools view -S -b -",
-    stdin=input_bam, stdout=output_bam, shell=True, check=True)
+    stdin=p1.stdout, stdout=output_bam, shell=True, check=True, text=True)
 
 input_bam.close()
 header.close()
 output_bam.close()
 
-os.remove("results/" + input_bam_fn.replace(".bam", "_") + "selected.txt")
-os.remove("results/" + input_bam_fn.replace(".bam", "_") + "header.txt")
+# os.remove("results/selected.txt")
+# os.remove("results/header.txt")
