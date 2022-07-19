@@ -37,9 +37,10 @@ def prio_pair_rmdup(filename, out_filename):
                     r2 = tmp
 
                 sumqual = 0
-                # quality scores are at each base, so sum across bases of the read
-                for i in range(0, r1.query_alignment_length):
-                    sumqual += (r1.query_qualities[i] + r2.query_qualities[i])
+                # quality scores are at each base, so sum across bases of each read
+                query_qualities = r1.query_qualities + r2.query_qualities
+                for q in query_qualities:
+                    sumqual += q
                 
                 r1pos = r1.query_alignment_start + 1 # convert from 0-based to 1-based coordinates
                 
@@ -47,17 +48,16 @@ def prio_pair_rmdup(filename, out_filename):
                 r1strand = "-" if r1.is_reverse else "+"
 
                 # join target ID, position, and strand info
-                pos = ":".join([r1.reference_name, r1pos, r1strand])
+                pos = ":".join([r1.reference_name, str(r1pos), r1strand])
                 # join and print more metrics to output file
-                all_fields = "\t".join([r1.qname, r1.mapping_quality + r2.mapping_quality, sumqual, pos]) + "\n"
-                print(all_fields)
-                # subprocess.run(
-                #     "sort -S 5000M -k 4,4 -k 2,2rn -k 3,3rn | uniq -f 3 -c |" +
-                #     "perl -pe 's/^ +(\\d+) +(\\S+)/\$2\\tXD:i:\$1/' | cut -f 1,2 | sort -S 5000M", 
-                #     input=all_fields, stdout=outfile, shell=True, check=True, text=True)
+                all_fields = "\t".join([r1.qname, str(r1.mapping_quality + r2.mapping_quality), str(sumqual), pos])
+                
+                subprocess.run(
+                    "sort -S 5000M -k 4,4 -k 2,2rn -k 3,3rn | uniq -f 3 -c |" +
+                    "perl -pe 's/^ +(\\d+) +(\\S+)/\$2\\tXD:i:\$1/' | cut -f 1,2 | sort -S 5000M", 
+                    input=all_fields, stdout=outfile, shell=True, check=True, text=True)
 
                 r2 = None
-                # r1 = r2
         
         r1 = r2
 
@@ -68,8 +68,8 @@ output_bam_fn = sys.argv[2]
 
 # input_bam_path = os.path.abspath(sys.argv[1])
 
-# if os.path.exists(output_bam_fn):
-#     sys.exit("Output file already exists!")
+if os.path.exists(output_bam_fn):
+    sys.exit("Output file already exists!")
 
 locale.setlocale(locale.LC_ALL, "C")
 
@@ -86,18 +86,18 @@ input_bam = open(input_bam_fn, "r")
 header = open("results/header.txt", "w+")
 output_bam = open(output_bam_fn, "w+")
 
-# subprocess.run(["samtools", "view", "-H"], stdin=input_bam, stdout=header, check=True, text=True)
+subprocess.run(["samtools", "view", "-H"], stdin=input_bam, stdout=header, check=True, text=True)
 
-# input_bam.seek(0) # reset file pointer to start of file
-# p1 = subprocess.Popen(["samtools", "view"], stdin=input_bam, stdout=subprocess.PIPE, text=True)
-# p2 = subprocess.run(
-#     "sort -T ./ -S 1500M -s -k 1,1 |" +
-#     "join -t '\t' - results/selected.txt | cat results/header.txt - | samtools view -S -b -",
-#     stdin=p1.stdout, stdout=output_bam, shell=True, check=True, text=True)
+input_bam.seek(0) # reset file pointer to start of file
+p1 = subprocess.Popen(["samtools", "view"], stdin=input_bam, stdout=subprocess.PIPE, text=True)
+p2 = subprocess.run(
+    "sort -T ./ -S 1500M -s -k 1,1 |" +
+    "join -t '\t' - results/selected.txt | cat results/header.txt - | samtools view -S -b -",
+    stdin=p1.stdout, stdout=output_bam, shell=True, check=True, text=True)
 
 input_bam.close()
 header.close()
 output_bam.close()
 
-# os.remove("results/selected.txt")
-# os.remove("results/header.txt")
+os.remove("results/selected.txt")
+os.remove("results/header.txt")
