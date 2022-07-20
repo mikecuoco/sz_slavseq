@@ -2,8 +2,8 @@ rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
         idx=expand("resources/{ref}.fa{ext}", ext=[".amb", ".ann", ".bwt", ".pac", ".sa"], ref=config["ref"])
-    output: "results/bwa_mam/{sample}/{donor}_{type}.bam"
-    log: "results/bwa_mam/{sample}/{donor}_{type}.log"
+    output: "results/bwa_mem/{sample}/{donor}_{type}.bam"
+    log: "results/bwa_mem/{sample}/{donor}_{type}.log"
     params: 
         extra="-T 19",
         sorting="samtools"
@@ -34,7 +34,8 @@ rule tags:
             R2_FLANK_LENGTH=${{PREFIX_LENGTH}}
             SOFT_CLIP_LENGTH_THRESHOLD=5
 
-            (samtools view -h {input.bam} | \
+            (samtools sort -n {input.bam} | \
+                samtools view -h | \
                 workflow/scripts/add_tags_hts.pl \
                     --genome_fasta_file {input.ref} \
                     --prefix_length ${{PREFIX_LENGTH}} \
