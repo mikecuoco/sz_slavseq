@@ -17,7 +17,7 @@ rule get_ref:
             # If no data is received for more than 300 seconds during download, tell wget to resume the download
             for ext in ${{extensions[@]}}; do
                 while true; do
-                    wget -q --read-timeout=300 -c --no-config -P "resources/" -O "GRCh38${{ext}}" "${{url}}${{ext}}" && break
+                    wget -q --read-timeout=300 -c --no-config -P "resources/" -O "GRCh38_full_analysis_set_plus_decoy_hla${{ext}}" "${{url}}${{ext}}" && break
                 done
             done
 
