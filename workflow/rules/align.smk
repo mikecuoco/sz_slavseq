@@ -28,11 +28,16 @@ rule tags:
     conda: "../envs/env.yml"
     shell:
         '''
-            # add gapafim to PATH
+            # install gapafim
+            # TODO: check if this will work when running in parallel
             if [ ! -d gapafim ]; then
                 git clone https://github.com/apuapaquola/gapafim.git
+                cd gapafim/Gapafim
+                perl Makefile.PL
+                make
+                make install
+                cd ../..
             fi
-            export PERL5LIB=$(pwd)/gapafim/Gapafim/lib
 
             # set inputs
             export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
