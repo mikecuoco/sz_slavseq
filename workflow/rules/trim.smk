@@ -15,7 +15,7 @@ rule cutadapt1:
         
 rule cutadapt2:
     input:
-        [rules.cutadapt1.output.fastq2, rules.cutadapt1.output.fastq1]
+        [rules.cutadapt1.output.fastq1, rules.cutadapt1.output.fastq2]
     output:
         fastq1="results/cutadapt2/{sample}/{donor}_{type}_R1.fastq.gz",
         fastq2="results/cutadapt2/{sample}/{donor}_{type}_R2.fastq.gz",
