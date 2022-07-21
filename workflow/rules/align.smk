@@ -32,7 +32,7 @@ rule tags:
             if [ ! -d gapafim ]; then
                 git clone https://github.com/apuapaquola/gapafim.git
             fi
-            export PERL5LIB=$(pwd)/gapafim/Gapafim
+            export PERL5LIB=$(pwd)/gapafim/Gapafim/lib
 
             # set inputs
             export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
