@@ -28,6 +28,13 @@ rule tags:
     conda: "../envs/env.yml"
     shell:
         '''
+            # add gapafim to PATH
+            if [ ! -d gapafim ]; then
+                git clone https://github.com/apuapaquola/gapafim.git
+            fi
+            export PERL5LIB=$(pwd)/gapafim/Gapafim
+
+            # set inputs
             export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
             PREFIX_LENGTH=`perl -e 'print length($ENV{{CONSENSUS}})+2'`
             R1_FLANK_LENGTH=750
