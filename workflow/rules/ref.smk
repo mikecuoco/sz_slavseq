@@ -34,6 +34,7 @@ rule get_ref:
         cat resources/{wildcards.ref}/genome.fa.fai | cut -f 1,2 > resources/{wildcards.ref}/genome.genome
         '''
 
+# TODO: perform liftover depending on ref
 rule get_eul1db:
     input:
         chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
