@@ -35,3 +35,20 @@ rule get_ref:
 
         cat resources/{wildcards.ref}/genome.fa.fai | cut -f 1,2 > resources/{wildcards.ref}/genome.genome
         '''
+
+rule get_eul1db:
+    input:
+        chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
+    output:
+        srip = "resources/eul1db/SRIP.txt",
+        windows = "resources/eul1db/windows.csv"
+    log: 
+        "resources/eul1db/eul1db.log"
+    shell:
+        '''
+        wget --no-config -q -P resources/eul1db/ http://eul1db.unice.fr/UserLists/DATA/downloads/SRIP.txt
+        workflow/scripts/eul1db_windows.py \
+            --srip-file {output.srip} \
+            --chromsizes {input.chromsizes} \
+            --output {output.windows}
+        '''
