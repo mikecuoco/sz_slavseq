@@ -20,7 +20,7 @@ include: "rules/test.smk"
 
 rule all:
     input:
-        expand("results/tags/{sample}/{donor}_{type}.bam",
+        expand("results/tabix/{sample}/{donor}_{type}.bgz.tbi",
                zip,
                sample=samples['sample_id'],
                donor=samples['donor_id'],

@@ -57,3 +57,20 @@ rule tags:
                     --soft_clip_length_threshold ${{SOFT_CLIP_LENGTH_THRESHOLD}} | \
                     samtools view -S -b - > {output}) 2> {log}
         '''
+
+rule tabix:
+    input: rules.tags.output
+    output: 
+        bgz = "results/tabix/{sample}/{donor}_{type}.bgz",
+        tbi = "results/tabix/{sample}/{donor}_{type}.bgz.tbi"
+    log: "results/tabix/{sample}/{donor}_{type}.log"
+    conda: "../envs/env.yml"
+    shell:
+        '''
+        samtools view {input} | \
+            workflow/scripts/sam_to_tabix.py | \
+            sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
+            bgzip -c > {output.bgz} 2> {log} 
+        
+        tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
+        '''
