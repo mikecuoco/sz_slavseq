@@ -1,37 +1,20 @@
 rule get_ref:
-    output:
-        multiext("resources/{ref}/genome", ".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome")
-    log: "resources/{ref}/genome.log"
+    output: "resources/{ref}/genome.fa"
+    log: "resources/{ref}/get_ref.log"
     conda: "../envs/env.yml"
     shell:
         '''
         touch {log} && exec 1>{log} 2>&1
 
         if [[ {wildcards.ref} == 'GRCh38' ]]; then 
-            url="ftp://ftp.1000genomes.ebi.ac.uk:21/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla"
-            extensions=(".fa" ".fa.amb" ".fa.ann" ".fa.bwt" ".fa.fai" ".fa.pac" ".fa.sa")
-
-            # Download the reference genome, samtools index, and bwa index
-            # If no data is received for more than 300 seconds, tell wget to resume the download
-            for ext in ${{extensions[@]}}; do
-                while true; do
-                    wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "resources/{wildcards.ref}/genome${{ext}}" "${{url}}${{ext}}" && break
-                done
-            done
-
+            url="ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
         elif [[ {wildcards.ref} == 'hs37d5' ]]; then
             url="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz"
-
-            # Download the reference genome only, then generate indices ourselves
-            # If no data is received for more than 300 seconds during download, tell wget to resume the download
-            wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "resources/{wildcards.ref}/genome${{ext}}" {{url}}
-            gunzip resources/{wildcards.ref}/genome.fa.gz
-            
-            samtools faidx resources/{wildcards.ref}/genome.fa
-            bwa index resouces/{wildcards.ref}/genome.fa
         fi
 
-        cat resources/{wildcards.ref}/genome.fa.fai | cut -f 1,2 > resources/{wildcards.ref}/genome.genome
+        # If no data is received for more than 300 seconds during download, tell wget to resume the download
+        wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "resources/{wildcards.ref}/genome.fa.gz" ${{url}}
+        gunzip resources/{wildcards.ref}/genome.fa.gz
         '''
 
 # TODO: perform liftover depending on ref

@@ -1,13 +1,24 @@
+rule bwa_index:
+    input: "resources/{ref}/genome.fa"
+    output:
+        idx=multiext("resources/{ref}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"),
+    log: "resources/{ref}/bwa_index.log",
+    params:
+        algorithm="",
+    wrapper:
+        "v1.7.1/bio/bwa/index"
+
 rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
-        idx=expand("resources/{ref}/genome.fa{ext}", ext=[".amb", ".ann", ".bwt", ".pac", ".sa"], ref=config["ref"])
+        idx=expand(rules.bwa_index.output.idx, ref=config["ref"])
     output: "results/bwa_mem/{sample}/{donor}_{type}.bam"
     log: "results/bwa_mem/{sample}/{donor}_{type}.log"
     params: 
         extra="-T 19",
         sorting="samtools"
     threads: 4
+    conda: "../envs/env.yml"
     wrapper:
         "v1.7.0/bio/bwa/mem"
 
@@ -22,7 +33,7 @@ rule rmdup:
 rule tags:
     input: 
         bam=rules.rmdup.output,
-        ref=expand("resources/{ref}/genome.fa", ref=config["ref"])
+        ref=expand(rules.get_ref.output, ref=config["ref"])
     output: "results/tags/{sample}/{donor}_{type}.bam"
     log: "results/tags/{sample}/{donor}_{type}.err"
     conda: "../envs/env.yml"
