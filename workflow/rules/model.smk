@@ -34,4 +34,16 @@ rule features:
         cat {output.header} {output.sorted} | bgzip -c > {output.bgz}
 
         tabix -S 1 -s 1 -b 2 -e 3 -0 {output.bgz}
-    '''
+        '''
+
+rule flank_features:
+    input: 
+        bgz = rules.features.output.bgz,
+        chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
+    output: "results/flank_features/{sample}/{donor}_{type}.pickle.gz"
+    log: "results/flank_features/{sample}/{donor}_{type}.log"
+    conda: "../envs/env.yml"
+    shell:
+        '''
+        workflow/scripts/compute_features_and_pickle.py --input {input.bgz} --chromsizes {input.chromsizes} --output {output}
+        '''
