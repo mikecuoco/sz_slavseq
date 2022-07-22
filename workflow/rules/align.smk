@@ -1,7 +1,7 @@
 rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
-        idx=expand("resources/{ref}.fa{ext}", ext=[".amb", ".ann", ".bwt", ".pac", ".sa"], ref=config["ref"])
+        idx=expand("resources/{ref}/genome.fa{ext}", ext=[".amb", ".ann", ".bwt", ".pac", ".sa"], ref=config["ref"])
     output: "results/bwa_mem/{sample}/{donor}_{type}.bam"
     log: "results/bwa_mem/{sample}/{donor}_{type}.log"
     params: 
@@ -22,7 +22,7 @@ rule rmdup:
 rule tags:
     input: 
         bam=rules.rmdup.output,
-        ref=expand("resources/{ref}.fa", ref=config["ref"])
+        ref=expand("resources/{ref}/genome.fa", ref=config["ref"])
     output: "results/tags/{sample}/{donor}_{type}.bam"
     log: "results/tags/{sample}/{donor}_{type}.err"
     conda: "../envs/env.yml"

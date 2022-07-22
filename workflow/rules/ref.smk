@@ -1,8 +1,8 @@
 rule get_ref:
     output:
-        multiext("resources/{ref}", ".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome")
+        multiext("resources/{ref}/genome", ".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome")
     log:
-        "resources/{ref}.log"
+        "resources/{ref}/genome.log"
     conda:
         "../envs/env.yml"
     shell:
@@ -14,23 +14,24 @@ rule get_ref:
             extensions=(".fa" ".fa.amb" ".fa.ann" ".fa.bwt" ".fa.fai" ".fa.pac" ".fa.sa")
 
             # Download the reference genome, samtools index, and bwa index
-            # If no data is received for more than 300 seconds during download, tell wget to resume the download
+            # If no data is received for more than 300 seconds, tell wget to resume the download
             for ext in ${{extensions[@]}}; do
                 while true; do
-                    wget -q --read-timeout=300 -c --no-config -P "resources/" -O "resources/GRCh38${{ext}}" "${{url}}${{ext}}" && break
+                    wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "resources/{wildcards.ref}/genome${{ext}}" "${{url}}${{ext}}" && break
                 done
             done
 
-            cat resources/GRCh38.fa.fai | cut -f 1,2 > resources/GRCh38.genome
         elif [[ {wildcards.ref} == 'hs37d5' ]]; then
+            url="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz"
+
+            # Download the reference genome only, then generate indices ourselves
             # If no data is received for more than 300 seconds during download, tell wget to resume the download
-            wget -q --read-timeout=300 -c --no-config -P "resources/" ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
-            gunzip resources/hs37d5.fa.gz
-
-            samtools faidx resources/hs37d5.fa
-
-            bwa index resources/hs37d5.fa
-
-            cat resources/hs37d5.fa.fai | cut -f 1,2 > resources/hs37d5.genome
+            wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "resources/{wildcards.ref}/genome${{ext}}" {{url}}
+            gunzip resources/{wildcards.ref}/genome.fa.gz
+            
+            samtools faidx resources/{wildcards.ref}/genome.fa
+            bwa index resouces/{wildcards.ref}/genome.fa
         fi
+
+        cat resources/{wildcards.ref}/genome.fa.fai | cut -f 1,2 > resources/{wildcards.ref}/genome.genome
         '''
