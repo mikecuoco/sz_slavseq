@@ -15,12 +15,13 @@ include: "rules/common.smk"
 include: "rules/ref.smk"
 include: "rules/trim.smk"
 include: "rules/align.smk"
+include: "rules/model.smk"
 include: "rules/test.smk"
 
 
 rule all:
     input:
-        expand("results/tabix/{sample}/{donor}_{type}.bgz.tbi",
+        expand("results/features/{sample}/{donor}_{type}.bgz.tbi",
                zip,
                sample=samples['sample_id'],
                donor=samples['donor_id'],
