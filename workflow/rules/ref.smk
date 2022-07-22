@@ -50,3 +50,20 @@ rule get_eul1db:
             --chromsizes {input.chromsizes} \
             --output {output.windows}
         '''
+
+rule get_rmsk:
+    output: "resources/{ref}/rmsk.txt.gz"
+    log: "resources/{ref}/rmsk.log"
+    conda: "../envs/env.yml"
+    shell:
+        '''
+        touch {log} && exec 1>{log} 2>&1
+
+        if [[ {wildcards.ref} == 'GRCh38' ]]; then 
+            url="http://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/rmsk.txt.gz"
+            wget --no-config -q -P resources/{wildcards.ref} -O resources/{wildcards.ref}/rmsk.txt.gz ${{url}}
+        elif [[ {wildcards.ref} == 'hs37d5' ]]; then
+            url="http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz"
+            wget --no-config -q -P resources/{wildcards.ref} -O resources/{wildcards.ref}/rmsk.txt.gz ${{url}}
+        fi
+        '''
