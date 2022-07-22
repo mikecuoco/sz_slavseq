@@ -1,10 +1,8 @@
 rule get_ref:
     output:
         multiext("resources/{ref}/genome", ".fa", ".fa.amb", ".fa.ann", ".fa.bwt", ".fa.fai", ".fa.pac", ".fa.sa", ".genome")
-    log:
-        "resources/{ref}/genome.log"
-    conda:
-        "../envs/env.yml"
+    log: "resources/{ref}/genome.log"
+    conda: "../envs/env.yml"
     shell:
         '''
         touch {log} && exec 1>{log} 2>&1
@@ -42,8 +40,8 @@ rule get_eul1db:
     output:
         srip = "resources/eul1db/SRIP.txt",
         windows = "resources/eul1db/windows.csv"
-    log: 
-        "resources/eul1db/eul1db.log"
+    log: "resources/eul1db/eul1db.log"
+    conda: "../envs/env.yml"
     shell:
         '''
         wget --no-config -q -P resources/eul1db/ http://eul1db.unice.fr/UserLists/DATA/downloads/SRIP.txt
