@@ -13,8 +13,8 @@ rule get_ref:
         fi
 
         # If no data is received for more than 300 seconds during download, tell wget to resume the download
-        wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "resources/{wildcards.ref}/genome.fa.gz" ${{url}}
-        gunzip resources/{wildcards.ref}/genome.fa.gz
+        wget -q --read-timeout=300 -c --no-config -P "resources/{wildcards.ref}" -O "{output}.gz" ${{url}}
+        gunzip {output}.gz
         '''
 
 # TODO: perform liftover depending on ref
