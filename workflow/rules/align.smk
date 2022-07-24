@@ -1,5 +1,5 @@
 rule bwa_index:
-    input: "resources/{ref}/genome.fa"
+    input: rules.gen_ref.output
     output:
         idx=multiext("resources/{ref}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"),
     log: "resources/{ref}/bwa_index.log",
@@ -33,7 +33,7 @@ rule rmdup:
 rule tags:
     input: 
         bam=rules.rmdup.output,
-        ref=expand(rules.get_ref.output, ref=config["ref"])
+        ref=expand(rules.gen_ref.output, ref=config["ref"])
     output: "results/tags/{sample}/{donor}_{type}.bam"
     log: "results/tags/{sample}/{donor}_{type}.err"
     conda: "../envs/env.yml"
