@@ -21,39 +21,18 @@ rule gen_ref:
         mv {wildcards.ref}.fa {output}
         '''
 
+# TODO: edit fix_names.py to also change the names for hg38
 rule fix_names_clean:
     input: 
-        fa = rules.gen_ref.output,
-        chrom_map = "workflow/scripts/hs37d5_to_hg19.tsv"
+        fa = rules.gen_ref.output
     output: 
         fa = "resources/{ref}/genome.fa",
         fai = "resources/{ref}/genome.fa.fai",
         chromsizes = "resources/{ref}/genome.genome"
     log: "resources/{ref}/fix_names.log"
     conda: "../envs/env.yml"
-    shell:
-        '''
-        if [[ "{wildcards.ref}" =~ .*"37".*  ]]; then 
-            # make hg19 names
-            while read line; do
-                hs37d5_chr=$(echo $line | cut -f1)
-                hg19_chr=$(echo $line | cut -f2)
-                sed -i "s/^>$hs37d5_chr/^>$hg19_chr/g" {input.fa} > {output.fa}
-            done < {input.chrom_map}
-        else
-            mv {input.fa} {output.fa}
-        fi
-
-        samtools faidx {output.fa} 
-        cut -f 1,2 {output.fai} > {output.chromsizes}
-        '''
-
-while read line; do
-    hs37d5_chr=$(echo $line | cut -f1)
-    hg19_chr=$(echo $line | cut -f2)
-    sed -i "s/^>$hs37d5_chr/^>$hg19_chr/g" resources/hs37d5/genome_og.fa > resources/hs37d5/genome.fa
-done < workflow/scripts/hs37d5_to_hg19.tsv
-
+    script: "../scripts/fix_names.py"
+        
 rule get_eul1db:
     input:
         chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
@@ -85,5 +64,6 @@ rule get_rmsk:
             url="http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz"
         fi
 
+        echo "downloading from ${{url}}"
         wget --no-config -q -O- ${{url}} > {output}
         '''
