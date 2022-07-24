@@ -1,10 +1,8 @@
 rule bwa_index:
-    input: rules.gen_ref.output
+    input: rules.fix_names_clean.output.fa
     output:
         idx=multiext("resources/{ref}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"),
     log: "resources/{ref}/bwa_index.log",
-    params:
-        algorithm="",
     wrapper:
         "v1.7.1/bio/bwa/index"
 
@@ -30,43 +28,45 @@ rule rmdup:
     shell:
         "workflow/scripts/slavseq_rmdup_hts.pl {input} {output} > {log} 2>&1"
 
+rule install_gapafim:
+    output: directory("resources/gapafim")
+    conda: "../envs/env.yml"
+    shell:
+        '''
+        mkdir -p resources && cd resources
+        git clone https://github.com/apuapaquola/gapafim.git
+        cd gapafim/Gapafim
+        perl Makefile.PL
+        make
+        make install
+        '''
+
 rule tags:
     input: 
         bam=rules.rmdup.output,
-        ref=expand(rules.gen_ref.output, ref=config["ref"])
+        fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]),
+        gapafim=rules.install_gapafim.output
     output: "results/tags/{sample}/{donor}_{type}.bam"
     log: "results/tags/{sample}/{donor}_{type}.err"
     conda: "../envs/env.yml"
     shell:
         '''
-            # install gapafim
-            # TODO: check if this will work when running in parallel
-            if [ ! -d gapafim ]; then
-                git clone https://github.com/apuapaquola/gapafim.git
-                cd gapafim/Gapafim
-                perl Makefile.PL
-                make
-                make install
-                cd ../..
-            fi
+        # set inputs
+        export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
+        PREFIX_LENGTH=`perl -e 'print length($ENV{{CONSENSUS}})+2'`
+        R1_FLANK_LENGTH=750
+        R2_FLANK_LENGTH=${{PREFIX_LENGTH}}
+        SOFT_CLIP_LENGTH_THRESHOLD=5
 
-            # set inputs
-            export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
-            PREFIX_LENGTH=`perl -e 'print length($ENV{{CONSENSUS}})+2'`
-            R1_FLANK_LENGTH=750
-            R2_FLANK_LENGTH=${{PREFIX_LENGTH}}
-            SOFT_CLIP_LENGTH_THRESHOLD=5
-
-            (samtools sort -n {input.bam} | \
-                samtools view -h | \
-                workflow/scripts/add_tags_hts.pl \
-                    --genome_fasta_file {input.ref} \
-                    --prefix_length ${{PREFIX_LENGTH}} \
-                    --consensus ${{CONSENSUS}} \
-                    --r1_flank_length ${{R1_FLANK_LENGTH}} \
-                    --r2_flank_length ${{R2_FLANK_LENGTH}} \
-                    --soft_clip_length_threshold ${{SOFT_CLIP_LENGTH_THRESHOLD}} | \
-                    samtools view -S -b - > {output}) 2> {log}
+        (samtools view -h {input.bam}| \
+            workflow/scripts/add_tags_hts.pl \
+                --genome_fasta_file {input.fa} \
+                --prefix_length ${{PREFIX_LENGTH}} \
+                --consensus ${{CONSENSUS}} \
+                --r1_flank_length ${{R1_FLANK_LENGTH}} \
+                --r2_flank_length ${{R2_FLANK_LENGTH}} \
+                --soft_clip_length_threshold ${{SOFT_CLIP_LENGTH_THRESHOLD}} | \
+                samtools view -S -b - > {output}) 2> {log}
         '''
 
 rule tabix:
