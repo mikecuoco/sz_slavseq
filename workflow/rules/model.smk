@@ -44,3 +44,23 @@ rule flank_features:
     log: "results/flank_features/{sample}/{donor}_{type}.log"
     conda: "../envs/env.yml"
     script: "../scripts/compute_features_and_pickle.py"
+
+rule folds:
+    input: 
+        # TODO: add support to split by type
+        samples = expand("results/flank_features/{{sample}}/{donor}_{type}.pickle.gz", 
+                        zip,
+                        donor=samples['donor_id']
+                        type=samples['sample_type']) 
+        pickle = "results/flank_features/{sample}/{donor}_{type}.pickle.gz",
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
+        non_ref_l1 = rules.eul1db.output,
+        ref_l1 = rules.get_rmsk.output.ref_l1
+    params:
+        num_folds = config["num_folds"],
+        min_reads = config["min_reads"],
+        window_size = config["window_size"]
+    output: multiext("results/folds/{sample}/", X_train.pickle.gz, X_test.pickle.gz, Y_train.pickle.gz, Y_test.pickle.gz)
+    log: "results/folds/{sample}/{donor}_{type}.log"
+    conda: "../envs/env.yml"
+    script: "../scripts/folds.py"
