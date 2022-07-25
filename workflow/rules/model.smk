@@ -1,8 +1,8 @@
 rule features:
     input: 
         bgz = rules.tabix.output.bgz,
-        ref = expand("resources/{ref}/genome.fa",  ref=config["ref"]),
-        chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
+        fa = expand(rules.fix_names_clean.output.fa,  ref=config["ref"]),
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"])
     output:
         bgz = "results/features/{sample}/{donor}_{type}.bgz",
         tbi = "results/features/{sample}/{donor}_{type}.bgz.tbi",
@@ -14,7 +14,7 @@ rule features:
     shell:
         '''
         pyslavseq_extract_features \
-            --genome_fasta_file {input.ref} \
+            --genome_fasta_file {input.fa} \
             --library_3_or_5 3 \
             --occupied \
             --min_mapq 40 \
@@ -39,11 +39,8 @@ rule features:
 rule flank_features:
     input: 
         bgz = rules.features.output.bgz,
-        chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"])
     output: "results/flank_features/{sample}/{donor}_{type}.pickle.gz"
     log: "results/flank_features/{sample}/{donor}_{type}.log"
     conda: "../envs/env.yml"
-    shell:
-        '''
-        workflow/scripts/compute_features_and_pickle.py --input {input.bgz} --chromsizes {input.chromsizes} --output {output}
-        '''
+    script: "../scripts/compute_features_and_pickle.py"

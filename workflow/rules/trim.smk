@@ -10,8 +10,9 @@ rule cutadapt1:
         extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4"
     log: "results/cutadapt1/{sample}/{donor}_{type}.log"
     threads: 4 
+    conda: "../envs/env.yml"
     wrapper:
-        "v1.7.0/bio/cutadapt/pe"
+        "v1.7.1/bio/cutadapt/pe"
         
 rule cutadapt2:
     input:
@@ -25,5 +26,6 @@ rule cutadapt2:
         extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4"
     log: "results/cutadapt2/{sample}/{donor}_{type}.log"
     threads: 4 
+    conda: "../envs/env.yml"
     wrapper:
-        "v1.7.0/bio/cutadapt/pe"
+        "v1.7.1/bio/cutadapt/pe"

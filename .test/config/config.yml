@@ -3,7 +3,7 @@
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
 samples: .test/config/test.tsv
 
-ref: GRCh38 # options: hsd37d5 or GRCh38
+ref: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
