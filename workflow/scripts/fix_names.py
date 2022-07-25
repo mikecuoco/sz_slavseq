@@ -6,6 +6,7 @@ import pandas as pd
 import pysam
 import os
 import logging
+import snakemake as sm
 
 logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
 
@@ -34,6 +35,6 @@ if "37" in snakemake.wildcards.ref:
 else:
 	os.rename(snakemake.input.fa[0], snakemake.output.fa)
 
+# samtools faidx
 pysam.faidx(snakemake.output.fa)
-fai = pd.read_csv(snakemake.output.fai, sep="\t", header=None)
-fai.iloc[:,0:1].to_csv(snakemake.output.chromsizes, sep="\t", header=False, index=False)
+sm.shell("cut -f 1,2 {snakemake.output.fai} > {snakemake.output.chromsizes}")

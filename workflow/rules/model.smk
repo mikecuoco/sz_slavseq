@@ -39,11 +39,8 @@ rule features:
 rule flank_features:
     input: 
         bgz = rules.features.output.bgz,
-        chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"])
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"])
     output: "results/flank_features/{sample}/{donor}_{type}.pickle.gz"
     log: "results/flank_features/{sample}/{donor}_{type}.log"
     conda: "../envs/env.yml"
-    shell:
-        '''
-        workflow/scripts/compute_features_and_pickle.py --input {input.bgz} --chromsizes {input.chromsizes} --output {output}
-        '''
+    script: "../scripts/compute_features_and_pickle.py"

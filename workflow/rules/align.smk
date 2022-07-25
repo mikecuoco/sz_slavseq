@@ -58,7 +58,8 @@ rule tags:
         R2_FLANK_LENGTH=${{PREFIX_LENGTH}}
         SOFT_CLIP_LENGTH_THRESHOLD=5
 
-        (samtools view -h {input.bam}| \
+        (samtools sort -n {input.bam} | \
+            samtools view -h | \
             workflow/scripts/add_tags_hts.pl \
                 --genome_fasta_file {input.fa} \
                 --prefix_length ${{PREFIX_LENGTH}} \
