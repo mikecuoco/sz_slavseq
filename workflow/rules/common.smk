@@ -3,8 +3,8 @@ from Bio.Seq import Seq
 
 # read sample sheet 
 samples = (
-    pd.read_csv(config["samples"], sep="\t", dtype={"sample_id": str})
-    .set_index("sample_id", drop=False)
+    pd.read_csv(config["samples"], sep="\t", dtype={"sample": str})
+    .set_index("sample", drop=False)
     .sort_index()
 )
 

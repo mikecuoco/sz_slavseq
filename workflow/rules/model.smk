@@ -4,12 +4,12 @@ rule features:
         fa = expand(rules.fix_names_clean.output.fa,  ref=config["ref"]),
         chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"])
     output:
-        bgz = "results/features/{sample}/{donor}_{type}.bgz",
-        tbi = "results/features/{sample}/{donor}_{type}.bgz.tbi",
-        header = "results/features/{sample}/{donor}_{type}.header.txt",
-        unsorted = "results/features/{sample}/{donor}_{type}.unsorted.txt",
-        sorted = "results/features/{sample}/{donor}_{type}.sorted.txt"
-    log: "results/features/{sample}/{donor}_{type}.log"
+        bgz = "results/features/{donor}_{dna_type}/{sample}.bgz",
+        tbi = "results/features/{donor}_{dna_type}/{sample}.bgz.tbi",
+        header = "results/features/{donor}_{dna_type}/{sample}.header.txt",
+        unsorted = "results/features/{donor}_{dna_type}/{sample}.unsorted.txt",
+        sorted = "results/features/{donor}_{dna_type}/{sample}.sorted.txt"
+    log: "results/features/{donor}_{dna_type}/{sample}.log"
     conda: "../envs/env.yml"
     shell:
         '''
@@ -40,7 +40,7 @@ rule flank_features:
     input: 
         bgz = rules.features.output.bgz,
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"])
-    output: "results/flank_features/{sample}/{donor}_{type}.pickle.gz"
-    log: "results/flank_features/{sample}/{donor}_{type}.log"
+    output: "results/flank_features/{donor}_{dna_type}/{sample}.pickle.gz"
+    log: "results/flank_features/{donor}_{dna_type}/{sample}.log"
     conda: "../envs/env.yml"
     script: "../scripts/compute_features_and_pickle.py"

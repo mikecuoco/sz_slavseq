@@ -4,7 +4,7 @@ rule test_ref:
 
 rule test_cutadapt2:
     input:
-        expand(["results/cutadapt2/{sample}/{donor}_{type}_R1.fastq.gz", "results/cutadapt2/{sample}/{donor}_{type}_R2.fastq.gz", "results/cutadapt2/{sample}/{donor}_{type}_qc.txt"],
+        expand(["results/cutadapt2/{donor}_{dna_type}/{sample}_R1.fastq.gz", "results/cutadapt2/{donor}_{dna_type}/{sample}_R2.fastq.gz", "results/cutadapt2/{donor}_{dna_type}/{sample}_qc.txt"],
                 zip,
                sample=samples['sample_id'],
                donor=samples['donor_id'],
@@ -12,7 +12,7 @@ rule test_cutadapt2:
                
 rule test_bwa_mem:
     input:
-        expand("results/bwa_mam/{sample}/{donor}_{type}.bam",
+        expand("results/bwa_mam/{donor}_{dna_type}/{sample}.bam",
                zip,
                sample=samples['sample_id'],
                donor=samples['donor_id'],
@@ -20,7 +20,7 @@ rule test_bwa_mem:
 
 rule test_rmdup:
     input:
-        expand("results/rmdup/{sample}/{donor}_{type}.bam",
+        expand("results/rmdup/{donor}_{dna_type}/{sample}.bam",
                zip,
                sample=samples['sample_id'],
                donor=samples['donor_id'],
@@ -28,7 +28,7 @@ rule test_rmdup:
 
 rule test_tags:
     input:
-        expand("results/tags/{sample}/{donor}_{type}.bam",
+        expand("results/tags/{donor}_{dna_type}/{sample}.bam",
                zip,
                sample=samples['sample_id'],
                donor=samples['donor_id'],

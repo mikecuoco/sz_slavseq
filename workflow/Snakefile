@@ -21,8 +21,8 @@ include: "rules/test.smk"
 
 rule all:
     input:
-        expand("results/flank_features/{sample}/{donor}_{type}.pickle.gz",
+        expand("results/flank_features/{donor}_{dna_type}/{sample}.pickle.gz",
                zip,
-               sample=samples['sample_id'],
-               donor=samples['donor_id'],
-               type=samples['sample_type'])
+               sample=samples['sample'],
+               donor=samples['donor'],
+               dna_type=samples['dna_type'])
