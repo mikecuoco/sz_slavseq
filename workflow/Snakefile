@@ -16,7 +16,6 @@ include: "rules/ref.smk"
 include: "rules/trim.smk"
 include: "rules/align.smk"
 include: "rules/model.smk"
-include: "rules/test.smk"
 
 
 rule all:
