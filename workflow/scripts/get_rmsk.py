@@ -24,7 +24,7 @@ def download_rmsk(ref):
 def read_rmsk():
 
     # read the rmsk file
-    df0 = pd.read_csv({snakemake.output.rmsk}, compression="gzip", sep="\t", header = None, usecols = [5,6,7,9,10])
+    df0 = pd.read_csv(snakemake.output.rmsk, compression="gzip", sep="\t", header = None, usecols = [5,6,7,9,10])
 
     # filter for rep_names
     rep_names = ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]
@@ -59,7 +59,7 @@ def main():
     refl1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
     refl1['reference_l1hs_l1pa2_6'] = True
 
-    refl1.to_csv(snakemake.output.refl1)
+    refl1.to_csv(snakemake.output.ref_l1)
 
 if __name__ == '__main__':
     main()
