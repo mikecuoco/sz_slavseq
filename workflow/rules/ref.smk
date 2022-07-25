@@ -53,18 +53,10 @@ rule get_eul1db:
         '''
 
 rule get_rmsk:
-    output: "resources/{ref}/rmsk.txt.gz"
+    input: "resources/{ref}/genome.genome"
+    output: 
+        rmsk = "resources/{ref}/rmsk.txt.gz",
+        ref_l1 = "resources/{ref}/reference_l1.csv"
     log: "resources/{ref}/rmsk.log"
     conda: "../envs/env.yml"
-    shell:
-        '''
-        touch {log} && exec 1>{log} 2>&1
-
-        if [[ {wildcards.ref} == 'GRCh38' ]]; then 
-            url="http://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/rmsk.txt.gz"
-            wget --no-config -q -P resources/{wildcards.ref} -O resources/{wildcards.ref}/rmsk.txt.gz ${{url}}
-        elif [[ {wildcards.ref} == 'hs37d5' ]]; then
-            url="http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz"
-            wget --no-config -q -P resources/{wildcards.ref} -O resources/{wildcards.ref}/rmsk.txt.gz ${{url}}
-        fi
-        '''
+    script: "../scripts/get_rmsk.py"
