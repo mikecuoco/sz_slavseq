@@ -34,36 +34,7 @@ rule fix_names_clean:
     script: "../scripts/fix_names.py"
         
 rule get_eul1db:
-    input:
-        chromsizes = expand("resources/{ref}/genome.genome",  ref=config["ref"])
-    output:
-        srip = "resources/eul1db/SRIP.txt",
-        windows = "resources/eul1db/windows.csv"
-    log: "resources/eul1db/eul1db.log"
+    input: expand("resources/{ref}/genome.genome",  ref=config["ref"])
+    output: "resources/eul1db/windows.csv"
     conda: "../envs/env.yml"
-    shell:
-        '''
-        wget --no-config -q -O- http://eul1db.unice.fr/UserLists/DATA/downloads/SRIP.txt > {output.srip}
-        workflow/scripts/eul1db_windows.py \
-            --srip-file {output.srip} \
-            --chromsizes {input.chromsizes} \
-            --output {output.windows}
-        '''
-
-rule get_rmsk:
-    output: "resources/{ref}/rmsk.txt.gz"
-    log: "resources/{ref}/rmsk.log"
-    conda: "../envs/env.yml"
-    shell:
-        '''
-        touch {log} && exec 1>{log} 2>&1
-
-        if [[ "{wildcards.ref}" =~ .*"38".*  ]]; then 
-            url="http://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/rmsk.txt.gz"
-        elif [[ "{wildcards.ref}" =~ .*"37".*  ]]; then 
-            url="http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz"
-        fi
-
-        echo "downloading from ${{url}}"
-        wget --no-config -q -O- ${{url}} > {output}
-        '''
+    script: "../scripts/get_eul1db.py"
