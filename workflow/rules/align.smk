@@ -31,6 +31,7 @@ rule rmdup:
 rule install_gapafim:
     output: directory("resources/gapafim")
     conda: "../envs/env.yml"
+    log: "resources/install_gapafim.log"
     shell:
         '''
         mkdir -p resources && cd resources

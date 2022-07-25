@@ -1,6 +1,7 @@
 rule install_bwakit:
     output: directory("resources/bwa.kit")
     conda: "../envs/env.yml"
+    log: "resources/install_bwakit.log"
     shell:
         '''
         mkdir -p resources && cd resources
@@ -37,4 +38,5 @@ rule get_eul1db:
     input: expand("resources/{ref}/genome.genome",  ref=config["ref"])
     output: "resources/eul1db/windows.csv"
     conda: "../envs/env.yml"
+    log: "resources/eul1db/get_eul1db.log"
     script: "../scripts/get_eul1db.py"
