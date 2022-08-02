@@ -1,0 +1,2 @@
+donor_id	sample_id	sample_type	R1	R2
+1	sample	bulk	test_fastqs/sample_R1.fastq.gz	test_fastqs/sample_R2.fastq.gz
