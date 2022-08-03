@@ -10,8 +10,8 @@ rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
         idx=expand(rules.bwa_index.output.idx, ref=config["ref"])
-    output: "results/bwa_mem/{sample}/{donor}_{type}.bam"
-    log: "results/bwa_mem/{sample}/{donor}_{type}.log"
+    output: "results/bwa_mem/{donor}/{type}/{sample}.bam"
+    log: "results/bwa_mem/{donor}/{type}/{sample}.log"
     params: 
         extra="-T 19",
         sorting="samtools"
@@ -22,8 +22,8 @@ rule bwa_mem:
 
 rule rmdup:
     input: rules.bwa_mem.output
-    output: "results/rmdup/{sample}/{donor}_{type}.bam"
-    log: "results/rmdup/{sample}/{donor}_{type}.log"
+    output: "results/rmdup/{donor}/{type}/{sample}.bam"
+    log: "results/rmdup/{donor}/{type}/{sample}.log"
     conda: "../envs/env.yml"
     shell:
         "workflow/scripts/slavseq_rmdup_hts.pl {input} {output} > {log} 2>&1"
@@ -47,8 +47,8 @@ rule tags:
         bam=rules.rmdup.output,
         fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]),
         gapafim=rules.install_gapafim.output
-    output: "results/tags/{sample}/{donor}_{type}.bam"
-    log: "results/tags/{sample}/{donor}_{type}.err"
+    output: "results/tags/{donor}/{type}/{sample}.bam"
+    log: "results/tags/{donor}/{type}/{sample}.err"
     conda: "../envs/env.yml"
     shell:
         '''
@@ -74,9 +74,9 @@ rule tags:
 rule tabix:
     input: rules.tags.output
     output: 
-        bgz = "results/tabix/{sample}/{donor}_{type}.bgz",
-        tbi = "results/tabix/{sample}/{donor}_{type}.bgz.tbi"
-    log: "results/tabix/{sample}/{donor}_{type}.log"
+        bgz = "results/tabix/{donor}/{type}/{sample}.bgz",
+        tbi = "results/tabix/{donor}/{type}/{sample}.bgz.tbi"
+    log: "results/tabix/{donor}/{type}/{sample}.log"
     conda: "../envs/env.yml"
     shell:
         '''

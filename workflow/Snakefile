@@ -21,4 +21,4 @@ include: "rules/test.smk"
 
 rule all:
     input:
-        expand("results/flank_features/{sample}/X_train.pickle.gz", sample=samples['sample_id'])
+        expand("results/flank_features/{donor}/{type}/{sample}.pickle.gz", donor=samples['donor_id'], type=samples['sample_type'], sample=samples['sample_id'])
