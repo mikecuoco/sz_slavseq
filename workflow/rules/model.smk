@@ -4,12 +4,12 @@ rule features:
         fa = expand(rules.fix_names_clean.output.fa,  ref=config["ref"]),
         chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"])
     output:
-        bgz = "results/features/{donor}_{dna_type}/{sample}.bgz",
-        tbi = "results/features/{donor}_{dna_type}/{sample}.bgz.tbi",
-        header = "results/features/{donor}_{dna_type}/{sample}.header.txt",
-        unsorted = "results/features/{donor}_{dna_type}/{sample}.unsorted.txt",
-        sorted = "results/features/{donor}_{dna_type}/{sample}.sorted.txt"
-    log: "results/features/{donor}_{dna_type}/{sample}.log"
+        bgz = "results/features/{donor}/{type}/{sample}.bgz",
+        tbi = "results/features/{donor}/{type}/{sample}.bgz.tbi",
+        header = "results/features/{donor}/{type}/{sample}.header.txt",
+        unsorted = "results/features/{donor}/{type}/{sample}.unsorted.txt",
+        sorted = "results/features/{donor}/{type}/{sample}.sorted.txt"
+    log: "results/features/{donor}/{type}/{sample}.log"
     conda: "../envs/env.yml"
     shell:
         '''
@@ -40,7 +40,26 @@ rule flank_features:
     input: 
         bgz = rules.features.output.bgz,
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"])
-    output: "results/flank_features/{donor}_{dna_type}/{sample}.pickle.gz"
-    log: "results/flank_features/{donor}_{dna_type}/{sample}.log"
+    output: "results/flank_features/{donor}/{type}/{sample}.pickle.gz"
+    log: "results/flank_features/{donor}/{type}/{sample}.log"
     conda: "../envs/env.yml"
     script: "../scripts/compute_features_and_pickle.py"
+
+rule folds:
+    input: 
+        # TODO: add support to split by type
+        samples = expand("results/flank_features/{{donor}}/{type}/{sample}.pickle.gz", 
+                        zip,
+                        sample=samples['sample_id'],
+                        type=samples['sample_type']), 
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
+        non_ref_l1 = rules.get_eul1db.output,
+        ref_l1 = rules.get_rmsk.output.ref_l1
+    params:
+        num_folds = config["model"]["num_folds"],
+        min_reads = config["model"]["min_reads"],
+        window_size = config["model"]["window_size"]
+    output: multiext("results/folds/{donor}/", "X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz")
+    log: "results/folds/{donor}/log.log"
+    conda: "../envs/env.yml"
+    script: "../scripts/folds.py"
