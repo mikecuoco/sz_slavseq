@@ -13,13 +13,19 @@ rule gen_ref:
     output: "resources/{ref}/genome_og.fa"
     log: "resources/{ref}/gen_ref.log"
     conda: "../envs/env.yml"
+    params: region = config["region"]
     shell:
         '''
         touch {log} && exec 1>{log} 2>&1
         
         # run bwa.kit function
         {input}/run-gen-ref {wildcards.ref}
-        mv {wildcards.ref}.fa {output}
+        if [ {params.region} = "chr22" ]; then
+            samtools faidx {wildcards.ref}.fa 22 > {output}
+            rm -f {wildcards.ref}.fa*
+        else
+            mv {wildcards.ref}.fa {output}
+        fi
         '''
 
 # TODO: edit fix_names.py to also change the names for hg38

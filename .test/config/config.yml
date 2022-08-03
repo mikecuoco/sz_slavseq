@@ -14,3 +14,5 @@ model:
   num_folds: 4
   min_reads: 3
   window_size: 2_000_000
+
+region: chr22
