@@ -126,10 +126,9 @@ def main():
     os.chdir(curdir)
     shutil.move(tmpdir + "/output.bam", output_bam_fn)
 
+    return tmpdir
+
 if __name__ == "__main__":
-    main()
+    dirname = main()
     
-    tmpdirs = glob.glob("tmp*")
-    if len(tmpdirs) != 0:
-        for tmp in tmpdirs:
-            shutil.rmtree(tmp)
+    shutil.rmtree(dirname)

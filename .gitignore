@@ -1,6 +1,7 @@
 results/**
 resources/**
 logs/**
+workflow/envs/src/**
 .snakemake
 .snakemake/**
 .vscode/
