@@ -42,7 +42,8 @@ def prio_pair_rmdup(filename, out_filename):
                 for q in query_qualities:
                     sumqual += q
                 
-                r1pos = r1.reference_end + 1 if r1.is_reverse else r1.reference_start + 1 # convert from 0-based to 1-based coordinates
+                # convert from 0-based to 1-based coordinates
+                r1pos = r1.reference_end + 1 if r1.is_reverse else r1.reference_start + 1
                 
                 # label strand
                 r1strand = "-" if r1.is_reverse else "+"
@@ -51,7 +52,11 @@ def prio_pair_rmdup(filename, out_filename):
                 pos = ":".join([r1.reference_name, str(r1pos), r1strand])
                 
                 # join and print more metrics to output file
-                all_fields = "\t".join([r1.qname, str(r1.mapping_quality + r2.mapping_quality), str(sumqual), pos])
+                all_fields = "\t".join(
+                    [r1.qname,
+                    str(r1.mapping_quality + r2.mapping_quality),
+                    str(sumqual),
+                    pos])
                 
                 outfile.write(all_fields + "\n")
 
@@ -83,6 +88,8 @@ def main():
     input_bam_fn = args.bam
     output_bam_fn = args.out
 
+    input_bam_path = os.path.abspath(input_bam_fn)
+
     if os.path.exists(output_bam_fn):
         sys.exit("Output file already exists!")
 
@@ -90,7 +97,7 @@ def main():
 
     curdir = os.getcwd()
     tmpdir = tempfile.mkdtemp(dir="./")
-    os.symlink(input_bam_fn, tmpdir + "/input.bam")
+    os.symlink(input_bam_path, tmpdir + "/input.bam")
     os.chdir(tmpdir)
 
     prio_pair_rmdup(
