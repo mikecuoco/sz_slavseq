@@ -4,12 +4,12 @@ rule features:
         fa = expand(rules.fix_names_clean.output.fa,  ref=config["ref"]),
         chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"])
     output:
-        bgz = "results/features/{donor}/{type}/{sample}.bgz",
-        tbi = "results/features/{donor}/{type}/{sample}.bgz.tbi",
-        header = "results/features/{donor}/{type}/{sample}.header.txt",
-        unsorted = "results/features/{donor}/{type}/{sample}.unsorted.txt",
-        sorted = "results/features/{donor}/{type}/{sample}.sorted.txt"
-    log: "results/features/{donor}/{type}/{sample}.log"
+        bgz = "results/features/{donor}/{dna_type}/{sample}.bgz",
+        tbi = "results/features/{donor}/{dna_type}/{sample}.bgz.tbi",
+        header = "results/features/{donor}/{dna_type}/{sample}.header.txt",
+        unsorted = "results/features/{donor}/{dna_type}/{sample}.unsorted.txt",
+        sorted = "results/features/{donor}/{dna_type}/{sample}.sorted.txt"
+    log: "results/features/{donor}/{dna_type}/{sample}.log"
     conda: "../envs/env.yml"
     shell:
         '''
@@ -40,18 +40,18 @@ rule flank_features:
     input: 
         bgz = rules.features.output.bgz,
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"])
-    output: "results/flank_features/{donor}/{type}/{sample}.pickle.gz"
-    log: "results/flank_features/{donor}/{type}/{sample}.log"
+    output: "results/flank_features/{donor}/{dna_type}/{sample}.pickle.gz"
+    log: "results/flank_features/{donor}/{dna_type}/{sample}.log"
     conda: "../envs/env.yml"
     script: "../scripts/compute_features_and_pickle.py"
 
 rule folds:
     input: 
         # TODO: add support to split by type
-        samples = expand("results/flank_features/{{donor}}/{type}/{sample}.pickle.gz", 
+        samples = expand("results/flank_features/{{donor}}/{dna_type}/{sample}.pickle.gz", 
                         zip,
-                        sample=samples['sample_id'],
-                        type=samples['sample_type']), 
+                        sample=samples['sample'],
+                        dna_type=samples['dna_type']), 
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
         non_ref_l1 = rules.get_eul1db.output,
         ref_l1 = rules.get_rmsk.output.ref_l1
