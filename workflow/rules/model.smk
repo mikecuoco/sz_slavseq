@@ -56,7 +56,7 @@ rule folds:
         num_folds = config["model"]["num_folds"],
         min_reads = config["model"]["min_reads"],
         window_size = config["model"]["window_size"]
-    output: expand("results/folds/{{donor}}/{{dna_type}}/{fold}", fold=fold_files)
+    output: expand("results/folds/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz"])
     log: "results/folds/{donor}/{dna_type}.log"
     conda: "../envs/env.yml"
     script: "../scripts/folds.py"
