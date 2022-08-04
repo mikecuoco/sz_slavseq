@@ -1,2 +1,2 @@
 donor	sample	dna_type	R1	R2
-test	test	test	.test/test_fastqs/chr22_peaks_R1.fastq	.test/test_fastqs/chr22_peaks_R1.fastq
+test	test	bulk	.test/test_fastqs/chr22_peaks_R1.fastq	.test/test_fastqs/chr22_peaks_R2.fastq

@@ -48,18 +48,15 @@ rule flank_features:
 rule folds:
     input: 
         # TODO: add support to split by type
-        samples = expand("results/flank_features/{{donor}}/{dna_type}/{sample}.pickle.gz", 
-                        zip,
-                        sample=samples['sample'],
-                        dna_type=samples['dna_type']), 
+        samples = expand("results/flank_features/{{donor}}/{{dna_type}}/{sample}.pickle.gz", sample=samples['sample']), # maybe exclude dna_type from expand 
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
         non_ref_l1 = rules.get_eul1db.output,
-        ref_l1 = rules.get_rmsk.output.ref_l1
+        ref_l1 = expand(rules.get_rmsk.output.ref_l1, ref=config["ref"])
     params:
         num_folds = config["model"]["num_folds"],
         min_reads = config["model"]["min_reads"],
         window_size = config["model"]["window_size"]
-    output: multiext("results/folds/{donor}/", "X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz")
-    log: "results/folds/{donor}/log.log"
+    output: expand("results/folds/{{donor}}/{{dna_type}}/{fold}", fold=fold_files)
+    log: "results/folds/{donor}/{dna_type}.log"
     conda: "../envs/env.yml"
     script: "../scripts/folds.py"

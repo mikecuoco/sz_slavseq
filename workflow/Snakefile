@@ -20,4 +20,4 @@ include: "rules/model.smk"
 
 rule all:
     input:
-        expand("results/flank_features/{donor}/{dna_type}/{sample}.pickle.gz", donor=samples['donor'], dna_type=samples['dna_type'], sample=samples['sample'])
+        expand(expand("results/folds/{{donor}}/{{dna_type}}/{fold}", fold=fold_files), donor=samples['donor'], dna_type=samples['dna_type'])
