@@ -25,8 +25,7 @@ rule rmdup:
     output: "results/rmdup/{donor}/{dna_type}/{sample}.bam"
     log: "results/rmdup/{donor}/{dna_type}/{sample}.log"
     conda: "../envs/env.yml"
-    shell:
-        "workflow/scripts/slavseq_rmdup_hts.py -b {input} -o {output} > {log} 2>&1"
+    script: "../scripts/slavseq_rmdup_hts.py"
 
 rule install_gapafim:
     output: directory("resources/gapafim")
