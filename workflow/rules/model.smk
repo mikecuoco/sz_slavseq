@@ -60,3 +60,14 @@ rule folds:
     log: "results/folds/{donor}/{dna_type}.log"
     conda: "../envs/env.yml"
     script: "../scripts/folds.py"
+
+rule train_test:
+    input: expand("results/folds/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz"])
+    output: expand("results/train_test/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["Training_y_pred.csv", "Testing_y_pred.csv", "Train_Test_Accuracy.csv"])
+    params:
+        num_folds = config["model"]["num_folds"],
+    log: 
+        log = "results/train_test/{donor}/{dna_type}.log",
+        notebook = "results/train_test/{donor}/{dna_type}.ipynb"
+    conda: "../envs/env.yml"
+    notebook: "../notebooks/train_test.py.ipynb"
