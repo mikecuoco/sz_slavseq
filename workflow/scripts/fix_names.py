@@ -12,7 +12,8 @@ logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
 
 if "37" in snakemake.wildcards.ref:
 	# read in the chromosome map
-	chrom_map = pd.read_csv("workflow/scripts/hs37d5_map.tsv", sep="\t", header=None)
+	# TODO: make this a parameter specified in snakemake
+	chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", header=None)
 
 	# save filenames to objects
 	original_file = snakemake.input.fa[0]

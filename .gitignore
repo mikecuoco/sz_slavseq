@@ -5,3 +5,5 @@ workflow/envs/src/**
 .snakemake
 .snakemake/**
 .vscode/
+!resources/hs37d5_map.tsv
+!resources/slavseq_metadata.csv
