@@ -132,23 +132,6 @@ def folds(sample_files):
 
 def print_err(msg):
     sys.stderr.write(msg + '\n')
-
-def main(sample_files):
-    
-    df = pd.concat([get_cell_features(fn, cell_id).reset_index() for fn, cell_id in cells_from_sample(sample_files)]).sort_values(['chrom', 'start', 'end', 'cell_id']).set_index(['chrom', 'start', 'end', 'cell_id'])
-
-    df['fold'] = list(my_fold(df, window_size, num_folds))
-
-    for fold in range(num_folds):
-        # get directory for output files of this fold
-        fold_dir = set([str(Path(f).parent) for f in snakemake.output if re.search(f'fold_{fold}', f)]).pop()
-
-        X_train, Y_train, X_test, Y_test = get_train_and_test_data(df, fold, min_reads)
-        
-        X_train.to_pickle(fold_dir + '/X_train.pickle.gz', compression='gzip')
-        Y_train.to_pickle(fold_dir + '/Y_train.pickle.gz', compression='gzip')
-        X_test.to_pickle(fold_dir + '/X_test.pickle.gz', compression='gzip')
-        Y_test.to_pickle(fold_dir + '/Y_test.pickle.gz', compression='gzip')
         
 if __name__ == '__main__':
 
@@ -160,9 +143,11 @@ if __name__ == '__main__':
 
     sample_files = snakemake.input.samples
 
+    # not sure if try/except is necessary
     try:
         folds(sample_files)
     except: # catch *all* exceptions
+        sys.stderr = open(snakemake.log, 'w')
         print_err( "Message : %s" % sys.exc_info()[0])
         print_err( "%s" % sys.exc_info()[1])
         print_err( "%s" % sys.exc_info()[2])
