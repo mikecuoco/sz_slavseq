@@ -9,6 +9,7 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 import itertools
 import numpy as np
 import pandas as pd
+import re 
 
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -34,7 +35,8 @@ sys.setrecursionlimit(10_000)
 
 class TrainTest:
     def __init__(self, sample=None, exp="", input_type="pickle"):
-        self.sample = sample
+        self.sample = snakemake.wildcards.donor # maybe change self.sample to self.donor
+        self.dna_type = snakemake.wildcards.dna_type
         self.exp = exp
         self.input_type = input_type
         self.accurary_train = 0
@@ -58,21 +60,7 @@ class TrainTest:
             if e.errno != errno.EEXIST:
                 raise
 
-    def openDictionary(self, dict_data, outPut, Idx=['chrom','start','end','cell_id'], printLoad=False):
-        import csv
-        import pandas as pd
-        csv_columns = dict_data.keys()
-
-        if printLoad == True: print("Loading :")
-
-        for data in csv_columns:
-
-            if printLoad == True: print("        " + data)
-            dict_data[data] = pd.read_csv(outPut + data + '.csv', sep=",", index_col=Idx)
-
-        return dict_data
-
-    def openDictionary_pickle(self, dict_data, outPut, printLoad=False):
+    def openDictionary_pickle(self, dict_data, infiles, printLoad=False):
         import csv
         import pandas as pd
 
@@ -83,7 +71,12 @@ class TrainTest:
         for data in csv_columns:
 
             if printLoad == True: print("        " + data)
-            dict_data[data] = pd.read_pickle(outPut + data + '.pickle.gz', compression='gzip')
+
+            # get appropriate split from input files
+            file = [f for f in infiles if re.search(data, f)]
+
+            # read split into dict_data
+            dict_data[data] = pd.read_pickle(*file, compression='gzip')
 
         return dict_data
 
@@ -131,33 +124,34 @@ class TrainTest:
 
         pred = self.get_ypred(pred, pd.DataFrame(proba), features['all_reads.count'], le)
 
-        log_stdout = open(self.fileFold + "%s_report_performance.txt" % phase, "w")
+        log_stdout = open(self.outDir + "%s_report_performance.txt" % phase, "w")
         print("\n Report performance %s" % phase)
         self.report_performance(model, features, labels, predictions, log_stdout, phase, le)
 
-        log_stdout = open(self.fileFold + "%s_report_feature_importance.txt" % phase, "w")
+        log_stdout = open(self.outDir + "%s_report_feature_importance.txt" % phase, "w")
         print("\n Report feature importance")
         self.report_feature_importances(model, features.columns, log_stdout)
 
         return df, pred, model
 
-    def run(self, path_files='../../../_m/'):
+    def run(self):
 
-        print("Sample %s" % self.sample)
+        print("Sample %s" % self.sample) # maybe donor wildcard?
 
-        for k in range(0, 4):
+        for k in range(snakemake.params.num_folds):
 
-            self.fileFold = self.sample + self.exp + "/" + 'fold_' + str(k) + "/"
+            self.outDir = set([str(Path(f).parent) for f in snakemake.output if re.search(f'fold_{k}', f)]).pop()
+            self.infiles = [Path(f) for f in snakemake.input if re.search(f'fold_{k}', f)]
 
-            if not Path(self.fileFold).exists():
+            if not Path(self.outDir).exists():
 
-                self.create_directory(self.fileFold)
+                self.create_directory(self.outDir)
 
                 # clear_output()
 
                 # Loading dataset ------------------------------------------------------------------------------------
 
-                train_x, train_y, test_x, test_y = self.get_sample( path_files + self.fileFold )
+                train_x, train_y, test_x, test_y = self.get_sample(self.inFiles)
 
                 le, labels = self.get_labelencode(train_y['Y'])
 
@@ -165,14 +159,14 @@ class TrainTest:
                 self.classes = list(le.classes_)
 
                 if self.get_groups(train_y).count() != self.get_groups(test_y).count():
-                    log_stdout = open(self.sample + "_has_no_equal_classes.txt", "w")
+                    log_stdout = open(self.outDir + "/" + self.sample + "_has_no_equal_classes.txt", "w")
                     print("\nThis cell (%s) fold (%i) has no enough classes to classifier... " % (self.sample, k),
                           file=log_stdout, flush=True)
                     print("\nTrain classes (%d) - Test classes (%d)" % (
                     self.get_groups(train_y).count(), self.get_groups(test_y).count()), file=log_stdout, flush=True)
                     continue
 
-                    # Training the model -----------------------------------------------------------------------------
+                # Training the model -----------------------------------------------------------------------------
 
                 print("\nTraining the model... ")
 
@@ -181,7 +175,7 @@ class TrainTest:
                                                                le=le,
                                                                labels=labels)
 
-                df.to_csv(self.fileFold + "/Training_y_pred.csv", sep=';', index=False, header=True)
+                df.to_csv(self.outDir + "/Training_y_pred.csv", sep=';', index=False, header=True)
 
                 # Testing the model ----------------------------------------------------------------------------------
 
@@ -191,7 +185,7 @@ class TrainTest:
                 Test, df, trained_model = self.run_train_test(test_x.copy(), test_y.copy(), phase='Testing',
                                                               model=trained_model, le=le, labels=labels)
 
-                df.to_csv(self.fileFold + "/Testing_y_pred.csv", sep=';', index=False, header=True)
+                df.to_csv(self.outDir + "/Testing_y_pred.csv", sep=';', index=False, header=True)
 
                 # report sys.out --- 
                 print("\nTrain Accuracy :: {} - Test Accuracy  :: {}".format(Train, Test))
@@ -205,11 +199,11 @@ class TrainTest:
                 df = pd.DataFrame(data=None, columns={'Train', 'Test'}, dtype='float64')
 
                 df = df.append([{'Train': Train, 'Test': Test}])
-                df.to_csv(self.fileFold + "/Train_Test_Accuracy.csv", sep=';', index=False, header=True)
+                df.to_csv(self.outDir + "/Train_Test_Accuracy.csv", sep=';', index=False, header=True)
 
         print("%s : finishing" % (self.sample))
 
-    def get_sample(self, fn):
+    def get_sample(self, files):
 
         print("Processing cell ({})... \n".format(self.sample))
 
@@ -217,14 +211,9 @@ class TrainTest:
 
         df = {"X_train": None, "X_test": None, "Y_train": None, "Y_test": None}
 
-        if self.input_type == "csv":
-            TrainTest = self.openDictionary(df, fn)
-            train_y = TrainTest["Y_train"].rename(columns={'0': 'Y'})
-            test_y = TrainTest["Y_test"].rename(columns={'0': 'Y'})
-        else:
-            TrainTest = self.openDictionary_pickle(df, fn)
-            train_y = TrainTest["Y_train"].to_frame('Y')
-            test_y = TrainTest["Y_test"].to_frame('Y')
+        TrainTest = self.openDictionary_pickle(df, files)
+        train_y = TrainTest["Y_train"].to_frame('Y')
+        test_y = TrainTest["Y_test"].to_frame('Y')
 
         train_x = TrainTest["X_train"]
         test_x = TrainTest["X_test"]
@@ -284,15 +273,15 @@ class TrainTest:
                                           show_null_values=show_null_values,
                                           pred_val_axis=pred_val_axis,
                                           title=('Confusion matrix (%s) ' % title),
-                                          fn=self.fileFold + title + '_Confusion-pretty.png')
+                                          fn=self.outDir + title + '_Confusion-pretty.png')
 
         self.plot_confusion_matrix(cnf_matrix,
                                    title=('Confusion matrix (%s), without normalization' % title),
-                                   fn=self.fileFold + title + '_Confusion.png')
+                                   fn=self.outDir + title + '_Confusion.png')
 
         self.plot_confusion_matrix(cnf_matrix, normalize=True,
                                    title=('Normalized confusion matrix (%s)' % title),
-                                   fn=self.fileFold + title + '_Confusion-Normalized.png')
+                                   fn=self.outDir + title + '_Confusion-Normalized.png')
 
         print("Classifier:", file=log_stdout, flush=True)
         print(cla, file=log_stdout, flush=True)
@@ -605,21 +594,13 @@ def print_err(msg):
     sys.stderr.write(msg + '\n')
 
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--input', required=True)
-    parser.add_argument('--output', required=False)
-    
-    args=parser.parse_args()
-    
-    sys.stdout = open(args.output, 'w') 
  
     try:
-        train_test = TrainTest( sample  )
+        train_test = TrainTest()
         train_test.run()
 
     except:  # catch *all* exceptions
-        sys.stderr = open( sample + ".stderr", 'w')
+        sys.stderr = open(snakemake.log, 'w')
  
         print_err("Message : %s" % sys.exc_info()[0])
         print_err("%s" % sys.exc_info()[1])
