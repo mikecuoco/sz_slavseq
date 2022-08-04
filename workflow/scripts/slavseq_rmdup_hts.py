@@ -8,7 +8,6 @@ import os
 import argparse
 import tempfile
 import shutil
-import glob
 from pathlib import Path
 
 def prio_pair_rmdup(filename, out_filename):
@@ -65,29 +64,12 @@ def prio_pair_rmdup(filename, out_filename):
         r1 = r2
 
     outfile.close()
-    
-def parse_args():
-
-    parser = argparse.ArgumentParser(description="Remove duplicates from BAM files")
-    parser.add_argument(
-        "-b", "--bam", type=Path, required=True, help="input BAM file"
-    )
-    parser.add_argument(
-        "-o", "--out", type=Path, required=True, help="output BAM file"
-    )
-    
-    args = parser.parse_args()
-
-    return args
 
 def main():
     
-    # get arguments
-    args = parse_args()
-
-    input_bam_fn = args.bam
-    output_bam_fn = args.out
-
+    output_bam_fn = snakemake.output[0]
+    input_bam_fn = snakemake.input[0]
+    
     input_bam_path = os.path.abspath(input_bam_fn)
 
     if os.path.exists(output_bam_fn):
