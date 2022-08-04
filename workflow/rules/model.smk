@@ -47,8 +47,7 @@ rule flank_features:
 
 rule folds:
     input: 
-        # TODO: add support to split by type
-        samples = expand("results/flank_features/{{donor}}/{{dna_type}}/{sample}.pickle.gz", sample=samples['sample']), # maybe exclude dna_type from expand 
+        samples = expand("results/flank_features/{{donor}}/{{dna_type}}/{sample}.pickle.gz", sample=samples['sample']), 
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
         non_ref_l1 = rules.get_eul1db.output,
         ref_l1 = expand(rules.get_rmsk.output.ref_l1, ref=config["ref"])
@@ -66,8 +65,6 @@ rule train_test:
     output: expand("results/train_test/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["Training_y_pred.csv", "Testing_y_pred.csv", "Train_Test_Accuracy.csv"])
     params:
         num_folds = config["model"]["num_folds"],
-    log: 
-        log = "results/train_test/{donor}/{dna_type}.log",
-        notebook = "results/train_test/{donor}/{dna_type}.ipynb"
+    log: "results/train_test/{donor}/{dna_type}.log",
     conda: "../envs/env.yml"
-    notebook: "../notebooks/train_test.py.ipynb"
+    script: "../scripts/rfc.py"
