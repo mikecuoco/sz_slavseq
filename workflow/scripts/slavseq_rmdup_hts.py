@@ -5,7 +5,6 @@ import pysam
 import subprocess
 import sys
 import os
-import argparse
 import tempfile
 import shutil
 from pathlib import Path
