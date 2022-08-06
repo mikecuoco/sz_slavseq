@@ -3,6 +3,7 @@ __author__ = 'Ricardo S Jacomini'
 
 import argparse
 import sys,gc
+import traceback
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
@@ -71,12 +72,12 @@ class TrainTest:
         for data in csv_columns:
 
             if printLoad == True: print("        " + data)
-
+            
             # get appropriate split from input files
-            file = [f for f in infiles if re.search(data, f)]
+            files = [f for f in infiles if re.search(data, str(f))]
 
             # read split into dict_data
-            dict_data[data] = pd.read_pickle(*file, compression='gzip')
+            dict_data[data] = pd.read_pickle(*files, compression='gzip')
 
         return dict_data
 
@@ -124,11 +125,11 @@ class TrainTest:
 
         pred = self.get_ypred(pred, pd.DataFrame(proba), features['all_reads.count'], le)
 
-        log_stdout = open(self.outDir + "%s_report_performance.txt" % phase, "w")
+        log_stdout = open(self.outDir + "%s_report_performance.txt" % phase, "w+")
         print("\n Report performance %s" % phase)
         self.report_performance(model, features, labels, predictions, log_stdout, phase, le)
 
-        log_stdout = open(self.outDir + "%s_report_feature_importance.txt" % phase, "w")
+        log_stdout = open(self.outDir + "%s_report_feature_importance.txt" % phase, "w+")
         print("\n Report feature importance")
         self.report_feature_importances(model, features.columns, log_stdout)
 
@@ -141,65 +142,66 @@ class TrainTest:
         for k in range(snakemake.params.num_folds):
 
             self.outDir = set([str(Path(f).parent) for f in snakemake.output if re.search(f'fold_{k}', f)]).pop()
-            self.infiles = [Path(f) for f in snakemake.input if re.search(f'fold_{k}', f)]
+            self.inFiles = [Path(f) for f in snakemake.input if re.search(f'fold_{k}', f)]
+            
+            # TODO: examine why this if statement is not entered; why does the path exist?
+            # if not Path(self.outDir).exists():
+                
+            self.create_directory(self.outDir)
 
-            if not Path(self.outDir).exists():
+            # clear_output()
 
-                self.create_directory(self.outDir)
+            # Loading dataset ------------------------------------------------------------------------------------
 
-                # clear_output()
+            train_x, train_y, test_x, test_y = self.get_sample(self.inFiles)
 
-                # Loading dataset ------------------------------------------------------------------------------------
+            le, labels = self.get_labelencode(train_y['Y'])
 
-                train_x, train_y, test_x, test_y = self.get_sample(self.inFiles)
+            # classes
+            self.classes = list(le.classes_)
 
-                le, labels = self.get_labelencode(train_y['Y'])
+            if self.get_groups(train_y).count() != self.get_groups(test_y).count():
+                log_stdout = open(self.outDir + "/" + self.sample + "_has_no_equal_classes.txt", "w+")
+                print("\nThis cell (%s) fold (%i) has no enough classes to classifier... " % (self.sample, k),
+                        file=log_stdout, flush=True)
+                print("\nTrain classes (%d) - Test classes (%d)" % (
+                self.get_groups(train_y).count(), self.get_groups(test_y).count()), file=log_stdout, flush=True)
+                continue
 
-                # classes
-                self.classes = list(le.classes_)
+            # Training the model -----------------------------------------------------------------------------
 
-                if self.get_groups(train_y).count() != self.get_groups(test_y).count():
-                    log_stdout = open(self.outDir + "/" + self.sample + "_has_no_equal_classes.txt", "w")
-                    print("\nThis cell (%s) fold (%i) has no enough classes to classifier... " % (self.sample, k),
-                          file=log_stdout, flush=True)
-                    print("\nTrain classes (%d) - Test classes (%d)" % (
-                    self.get_groups(train_y).count(), self.get_groups(test_y).count()), file=log_stdout, flush=True)
-                    continue
+            print("\nTraining the model... ")
 
-                # Training the model -----------------------------------------------------------------------------
+            Train, df, trained_model = self.run_train_test(train_x.copy(), train_y.copy(),
+                                                            phase='Training',
+                                                            le=le,
+                                                            labels=labels)
 
-                print("\nTraining the model... ")
+            df.to_csv(self.outDir + "/Training_y_pred.csv", sep=';', index=False, header=True)
 
-                Train, df, trained_model = self.run_train_test(train_x.copy(), train_y.copy(),
-                                                               phase='Training',
-                                                               le=le,
-                                                               labels=labels)
+            # Testing the model ----------------------------------------------------------------------------------
 
-                df.to_csv(self.outDir + "/Training_y_pred.csv", sep=';', index=False, header=True)
+            print("\nTesting the model... ")
 
-                # Testing the model ----------------------------------------------------------------------------------
+            le, labels = self.get_labelencode(test_y['Y'])
+            Test, df, trained_model = self.run_train_test(test_x.copy(), test_y.copy(), phase='Testing',
+                                                            model=trained_model, le=le, labels=labels)
 
-                print("\nTesting the model... ")
+            df.to_csv(self.outDir + "/Testing_y_pred.csv", sep=';', index=False, header=True)
 
-                le, labels = self.get_labelencode(test_y['Y'])
-                Test, df, trained_model = self.run_train_test(test_x.copy(), test_y.copy(), phase='Testing',
-                                                              model=trained_model, le=le, labels=labels)
+            # report sys.out --- 
+            print("\nTrain Accuracy :: {} - Test Accuracy  :: {}".format(Train, Test))
 
-                df.to_csv(self.outDir + "/Testing_y_pred.csv", sep=';', index=False, header=True)
+            self.accurary_train = Train
+            self.accurary_test = Test
 
-                # report sys.out --- 
-                print("\nTrain Accuracy :: {} - Test Accuracy  :: {}".format(Train, Test))
+            # saving ------------------------------------------------------------------------------------------ 
+            print("\nSaving...")
 
-                self.accurary_train = Train
-                self.accurary_test = Test
+            df = pd.DataFrame(data=None, columns={'Train', 'Test'}, dtype='float64')
 
-                # saving ------------------------------------------------------------------------------------------ 
-                print("\nSaving...")
-
-                df = pd.DataFrame(data=None, columns={'Train', 'Test'}, dtype='float64')
-
-                df = df.append([{'Train': Train, 'Test': Test}])
-                df.to_csv(self.outDir + "/Train_Test_Accuracy.csv", sep=';', index=False, header=True)
+            df = df.append([{'Train': Train, 'Test': Test}])
+            df.to_csv(self.outDir + "/Train_Test_Accuracy.csv", sep=';', index=False, header=True)
 
         print("%s : finishing" % (self.sample))
 
@@ -588,10 +590,7 @@ def get_samples(path_file = '../../../_m/'):
     files = [value for value in files if value not in ['.ipynb_checkpoints','.snakemake','.snakemake.old'] ] 
 
     return files
-        
 
-def print_err(msg):
-    sys.stderr.write(msg + '\n')
 
 if __name__ == '__main__':
  
@@ -600,16 +599,12 @@ if __name__ == '__main__':
         train_test.run()
 
     except:  # catch *all* exceptions
-        sys.stderr = open(snakemake.log, 'w')
- 
-        print_err("Message : %s" % sys.exc_info()[0])
-        print_err("%s" % sys.exc_info()[1])
-        print_err("%s" % sys.exc_info()[2])
-
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
         sys.stderr.close()
+
     finally:
         # cleanup code in here
         gc.collect()
 
     sys.stdout.close()
-
