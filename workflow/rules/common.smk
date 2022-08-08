@@ -4,7 +4,7 @@ from pathlib import Path
 
 # read sample sheet 
 samples = (
-    pd.read_csv(config["samples"], sep="\t", dtype={"sample": str})
+    pd.read_csv(config["samples"], sep="\t", dtype={"sample": str, "donor": str})
     .set_index("sample", drop=False)
     .sort_index()
 )
@@ -14,7 +14,7 @@ samples = (
 
 # setup input/output for folds rule
 def get_folds_input_samples(wildcards):
-    my_samples = samples.loc[(samples['dna_type'] == wildcards.dna_type) & (samples['donor'] == int(wildcards.donor))]['sample']
+    my_samples = samples.loc[(samples['dna_type'] == wildcards.dna_type) & (samples['donor'] == wildcards.donor)]['sample']
     return expand("results/flank_features/{donor}/{dna_type}/{sample}.pickle.gz", donor=wildcards.donor, dna_type=wildcards.dna_type, sample=my_samples)
 
 num_folds=config["model"]["num_folds"]
