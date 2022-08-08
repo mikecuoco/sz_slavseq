@@ -49,7 +49,7 @@ rule flank_features:
 
 rule folds:
     input: 
-        samples = expand("results/flank_features/{{donor}}/{{dna_type}}/{sample}.pickle.gz", sample=samples['sample']), 
+        samples = get_folds_input_samples,
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
         non_ref_l1 = rules.get_eul1db.output,
         ref_l1 = expand(rules.get_rmsk.output.ref_l1, ref=config["ref"])
