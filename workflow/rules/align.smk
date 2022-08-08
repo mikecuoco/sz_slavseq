@@ -34,7 +34,6 @@ rule install_gapafim:
     shell:
         '''
         touch {log} && exec 1>{log} 2>&1
-        export CONDA_BUILD_SYSROOT=$(xcrun --show-sdk-path)
 
         mkdir -p resources && cd resources
         git clone https://github.com/apuapaquola/gapafim.git
