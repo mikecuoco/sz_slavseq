@@ -33,6 +33,9 @@ rule install_gapafim:
     log: "resources/install_gapafim.log"
     shell:
         '''
+        touch {log} && exec 1>{log} 2>&1
+        export CONDA_BUILD_SYSROOT=$(xcrun --show-sdk-path)
+
         mkdir -p resources && cd resources
         git clone https://github.com/apuapaquola/gapafim.git
         cd gapafim/Gapafim
@@ -51,6 +54,8 @@ rule tags:
     conda: "../envs/env.yml"
     shell:
         '''
+        touch {log} && exec 2>{log} 
+
         # set inputs
         export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
         PREFIX_LENGTH=`perl -e 'print length($ENV{{CONSENSUS}})+2'`
@@ -67,7 +72,7 @@ rule tags:
                 --r1_flank_length ${{R1_FLANK_LENGTH}} \
                 --r2_flank_length ${{R2_FLANK_LENGTH}} \
                 --soft_clip_length_threshold ${{SOFT_CLIP_LENGTH_THRESHOLD}} | \
-                samtools view -S -b - > {output}) 2> {log}
+                samtools view -S -b - > {output}) 
         '''
 
 rule tabix:

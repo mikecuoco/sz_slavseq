@@ -13,6 +13,8 @@ rule features:
     conda: "../envs/env.yml"
     shell:
         '''
+        touch {log} && exec 2>{log} 
+        
         pyslavseq_extract_features \
             --genome_fasta_file {input.fa} \
             --library_3_or_5 3 \
@@ -47,8 +49,7 @@ rule flank_features:
 
 rule folds:
     input: 
-        # TODO: add support to split by type
-        samples = expand("results/flank_features/{{donor}}/{{dna_type}}/{sample}.pickle.gz", sample=samples['sample']), # maybe exclude dna_type from expand 
+        samples = expand("results/flank_features/{{donor}}/{{dna_type}}/{sample}.pickle.gz", sample=samples['sample']), 
         chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
         non_ref_l1 = rules.get_eul1db.output,
         ref_l1 = expand(rules.get_rmsk.output.ref_l1, ref=config["ref"])
@@ -60,3 +61,12 @@ rule folds:
     log: "results/folds/{donor}/{dna_type}.log"
     conda: "../envs/env.yml"
     script: "../scripts/folds.py"
+
+rule train_test:
+    input: expand("results/folds/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz"])
+    output: directory(expand("results/train_test/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs))
+    params:
+        num_folds = config["model"]["num_folds"],
+    log: "results/train_test/{donor}/{dna_type}.log",
+    conda: "../envs/env.yml"
+    script: "../scripts/rfc.py"

@@ -13,4 +13,4 @@ include: "rules/model.smk"
 
 rule all:
     input:
-        expand(expand("results/folds/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz"]), donor=samples['donor'], dna_type=samples['dna_type'])
+        directory(expand(expand("results/train_test/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs), donor=samples['donor'], dna_type=samples['dna_type']))
