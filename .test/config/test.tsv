@@ -1,2 +1,2 @@
 donor	sample	dna_type	R1	R2
-test	test	cell	.test/test_fastqs/USD07_F1_S92_chr22_R1.fastq	.test/test_fastqs/USD07_F1_S92_chr22_R2.fastq
+test	test	mda	.test/test_fastqs/USD07_F1_S92_chr22_R1.fastq	.test/test_fastqs/USD07_F1_S92_chr22_R2.fastq
