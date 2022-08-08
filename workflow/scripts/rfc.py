@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 __author__ = 'Ricardo S Jacomini'
 
-import argparse
 import sys,gc
 import traceback
 import os
@@ -125,11 +124,11 @@ class TrainTest:
 
         pred = self.get_ypred(pred, pd.DataFrame(proba), features['all_reads.count'], le)
 
-        log_stdout = open(self.outDir + "%s_report_performance.txt" % phase, "w+")
+        log_stdout = open(self.outDir + "/%s_report_performance.txt" % phase, "w+")
         print("\n Report performance %s" % phase)
         self.report_performance(model, features, labels, predictions, log_stdout, phase, le)
 
-        log_stdout = open(self.outDir + "%s_report_feature_importance.txt" % phase, "w+")
+        log_stdout = open(self.outDir + "/%s_report_feature_importance.txt" % phase, "w+")
         print("\n Report feature importance")
         self.report_feature_importances(model, features.columns, log_stdout)
 
@@ -141,7 +140,9 @@ class TrainTest:
 
         for k in range(snakemake.params.num_folds):
 
-            self.outDir = set([str(Path(f).parent) for f in snakemake.output if re.search(f'fold_{k}', f)]).pop()
+            # TODO make this robust to output being a directory or a file
+            self.outDir = set([str(Path(f)) for f in snakemake.output if re.search(f'fold_{k}', f)]).pop()
+            
             self.inFiles = [Path(f) for f in snakemake.input if re.search(f'fold_{k}', f)]
             
             # TODO: examine why this if statement is not entered; why does the path exist?
@@ -171,13 +172,12 @@ class TrainTest:
             # Training the model -----------------------------------------------------------------------------
 
             print("\nTraining the model... ")
-
             Train, df, trained_model = self.run_train_test(train_x.copy(), train_y.copy(),
                                                             phase='Training',
                                                             le=le,
                                                             labels=labels)
 
-            df.to_csv(self.outDir + "/Training_y_pred.csv", sep=';', index=False, header=True)
+            df.to_csv(self.outDir + "/Training_y_pred.csv", index=False, header=True)
 
             # Testing the model ----------------------------------------------------------------------------------
 
@@ -187,7 +187,7 @@ class TrainTest:
             Test, df, trained_model = self.run_train_test(test_x.copy(), test_y.copy(), phase='Testing',
                                                             model=trained_model, le=le, labels=labels)
 
-            df.to_csv(self.outDir + "/Testing_y_pred.csv", sep=';', index=False, header=True)
+            df.to_csv(self.outDir + "/Testing_y_pred.csv", index=False, header=True)
 
             # report sys.out --- 
             print("\nTrain Accuracy :: {} - Test Accuracy  :: {}".format(Train, Test))
@@ -275,15 +275,15 @@ class TrainTest:
                                           show_null_values=show_null_values,
                                           pred_val_axis=pred_val_axis,
                                           title=('Confusion matrix (%s) ' % title),
-                                          fn=self.outDir + title + '_Confusion-pretty.png')
+                                          fn=self.outDir + "/" + title + '_Confusion-pretty.png')
 
         self.plot_confusion_matrix(cnf_matrix,
                                    title=('Confusion matrix (%s), without normalization' % title),
-                                   fn=self.outDir + title + '_Confusion.png')
+                                   fn=self.outDir + "/" + title + '_Confusion.png')
 
         self.plot_confusion_matrix(cnf_matrix, normalize=True,
                                    title=('Normalized confusion matrix (%s)' % title),
-                                   fn=self.outDir + title + '_Confusion-Normalized.png')
+                                   fn=self.outDir + "/" + title + '_Confusion-Normalized.png')
 
         print("Classifier:", file=log_stdout, flush=True)
         print(cla, file=log_stdout, flush=True)
@@ -582,15 +582,6 @@ class TrainTest:
 
         plt.savefig(fn, bbox_inches='tight')
         plt.close()
-        
-def get_samples(path_file = '../../../_m/'):
-    
-    files = [f.name for f in os.scandir(path_file) if f.is_dir() ]    
-    files.sort()
-    files = [value for value in files if value not in ['.ipynb_checkpoints','.snakemake','.snakemake.old'] ] 
-
-    return files
-
 
 if __name__ == '__main__':
  

@@ -64,7 +64,7 @@ rule folds:
 
 rule train_test:
     input: expand("results/folds/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz"])
-    output: expand("results/train_test/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["Training_y_pred.csv", "Testing_y_pred.csv", "Train_Test_Accuracy.csv"])
+    output: directory(expand("results/train_test/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs))
     params:
         num_folds = config["model"]["num_folds"],
     log: "results/train_test/{donor}/{dna_type}.log",
