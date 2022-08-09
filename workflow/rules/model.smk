@@ -1,8 +1,8 @@
 rule features:
     input: 
         bgz = rules.tabix.output.bgz,
-        fa = expand(rules.fix_names_clean.output.fa,  ref=config["ref"]),
-        chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"])
+        fa = expand(rules.fix_names_clean.output.fa,  ref=config["ref"]["build"]),
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes,  ref=config["ref"]["build"])
     output:
         bgz = "results/features/{donor}/{dna_type}/{sample}.bgz",
         tbi = "results/features/{donor}/{dna_type}/{sample}.bgz.tbi",
@@ -41,7 +41,7 @@ rule features:
 rule flank_features:
     input: 
         bgz = rules.features.output.bgz,
-        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"])
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"])
     output: "results/flank_features/{donor}/{dna_type}/{sample}.pickle.gz"
     log: "results/flank_features/{donor}/{dna_type}/{sample}.log"
     conda: "../envs/env.yml"
@@ -50,9 +50,9 @@ rule flank_features:
 rule folds:
     input: 
         samples = get_folds_input_samples,
-        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]),
+        chromsizes = expand(rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]),
         non_ref_l1 = rules.get_eul1db.output,
-        ref_l1 = expand(rules.get_rmsk.output.ref_l1, ref=config["ref"])
+        ref_l1 = expand(rules.get_rmsk.output.ref_l1, ref=config["ref"]["build"])
     params:
         num_folds = config["model"]["num_folds"],
         min_reads = config["model"]["min_reads"],

@@ -13,15 +13,15 @@ rule gen_ref:
     output: "resources/{ref}/genome_og.fa"
     log: "resources/{ref}/gen_ref.log"
     conda: "../envs/env.yml"
-    params: region = config["region"]
+    params: region = config["ref"]["region"]
     shell:
         '''
         touch {log} && exec 1>{log} 2>&1
         
         # run bwa.kit function
         {input}/run-gen-ref {wildcards.ref}
-        if [ {params.region} = "chr22" ]; then
-            samtools faidx {wildcards.ref}.fa 22 > {output}
+        if [ {params.region} != "all" ]; then
+            samtools faidx {wildcards.ref}.fa {params.region} > {output}
             rm -f {wildcards.ref}.fa*
         else
             mv {wildcards.ref}.fa {output}
@@ -41,7 +41,7 @@ rule fix_names_clean:
     script: "../scripts/fix_names.py"
         
 rule get_eul1db:
-    input: expand("resources/{ref}/genome.genome",  ref=config["ref"])
+    input: expand("resources/{ref}/genome.genome",  ref=config["ref"]["build"])
     output: "resources/eul1db/windows.csv"
     conda: "../envs/env.yml"
     log: "resources/eul1db/get_eul1db.log"

@@ -9,7 +9,7 @@ rule bwa_index:
 rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
-        idx=expand(rules.bwa_index.output.idx, ref=config["ref"])
+        idx=expand(rules.bwa_index.output.idx, ref=config["ref"]["build"])
     output: "results/bwa_mem/{donor}/{dna_type}/{sample}.bam"
     log: "results/bwa_mem/{donor}/{dna_type}/{sample}.log"
     params: 
@@ -46,7 +46,7 @@ rule install_gapafim:
 rule tags:
     input: 
         bam=rules.rmdup.output,
-        fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]),
+        fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]["build"]),
         gapafim=rules.install_gapafim.output
     output: "results/tags/{donor}/{dna_type}/{sample}.bam"
     log: "results/tags/{donor}/{dna_type}/{sample}.err"
