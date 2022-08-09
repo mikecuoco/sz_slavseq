@@ -4,7 +4,7 @@
 # 
 # Use this script to create new test data.
 # 
-# Usage: ./create_test_data.sh <bam> <region> <out_prefix> <region>
+# Usage: ./create_test_data.sh <bam> <fastq> <out_prefix> <region>
 # bam = input bam file
 # fastq = path to corresponding fastq file (either mate in pair)
 # out_prefix = prefix for the output files (including outdir)
