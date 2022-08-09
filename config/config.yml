@@ -3,7 +3,9 @@
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
 samples: config/single_donor.tsv
 
-ref: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
+ref:
+  build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
+  region: 22 # use 22 for hs37d5 
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
@@ -14,5 +16,3 @@ model:
   num_folds: 4
   min_reads: 3
   window_size: 2_000_000
-
-region: all
