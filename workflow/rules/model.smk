@@ -66,7 +66,16 @@ rule train_test:
     input: expand("results/folds/{{donor}}/{{dna_type}}/{fold}/{file}", fold=fold_dirs, file=["X_train.pickle.gz", "X_test.pickle.gz", "Y_train.pickle.gz", "Y_test.pickle.gz"])
     output: directory(expand("results/train_test/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs))
     params:
-        num_folds = config["model"]["num_folds"],
-    log: "results/train_test/{donor}/{dna_type}.log",
+        num_folds = config["model"]["num_folds"]
+    log: "results/train_test/{donor}/{dna_type}.log"
     conda: "../envs/env.yml"
     script: "../scripts/rfc.py"
+
+# rule summary:
+#     input: rules.train_test.output
+#     output: directory(expand("results/summary/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs))
+#     params:
+#         num_folds = config["model"]["num_folds"]
+#     log: "results/summary/{donor}/{dna_type}.log"
+#     conda: "../envs/env.yml"
+#     script: "../scripts/summary.py"
