@@ -1,4 +1,4 @@
-#!/jhpce/shared/jhpce/core/python/3.8.3/bin/python3
+#!/usr/bin/env python
 __author__ = 'Ricardo S Jacomini, Michael Cuoco'
 
 import sys,gc
