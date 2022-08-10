@@ -17,7 +17,7 @@ include: "rules/model.smk"
 rule all:
     input:
         expand(
-            "results/train_test/{donor}/{dna_type}/{fold}",
+            "results/somatic_summary/{donor}/{dna_type}",
             fold=fold_dirs,
             donor=samples["donor"],
             dna_type=samples["dna_type"],

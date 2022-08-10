@@ -114,3 +114,18 @@ rule train_test:
         "../envs/env.yml"
     script:
         "../scripts/rfc.py"
+
+
+rule summary:
+    input:
+        rules.train_test.output,
+    output:
+        directory(expand("results/somatic_summary/{{donor}}/{{dna_type}}")),
+    params:
+        num_folds=config["model"]["num_folds"],
+    log:
+        "results/somatic_summary/{donor}/{dna_type}.log",
+    conda:
+        "../envs/env.yml"
+    script:
+        "../scripts/somatic_summary.py"
