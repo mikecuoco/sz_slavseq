@@ -120,7 +120,7 @@ rule summary:
     input:
         rules.train_test.output,
     output:
-        directory(expand("results/somatic_summary/{{donor}}/{{dna_type}}")),
+        expand("results/somatic_summary/{{donor}}/{{dna_type}}/{file}", file=["Merged_y_pred.csv"]),
     params:
         num_folds=config["model"]["num_folds"],
     log:

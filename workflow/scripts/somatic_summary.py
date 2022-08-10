@@ -19,34 +19,16 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings("ignore")
 
-def get_prediction(dirPath, header):
-   
-    # Add this line to handle folds with no equal classes
-    if not os.path.exists(dirPath + 'Testing_y_pred.csv'):
-        df_open = pd.DataFrame(columns = header)
-        # df_open.set_index( ['chrom','start','end'], inplace=True)
-    else:
-        print("\tMerging prediction of Fold-%d ..." % k)
-        df_open =  pd.read_csv(dirPath + 'Testing_y_pred.csv', sep=";")
-        df_open.set_index( ['chrom','start','end'], inplace=True)
+def get_summary(donor, dna_type, df, bulk=False):        
     
-    return df_open
-
-# def sample_id(s):
-#     new = s.str.split(pat = "_", n = 1, expand = True) 
-
-#     return new[0], new[1]
-
-def get_summary(sample, df, bulk=False):        
-    
-    df.sort_index(ascending=True, inplace=True)
+    df.sort_values(by='start', ascending=True, inplace=True)
         
-    df.reset_index(inplace=True)
+    # df.reset_index(inplace=True)
 
     if bulk: 
-        sample_name, cell = sample, 'bulk'
+        sample_name, cell = donor, "bulk"
     else:
-        sample_name, cell = sample, df['cell_id'] 
+        sample_name, cell = donor, dna_type
         
     df['end'] = sample_name
     df['cell_id'] = cell
@@ -56,29 +38,46 @@ def get_summary(sample, df, bulk=False):
     return df
 
 def main():
-    inDirs = [Path(d).name for d in snakemake.input if re.search(f'fold_[0-9]', d)]
-
-    header=['chrom','start','sample','cell_id','Y','Y_pred','all_reads_count','KNRGL_proba','OTHER_proba','RL1_proba']
+    # input is in format "results/train_test/{{donor}}/{{dna_type}}/{fold}"
     
-    for sample in inDirs:
+    # get input directory containing each fold directory
+    inDirs = [Path(d).parent.resolve() for d in snakemake.input]
+    inDirs = np.unique(np.array(inDirs)) # get only unique directories
+
+    dna_types = [d.name for d in inDirs]
+    donors = [Path(d).parent.name for d in inDirs]
+
+    outDirs = [str(d).replace("train_test", "somatic_summary") for d in inDirs]
+    
+    for i in range(0, len(inDirs)):
+        sample = donors[i] + "_" + dna_types[i]
+        inDir = str(inDirs[i])
 
         df = pd.DataFrame(data=None)
         
         print("\n")
-        print("Processing Sample ID ({}) ... \n" .format( sample ) )
+        print("Processing Sample ID ({}) ... \n" .format(sample))
             
         for k in range(0, snakemake.params.num_folds):
             
-            fileFold = sample + "/"
+            pred = inDir + "/" + "fold_" + str(k) + "/" + "Testing_y_pred.csv"
             
-            df = df.append( get_prediction(fileFold, header) )
+            if not os.path.exists(pred): # skip folds with no equal classes
+                continue
+            
+            print("\tMerging prediction of Fold-%d ..." % k)
+            df_open = pd.read_csv(pred)
+            df = df.append(df_open)
         
-        if 'bulk' in sample: bulk = True 
+        if 'bulk' in sample: bulk = True
         else: bulk = False
         
-        df0 = get_summary(sample, df, bulk)
-        # TODO: change output path
-        df0[header].to_csv(sample + '.csv', sep="\t", index=False, header=True )
+        df0 = get_summary(donors[i], dna_types[i], df, bulk)
+        
+        if not os.path.exists(outDirs[i]):
+            os.mkdir(outDirs[i])
+            
+        df0.to_csv(outDirs[i] + "/" + "Merged_y_pred.csv", index=False, header=True)
 
 if __name__ == '__main__':
 

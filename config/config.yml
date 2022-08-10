@@ -1,6 +1,4 @@
-# path or URL to sample sheet (TSV format, columns: sample, condition, ...)
-# individuals: config/individuals.tsv
-# path or URL to sample sheet (TSV format, columns: sample, condition, ...)
+# path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
 samples: config/single_donor.tsv
 
 ref:
