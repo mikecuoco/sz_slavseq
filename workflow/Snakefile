@@ -20,7 +20,11 @@ rule all:
             "results/somatic_summary/{donor}/{dna_type}/{file}",
             donor=samples["donor"],
             dna_type=samples["dna_type"],
-            file=["Merged_y_pred.csv"]
+            file=[
+                "Merged_y_pred.csv",
+                # "slavseq_sz-intersections-cluster.csv",
+                # "somatic_candidates-cluster.csv",
+            ],
         ),
     wildcard_constraints:
         dna_type="\w+",

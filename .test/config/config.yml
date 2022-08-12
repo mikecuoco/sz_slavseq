@@ -3,7 +3,7 @@ samples: .test/config/test.tsv
 
 ref: 
   build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
-  region: 22 # use 22 for hs37d5
+  region: '' # use 22 for hs37d5
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
