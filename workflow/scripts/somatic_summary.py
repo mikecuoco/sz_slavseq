@@ -242,7 +242,7 @@ def main():
 
     outDirs = [str(d).replace("train_test", "somatic_summary") for d in inDirs]
     
-    window_size = 750
+    window_size = snakemake.params.window_size
     prob = snakemake.params.prob
     reads_count = snakemake.params.min_reads
 

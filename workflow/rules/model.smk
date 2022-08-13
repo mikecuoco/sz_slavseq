@@ -116,7 +116,7 @@ rule train_test:
         "../scripts/rfc.py"
 
 
-rule summary:
+rule somatic_summary:
     input:
         rules.train_test.output,
     output:
