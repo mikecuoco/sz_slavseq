@@ -22,8 +22,10 @@ rule all:
             dna_type=samples["dna_type"],
             file=[
                 "Merged_y_pred.csv",
-                # "slavseq_sz-intersections-cluster.csv",
-                # "somatic_candidates-cluster.csv",
+                "slavseq_sz-intersections-cluster.csv",
+                "somatic_candidates-cluster.csv",
+                "Cross_validation_metrics.csv",
+                "slavseq_sz_no_filter.csv",
             ],
         ),
     wildcard_constraints:

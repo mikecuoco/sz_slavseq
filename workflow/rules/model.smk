@@ -70,7 +70,7 @@ rule folds:
     params:
         num_folds=config["model"]["num_folds"],
         min_reads=config["model"]["min_reads"],
-        window_size=config["model"]["window_size"],
+        fold_window=config["model"]["fold_window"],
     output:
         expand(
             "results/folds/{{donor}}/{{dna_type}}/{fold}/{file}",
@@ -124,12 +124,17 @@ rule summary:
             "results/somatic_summary/{{donor}}/{{dna_type}}/{file}",
             file=[
                 "Merged_y_pred.csv",
-                # "slavseq_sz-intersections-cluster.csv",
-                # "somatic_candidates-cluster.csv",
+                "slavseq_sz-intersections-cluster.csv",
+                "somatic_candidates-cluster.csv",
+                "Cross_validation_metrics.csv",
+                "slavseq_sz_no_filter.csv",
             ],
         ),
     params:
         num_folds=config["model"]["num_folds"],
+        min_reads=config["model"]["min_reads"],
+        window_size=config["model"]["window_size"],
+        min_prob=config["model"]["prob"]
     log:
         "results/somatic_summary/{donor}/{dna_type}.log",
     conda:

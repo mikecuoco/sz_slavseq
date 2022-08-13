@@ -195,7 +195,7 @@ def get_results_metrics(inDirs, samples):
             fn = "/Training_report_performance.txt"
             tFile ='train'
         
-            fileFold =  str(inDirs[i]) + fn
+            fileFold =  str(inDirs[i]) + "/fold_" + str(k) + "/" + fn
 
             precision = get_precision_position(fileFold, "precision")
             recall = get_precision_position(fileFold, "recall")
@@ -214,7 +214,7 @@ def get_results_metrics(inDirs, samples):
             fn = "/Testing_report_performance.txt"
             tFile ='test'
                 
-            fileFold = str(inDirs[i]) + fn
+            fileFold = str(inDirs[i]) + "/fold_" + str(k) + "/" + fn
 
             for line in lines:
                 a = open(fileFold, "r").readlines()[line]
@@ -243,8 +243,8 @@ def main():
     outDirs = [str(d).replace("train_test", "somatic_summary") for d in inDirs]
     
     window_size = 750
-    prob = 0.7
-    reads_count = 3
+    prob = snakemake.params.prob
+    reads_count = snakemake.params.min_reads
 
     slavseq_sz = pd.DataFrame(data=None)
 
@@ -259,7 +259,7 @@ def main():
             
         for k in range(0, snakemake.params.num_folds):
             
-            pred = inDir + "/" + "fold_" + str(k) + "/" + "Testing_y_pred.csv"
+            pred = inDir + "/" + "fold_" + str(k) + "/Testing_y_pred.csv"
             
             if not os.path.exists(pred): # skip folds with no equal classes
                 continue
@@ -279,12 +279,11 @@ def main():
 
         df_label.to_csv(outDirs[i] + "/Merged_y_pred.csv", index=False, header=True)
 
-
+        
         df_sz = pd.DataFrame(data=None)
         
         # filter for potential somatic insertions
-        # TODO: Add larger test data
-        cond2 = df_label['OTHER_proba'] >= prob
+        cond2 = df_label['KNRGL_proba'] >= prob
         cond3 = df_label['Y'] == 'OTHER' 
         cond4 = df_label['Y_pred'] == 'KNRGL'
         cond5 = df_label['all_reads_count'] >= reads_count
@@ -317,49 +316,56 @@ def main():
                 df_sz = df_sz.append(c1.to_dataframe(sample), ignore_index=True)         
                 
             slavseq_sz = slavseq_sz.append(df_sz, ignore_index=True)
-    # print(slavseq_sz.to_string())
-    df = slavseq_sz.sort_values(['sample', 'cell_id', 'chrom', 'start', 'end']).copy()
     
-    df['start'] = df.start.astype('int32') 
-    df['end'] = df.end.astype('int32') 
-    df['window_id'] = list(my_cluster_id_cell(df))
+            df = slavseq_sz.sort_values(['sample', 'cell_id', 'chrom', 'start', 'end']).copy()
+            
+            df['start'] = df.start.astype('int32') 
+            df['end'] = df.end.astype('int32') 
+            df['window_id'] = list(my_cluster_id_cell(df))
 
-    df = df.sort_values(['window_id'], ascending=True).groupby('window_id').first()
+            df = df.sort_values(['window_id'], ascending=True).groupby('window_id').first()
 
-    df.drop(['intv'], axis=1, inplace=True) # drop interval [start, end]
+            df.drop(['intv'], axis=1, inplace=True) # drop interval [start, end]
 
-    df = df.sort_values(['chrom', 'start', 'end'])
-    df['cluster_id'] = list(my_cluster_id(df)) 
+            df = df.sort_values(['chrom', 'start', 'end'])
+            df['cluster_id'] = list(my_cluster_id(df)) 
+            
+            cs = df.groupby('cluster_id').size().to_frame().rename(columns={0:'number_cells_detected'})
+            df = df.merge(cs, left_on='cluster_id', right_index=True) # add new col # cells detected
+
+            df = df[
+                ['chrom', 'start', 'end', 'sample', 'cell_id', 'proba_max',
+                'reads_max', 'number_cells_detected','cluster_id']
+                ]
+            
+            df = df.rename(columns={'proba_max':'confidence_score', 'reads_max': 'number_reads'})
+            df.to_csv(outDirs[i] + "/slavseq_sz-intersections-cluster.csv", index=True, header=True)
+
+            df = df[
+                (df['number_cells_detected'] <= 5) ].sort_values([
+                    'sample','cell_id','confidence_score'], 
+                    ascending=[False, False, False])
+
+            df.to_csv(outDirs[i] + "/somatic_candidates-cluster.csv", index=True, header=True)
+
+    slavseq_sz = pd.DataFrame(columns = ['chrom', 'start', 'end', 'sample', 'cell_id', 'confidence_score',
+        'number_reads', 'number_cells_detected','cluster_id'])
+    slavseq_sz.to_csv(outDirs[i] + "/slavseq_sz-intersections-cluster.csv", header=True)
+    slavseq_sz.to_csv(outDirs[i] + "/somatic_candidates-cluster.csv", header=True)
     
-    cs = df.groupby('cluster_id').size().to_frame().rename(columns={0:'number_cells_detected'})
-    df = df.merge(cs, left_on='cluster_id', right_index=True) # add new col # cells detected
-
-    df = df[
-        ['chrom', 'start', 'end', 'sample', 'cell_id', 'proba_max',
-         'reads_max', 'number_cells_detected','cluster_id']
-        ]
     
-    df = df.rename(columns={'proba_max':'confidence_score', 'reads_max': 'number_reads'})
-    df.to_csv(outDirs[i] + "/slavseq_sz-intersections-cluster.csv", index=True, header=True)
-
-    df = df[
-        (df['number_cells_detected'] <= 5) ].sort_values([
-            'sample','cell_id','confidence_score'], 
-            ascending=[False, False, False])
-
-    df.to_csv(outDirs[i] + "/somatic_candidates-cluster.csv", index=True, header=True)
+    df_metrics = get_results_metrics(inDirs, samples)
+    df_metrics.to_csv(outDirs[i] + "/Cross_validation_metrics.csv", index=False, header=True)
 
 
-    # df_metrics = get_results_metrics(inDirs, samples)
-    # df_metrics.to_csv(outDirs[i] + "/Cross_validation_metrics.csv", index=False, header=True)
+    subprocess.run("head -1 " + outDirs[0] + "/Merged_y_pred.csv" + "  >" + outDirs[0] + 
+        '/slavseq_sz_no_filter.csv' + " 2>"  + outDirs[0] + '/slavseq_sz_no_filter.stderr', 
+        shell=True)
 
-
-    # subprocess.run("head -1 " + outDirs[0] + "/Merged_y_pred.csv" + "  >'slavseq_sz_no_filter.csv' 2>'slavseq_sz_no_filter.stderr'", 
-    #     shell=True)
-
-    # for out in outDirs:
-    #     subprocess.run("tail -n +2 " + out + "/Merged_y_pred.csv" + " >>'slavseq_sz_no_filter.csv' 2>>'slavseq_sz_no_filter.stderr'", 
-    #         shell=True)
+    for out in outDirs:
+        subprocess.run("tail -n +2 " + out + "/Merged_y_pred.csv" + " >>" + out + 
+        '/slavseq_sz_no_filter.csv' + " 2>>" + out + '/slavseq_sz_no_filter.stderr', 
+            shell=True)
 
 if __name__ == '__main__':
 
