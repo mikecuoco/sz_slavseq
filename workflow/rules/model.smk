@@ -134,7 +134,7 @@ rule somatic_summary:
         num_folds=config["model"]["num_folds"],
         min_reads=config["model"]["min_reads"],
         window_size=config["model"]["window_size"],
-        min_prob=config["model"]["prob"]
+        min_prob=config["model"]["prob"],
     log:
         "results/somatic_summary/{donor}/{dna_type}.log",
     conda:
