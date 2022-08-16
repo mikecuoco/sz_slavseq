@@ -272,6 +272,7 @@ def main():
         # if 'bulk' in sample: bulk = True
         # else: bulk = False
         
+        # add sample and cell labels
         df_label = get_summary(donors[i], dna_types[i], df_merge)
         
         if not os.path.exists(outDirs[i]):
@@ -319,6 +320,7 @@ def main():
     
             df = slavseq_sz.sort_values(['sample', 'cell_id', 'chrom', 'start', 'end']).copy()
             
+            # type conversions
             df['start'] = df.start.astype('int32') 
             df['end'] = df.end.astype('int32') 
             df['window_id'] = list(my_cluster_id_cell(df))
@@ -333,6 +335,7 @@ def main():
             cs = df.groupby('cluster_id').size().to_frame().rename(columns={0:'number_cells_detected'})
             df = df.merge(cs, left_on='cluster_id', right_index=True) # add new col # cells detected
 
+            # filter df for given columns
             df = df[
                 ['chrom', 'start', 'end', 'sample', 'cell_id', 'proba_max',
                 'reads_max', 'number_cells_detected','cluster_id']
@@ -342,22 +345,25 @@ def main():
             df.to_csv(outDirs[i] + "/slavseq_sz-intersections-cluster.csv", index=True, header=True)
 
             df = df[
-                (df['number_cells_detected'] <= 5) ].sort_values([
-                    'sample','cell_id','confidence_score'], 
+                (df['number_cells_detected'] <= 5) ].sort_values(
+                    ['sample','cell_id','confidence_score'], 
                     ascending=[False, False, False])
 
             df.to_csv(outDirs[i] + "/somatic_candidates-cluster.csv", index=True, header=True)
-
-    slavseq_sz = pd.DataFrame(columns = ['chrom', 'start', 'end', 'sample', 'cell_id', 'confidence_score',
-        'number_reads', 'number_cells_detected','cluster_id'])
-    slavseq_sz.to_csv(outDirs[i] + "/slavseq_sz-intersections-cluster.csv", header=True)
-    slavseq_sz.to_csv(outDirs[i] + "/somatic_candidates-cluster.csv", header=True)
+        
+        else:
+            # output empty csvs with only header if no insertions found
+            slavseq_sz = pd.DataFrame(columns = ['chrom', 'start', 'end', 'sample', 'cell_id', 'confidence_score',
+                'number_reads', 'number_cells_detected','cluster_id'])
+            slavseq_sz.to_csv(outDirs[i] + "/slavseq_sz-intersections-cluster.csv", header=True)
+            slavseq_sz.to_csv(outDirs[i] + "/somatic_candidates-cluster.csv", header=True)
     
     
     df_metrics = get_results_metrics(inDirs, samples)
     df_metrics.to_csv(outDirs[i] + "/Cross_validation_metrics.csv", index=False, header=True)
 
 
+    # Merge results of "Testing_y_pred.csv" for ALL folds for ALL samples
     subprocess.run("head -1 " + outDirs[0] + "/Merged_y_pred.csv" + "  >" + outDirs[0] + 
         '/slavseq_sz_no_filter.csv' + " 2>"  + outDirs[0] + '/slavseq_sz_no_filter.stderr', 
         shell=True)
