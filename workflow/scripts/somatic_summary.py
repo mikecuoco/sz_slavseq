@@ -243,7 +243,7 @@ def main():
     outDirs = [str(d).replace("train_test", "somatic_summary") for d in inDirs]
     
     window_size = snakemake.params.window_size
-    prob = snakemake.params.prob
+    prob = snakemake.params.min_prob
     reads_count = snakemake.params.min_reads
 
     slavseq_sz = pd.DataFrame(data=None)

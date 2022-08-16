@@ -117,7 +117,7 @@ def folds(sample_files):
     else:
         df = pd.concat([get_cell_features(fn, cell_id).reset_index() for fn, cell_id in cells_from_sample(sample_files)]).sort_values(['chrom', 'start', 'end', 'cell_id']).set_index(['chrom', 'start', 'end', 'cell_id'])
         
-    df['fold'] = list(my_fold(df, window_size, num_folds))
+    df['fold'] = list(my_fold(df, fold_window, num_folds))
 
     for fold in range(num_folds):
         # get directory for output files of this fold
@@ -135,8 +135,8 @@ def print_err(msg):
         
 if __name__ == '__main__':
 
-    global window_size, num_folds, min_reads, dna_type
-    window_size = snakemake.params.window_size
+    global fold_window, num_folds, min_reads, dna_type
+    fold_window = snakemake.params.fold_window
     num_folds = snakemake.params.num_folds
     min_reads = snakemake.params.min_reads
     dna_type = snakemake.wildcards.dna_type
