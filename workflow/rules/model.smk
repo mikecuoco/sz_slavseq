@@ -127,7 +127,6 @@ rule somatic_summary:
                 "slavseq_sz-intersections-cluster.csv",
                 "somatic_candidates-cluster.csv",
                 "Cross_validation_metrics.csv",
-                "slavseq_sz_no_filter.csv",
             ],
         ),
     params:
