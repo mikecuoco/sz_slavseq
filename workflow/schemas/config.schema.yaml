@@ -1,0 +1,63 @@
+$schema: "http://json-schema.org/draft-06/schema#"
+
+description: snakemake configuration file
+
+type: object
+
+properties:
+  samples:
+    type: string
+  
+  ref:
+    type: object
+    properties:
+      build:
+        type: string
+      region:
+        type: string
+        default: all
+      database:
+        type: string
+    required:
+      - build
+      - database
+
+  adapters:
+    type: object
+    properties:
+      r1_adapter:
+        type: string
+      r2_adapter:
+        type: string
+      nested_primer:
+        type: string
+    required:
+      - r1_adapter
+      - r2_adapter
+      - nested_primer
+
+  model:
+    type: object
+    properties:
+      num_folds:
+        type: integer
+        default: 4
+      min_reads:
+        type: integer
+        default: 3
+      fold_window:
+        type: integer
+        default: 2_000_000
+      window_size:
+        type: integer
+        default: 750
+      prob: 
+        type: float
+        default: 0.7
+
+required:
+  - samples
+  - ref
+  - adapters
+  - model
+  
