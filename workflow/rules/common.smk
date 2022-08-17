@@ -1,6 +1,7 @@
 import pandas as pd
 from Bio.Seq import Seq
 from pathlib import Path
+from snakemake.utils import validate
 
 validate(config, schema="../schemas/config.schema.yaml")
 

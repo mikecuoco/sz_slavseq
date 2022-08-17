@@ -1,4 +1,4 @@
-$schema: "http://json-schema.org/draft-06/schema#"
+$schema: "https://json-schema.org/draft/2020-12/schema"
 
 description: snakemake configuration file
 
@@ -52,7 +52,7 @@ properties:
         type: integer
         default: 750
       prob: 
-        type: float
+        type: number
         default: 0.7
 
 required:
