@@ -1,6 +1,4 @@
-# path or URL to sample sheet (TSV format, columns: sample, condition, ...)
-# individuals: config/individuals.tsv
-# path or URL to sample sheet (TSV format, columns: sample, condition, ...)
+# path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
 samples: config/single_donor.tsv
 
 ref:
@@ -15,4 +13,6 @@ adapters:
 model:
   num_folds: 4
   min_reads: 3
-  window_size: 2_000_000
+  fold_window: 2_000_000
+  window_size: 750
+  prob: 0.7
