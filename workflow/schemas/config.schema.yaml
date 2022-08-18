@@ -16,11 +16,8 @@ properties:
       region:
         type: string
         default: all
-      database:
-        type: string
     required:
       - build
-      - database
 
   adapters:
     type: object
