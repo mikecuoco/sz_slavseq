@@ -1,6 +1,7 @@
 import pandas as pd
 from Bio.Seq import Seq
 from pathlib import Path
+from snakemake.utils import validate
 
 # read sample sheet
 samples = (
@@ -25,6 +26,18 @@ def get_folds_input_samples(wildcards):
         sample=my_samples,
     )
 
+def get_non_ref_l1():
+    db = config["ref"]["database"]
+    NR_l1 = expand(
+        "resources/{db}/windows.csv", db=config["ref"]["database"])
+
+    if db != "eul1db":
+        NR_df = pd.read_csv(NR_l1[0], sep="\t")
+        validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
+    
+    return NR_l1
+
+l1db = get_non_ref_l1()
 
 num_folds = config["model"]["num_folds"]
 fold_dirs = [f"fold_{fold}" for fold in range(num_folds)]

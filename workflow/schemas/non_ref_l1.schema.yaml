@@ -1,0 +1,20 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+
+description: a window containing a non-reference germline L1
+
+properties:
+  chrom:
+    type: string
+    description: chromosome
+  start:
+    type: integer
+    description: window start position
+  end:
+    type: integer
+    description: window end position
+
+required:
+  - chrom
+  - start
+  - end
+  
