@@ -26,6 +26,8 @@ def get_folds_input_samples(wildcards):
         sample=my_samples,
     )
 
+# get file of non-reference germline L1s
+# if not from eul1db, should be a BED3 file
 def get_non_ref_l1():
     db = config["ref"]["database"]
     NR_l1 = expand(
