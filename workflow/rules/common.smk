@@ -1,6 +1,9 @@
 import pandas as pd
 from Bio.Seq import Seq
 from pathlib import Path
+from snakemake.utils import validate
+
+validate(config, schema="../schemas/config.schema.yaml")
 
 # read sample sheet
 samples = (
@@ -9,8 +12,7 @@ samples = (
     .sort_index()
 )
 
-# TODO add sample sheet validation schema
-# validate(samples, schema="../schemas/samples.schema.yaml")
+validate(samples, schema="../schemas/samples.schema.yaml")
 
 # setup input/output for folds rule
 def get_folds_input_samples(wildcards):

@@ -1,0 +1,28 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+
+description: an entry in the sample sheet
+
+properties:
+  donor:
+    type: string
+    description: number identifying the sample donor
+  sample:
+    type: string
+    description: sample identifier 
+  dna_type:
+    type: string
+    description: type of sequencing (bulk, mda,...)
+  R1:
+    type: string
+    description: file path to read 1
+  R2:
+    type: string
+    description: file path to read 2
+
+required:
+  - donor
+  - sample
+  - dna_type
+  - R1
+  - R2
+  
