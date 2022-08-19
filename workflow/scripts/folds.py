@@ -43,7 +43,7 @@ def get_reference_l1():
 
 @functools.lru_cache()
 def get_non_ref_db():
-    if "eul1db" in snakemake.input.non_ref_l1[0]
+    if "eul1db" in snakemake.input.non_ref_l1[0]:
         df = pd.read_csv(snakemake.input.non_ref_l1[0])
 
         # make column names general to any database with non-reference L1s
@@ -65,7 +65,6 @@ def get_cell_features(fn, cell_id):
         .fillna({'in_NRdb':False, 'reference_l1hs_l1pa2_6':False})
         
     df['cell_id'] = cell_id
-    print(df.head())
     
     return df
 
