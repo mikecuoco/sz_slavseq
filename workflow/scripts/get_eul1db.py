@@ -25,7 +25,7 @@ def main():
     genome = Genome(snakemake.input[0])
     xx = list(ig.windows_overlapping_intervals(genome, eul1db_pos, 750, 250))
     eul1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
-    eul1['in_eul1db'] = True
+    eul1['in_NRdb'] = True # NR = non-reference
     eul1.to_csv(snakemake.output[0]) # why not use bed file for this?
 
 if __name__ == '__main__':

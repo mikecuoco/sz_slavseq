@@ -46,10 +46,6 @@ def get_non_ref_db():
     if "eul1db" in snakemake.input.non_ref_l1[0]:
         df = pd.read_csv(snakemake.input.non_ref_l1[0])
 
-        # make column names general to any database with non-reference L1s
-        # NR = non-reference
-        df = df.rename(columns={'in_eul1db': 'in_NRdb'})
-
     else:
         df = pd.read_csv(snakemake.input.non_ref_l1[0], sep="\t")
         df['in_NRdb'] = True
