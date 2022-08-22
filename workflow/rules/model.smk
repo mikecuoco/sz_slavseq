@@ -65,9 +65,10 @@ rule folds:
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
         ),
-        non_ref_l1=rules.get_eul1db.output,
+        non_ref_l1=l1db,
         ref_l1=expand(rules.get_rmsk.output.ref_l1, ref=config["ref"]["build"]),
     params:
+        # non_ref_db=config["ref"]["database"]
         num_folds=config["model"]["num_folds"],
         min_reads=config["model"]["min_reads"],
         fold_window=config["model"]["fold_window"],

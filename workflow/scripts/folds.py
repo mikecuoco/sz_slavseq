@@ -42,16 +42,19 @@ def get_reference_l1():
     return df
 
 @functools.lru_cache()
-def get_eul1db():
+def get_non_ref_db():
     df = pd.read_csv(snakemake.input.non_ref_l1[0], index_col=[0,1,2])
     return df
 
 # @functools.lru_cache(maxsize=1500)
 def get_cell_features(fn, cell_id):
-    df = pd.read_pickle(fn).merge(get_eul1db(), left_index=True, right_index=True, how="left")\
-    .merge(get_reference_l1(), left_index=True, right_index=True, how="left")\
-    .fillna({'in_eul1db':False, 'reference_l1hs_l1pa2_6':False})
+    # merge reference and non-reference germline L1s
+    df = pd.read_pickle(fn).merge(get_non_ref_db(), left_index=True, right_index=True, how="left")\
+        .merge(get_reference_l1(), left_index=True, right_index=True, how="left")\
+        .fillna({'in_NRdb':False, 'reference_l1hs_l1pa2_6':False})
+        
     df['cell_id'] = cell_id
+    
     return df
 
 def cells_from_sample(sample_files):
@@ -69,10 +72,10 @@ def my_fold(df, window_size, num_folds):
         yield interval_fold_assignment(d, iv, window_size, num_folds)
 
 def my_label(df):
-    for x in df[['in_eul1db','reference_l1hs_l1pa2_6']].itertuples():
+    for x in df[['in_NRdb','reference_l1hs_l1pa2_6']].itertuples():
         if x.reference_l1hs_l1pa2_6:
             yield 'RL1'
-        elif x.in_eul1db:
+        elif x.in_NRdb:
             yield 'KNRGL'
         else:
             yield 'OTHER'
@@ -80,7 +83,7 @@ def my_label(df):
 def get_train_and_test_data(df, fold, min_reads):
 
     features = [x for x in df.columns if not any(x.endswith(y) for y in [
-        'chrom', 'start', 'end', 'cell_id', 'in_eul1db', 'reference_l1hs_l1pa2_6',
+        'chrom', 'start', 'end', 'cell_id', 'in_NRdb', 'reference_l1hs_l1pa2_6',
         'fold', '_peak_position', '_en_motif', '_te_strand'])]
         
     train_examples = (df['all_reads.count']>=min_reads) & (df['fold']>=0) & (df['fold']!=fold)
