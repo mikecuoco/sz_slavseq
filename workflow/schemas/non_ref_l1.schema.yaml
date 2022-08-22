@@ -12,6 +12,10 @@ properties:
   end:
     type: integer
     description: window end position
+  in_NRdb:
+    type: boolean
+    default: True
+    description: true if window is from non-reference L1 database
 
 required:
   - chrom

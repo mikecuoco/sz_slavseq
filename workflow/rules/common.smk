@@ -30,7 +30,8 @@ def get_folds_input_samples(wildcards):
 
 
 # get file of non-reference germline L1s
-# if not from eul1db, should be a csv file with 3 columns
+# if not from eul1db, should be a csv file with 3 or 4 columns:
+# chrom, start, end, in_NRdb (optional)
 def get_non_ref_l1():
     db = config["ref"]["database"]
     NR_l1 = expand("resources/{db}/windows.csv", db=config["ref"]["database"])
