@@ -4,7 +4,7 @@ samples: config/single_donor.tsv
 ref:
   build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
   region: all # use 22 for hs37d5
-  database: eul1db # options: eul1db or a BED3 file under resources/{database}/windows.csv
+  database: eul1db # options: eul1db or a csv file under resources/{database}/windows.csv
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'

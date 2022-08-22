@@ -30,13 +30,13 @@ def get_folds_input_samples(wildcards):
 
 
 # get file of non-reference germline L1s
-# if not from eul1db, should be a BED3 file
+# if not from eul1db, should be a csv file with 3 columns
 def get_non_ref_l1():
     db = config["ref"]["database"]
     NR_l1 = expand("resources/{db}/windows.csv", db=config["ref"]["database"])
 
     if db != "eul1db":
-        NR_df = pd.read_csv(NR_l1[0], sep="\t")
+        NR_df = pd.read_csv(NR_l1[0])
         validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
 
     return NR_l1

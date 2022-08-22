@@ -43,11 +43,9 @@ def get_reference_l1():
 
 @functools.lru_cache()
 def get_non_ref_db():
-    if "eul1db" in snakemake.input.non_ref_l1[0]:
-        df = pd.read_csv(snakemake.input.non_ref_l1[0])
-
-    else:
-        df = pd.read_csv(snakemake.input.non_ref_l1[0], sep="\t")
+    df = pd.read_csv(snakemake.input.non_ref_l1[0])
+    
+    if "eul1db" not in snakemake.input.non_ref_l1[0]:
         df['in_NRdb'] = True
     
     df = df.set_index(["chrom", "start", "end"])
