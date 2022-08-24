@@ -3,7 +3,7 @@ samples: .test/config_indv/test.tsv
 
 ref: 
   build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
-  region: 22 # use 22 for hs37d5
+  region: '22' # use '22' for hs37d5
   database: eul1db # options: eul1db or a csv file (chrom, start, end, in_NRdb=True)
   # located under resources/{database}/windows.csv
 
