@@ -22,7 +22,7 @@ rule gen_ref:
     conda:
         "../envs/env.yml"
     params:
-        region=config["ref"]["region"],
+        region=config["genome"]["region"],
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -56,9 +56,10 @@ rule fix_names_clean:
 
 rule get_eul1db:
     input:
-        expand("resources/{ref}/genome.genome", ref=config["ref"]["build"]),
+        rules.fix_names_clean.output.chromsizes
     output:
-        "resources/eul1db/windows.csv",
+        "resources/eul1db/insertions.bed",
+        # "resources/eul1db/windows.csv",
     conda:
         "../envs/env.yml"
     log:
@@ -79,3 +80,23 @@ rule get_rmsk:
         "../envs/env.yml"
     script:
         "../scripts/get_rmsk.py"
+
+
+# rule liftover:
+#     input:
+#         expand("resources/{db}/insertions.bed", db=config["ref"]["database"]),
+#     output:
+#         expand("resources/{db}/insertions.stable.vcf", db=config["ref"]["database"]),
+#     shell:
+#         """
+#         wget -O- -q --no-config https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
+
+#         R -e "bed2vcf({input}, filename='insertions.vcf', zero-based=FALSE, header=NULL, fasta='resources/{params.build}/genome.fa')"
+
+#         vcftools --vcf insertions.vcf --exclude-bed FASTA_BED.ALL_GRCh3N.novel_CUPs.bed \
+#         --recode --recode-INFO-all --out insertions.stable.vcf
+
+#         """
+    
+
+# rule get_windows:
