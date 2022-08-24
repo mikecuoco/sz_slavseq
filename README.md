@@ -13,6 +13,7 @@ snakefmt .
 # run lint checks
 snakemake --lint
 
+# NOTE: Tests do not work from within tmux environment
 # test a single sample
 snakemake --cores 1 all --configfile .test/config_sample/config.yml --rerun-incomplete --show-failed-logs --use-conda --debug
 
