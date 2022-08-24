@@ -6,9 +6,16 @@ Adapted from work by Apua Paquola and Ricardo Jacomini
 
 ## Development tips
 
-Before pushing on the main branch run the following from the project root:
-
 ```bash
+# format code
+snakefmt .
+
+# run lint checks
 snakemake --lint
-snakemake --cores 1 all --configfile .test/config/config.yml --rerun-incomplete --show-failed-logs --use-conda --debug
+
+# test a single sample
+snakemake --cores 1 all --configfile .test/config_sample/config.yml --rerun-incomplete --show-failed-logs --use-conda --debug
+
+# test multiple samples from a single individual
+snakemake --cores 8 all --configfile .test/config_indv/config.yml --rerun-incomplete --show-failed-logs --use-conda 
 ```
