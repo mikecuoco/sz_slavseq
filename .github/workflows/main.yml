@@ -45,14 +45,14 @@ jobs:
         directory: .
         stagein: mamba install -n snakemake -c conda-forge biopython -y -q
         snakefile: workflow/Snakefile
-        args: "--use-conda --show-failed-logs --cores 1 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_small/config.yml --detailed-summary --debug"
+        args: "--use-conda --show-failed-logs --cores 1 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_sample/config.yml --detailed-summary --debug"
     - name: Test workflow on single individual
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .
         stagein: mamba install -n snakemake -c conda-forge biopython -y -q
         snakefile: workflow/Snakefile
-        args: "--use-conda --show-failed-logs --cores 8 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_large/config.yml --detailed-summary"
+        args: "--use-conda --show-failed-logs --cores 8 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_indv/config.yml --detailed-summary"
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0
