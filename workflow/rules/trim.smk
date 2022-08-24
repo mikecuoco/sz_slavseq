@@ -7,9 +7,10 @@ rule get_sra:
     wrapper:
         "0.77.0/bio/sra-tools/fasterq-dump"
 
+
 rule cutadapt1:
     input:
-        get_cutadapt_input
+        get_cutadapt_input,
     output:
         fastq1="results/cutadapt1/{donor}/{dna_type}/{sample}_R1.fastq.gz",
         fastq2="results/cutadapt1/{donor}/{dna_type}/{sample}_R2.fastq.gz",

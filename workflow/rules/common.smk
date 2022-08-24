@@ -15,6 +15,7 @@ samples = (
 
 validate(samples, schema="../schemas/samples.schema.yaml")
 
+
 def get_cutadapt_input(wildcards):
     sample = samples.loc[wildcards.sample]
 
@@ -22,7 +23,10 @@ def get_cutadapt_input(wildcards):
         return [sample["R1"], sample["R2"]]
     else:
         accession = sample["sra"]
-        return expand("results/fastq/{accession}_{read}.fastq", accession=accession, read=[1, 2])
+        return expand(
+            "results/fastq/{accession}_{read}.fastq", accession=accession, read=[1, 2]
+        )
+
 
 # setup input/output for folds rule
 def get_folds_input_samples(wildcards):
