@@ -24,7 +24,7 @@ def get_cutadapt_input(wildcards):
     else:
         accession = sample["sra"]
         return expand(
-            "results/fastq/{accession}_{read}.fastq", accession=accession, read=[1, 2]
+            "results/fastq/{accession}_{read}.fastq.gz", accession=accession, read=[1, 2]
         )
 
 

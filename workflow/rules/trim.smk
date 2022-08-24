@@ -1,11 +1,11 @@
 rule get_sra:
     output:
-        "results/fastq/{accession}_1.fastq",
-        "results/fastq/{accession}_2.fastq",
+        "results/fastq/{accession}_1.fastq.gz",
+        "results/fastq/{accession}_2.fastq.gz",
     log:
         "results/fastq/{accession}.log",
     wrapper:
-        "0.77.0/bio/sra-tools/fasterq-dump"
+        "v1.10.0/bio/sra-tools/fasterq-dump"
 
 
 rule cutadapt1:
