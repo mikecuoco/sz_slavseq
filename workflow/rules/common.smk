@@ -33,8 +33,8 @@ def get_folds_input_samples(wildcards):
 # if not from eul1db, should be a csv file with 3 or 4 columns:
 # chrom, start, end, in_NRdb (optional)
 def get_non_ref_l1():
-    db = config["germline_l1"]["source"]
-    NR_l1 = expand("resources/{db}/windows.csv", db=config["germline_l1"]["source"])
+    db = config["germline_line1"]["source"]
+    NR_l1 = expand("resources/{db}/windows.csv", db=config["germline_line1"]["source"])
 
     if db != "eul1db":
         NR_df = pd.read_csv(NR_l1[0])

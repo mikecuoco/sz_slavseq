@@ -8,7 +8,7 @@ properties:
   samples:
     type: string
   
-  ref:
+  genome:
     type: object
     properties:
       build:
@@ -18,6 +18,16 @@ properties:
         default: all
     required:
       - build
+
+  germline_line1:
+    type: object
+    properties:
+      source:
+        type: string
+        default: eul1db
+      build:
+        type: string
+        default: hg19
 
   adapters:
     type: object
@@ -54,7 +64,7 @@ properties:
 
 required:
   - samples
-  - ref
+  - genome
   - adapters
   - model
   
