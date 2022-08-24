@@ -1,9 +1,15 @@
+rule get_sra:
+    output:
+        "results/fastq/{accession}_1.fastq",
+        "results/fastq/{accession}_2.fastq",
+    log:
+        "results/fastq/{accession}.log",
+    wrapper:
+        "0.77.0/bio/sra-tools/fasterq-dump"
+
 rule cutadapt1:
     input:
-        [
-            lambda wildcards: samples.loc[wildcards.sample, "R1"],
-            lambda wildcards: samples.loc[wildcards.sample, "R2"],
-        ],
+        get_cutadapt_input
     output:
         fastq1="results/cutadapt1/{donor}/{dna_type}/{sample}_R1.fastq.gz",
         fastq2="results/cutadapt1/{donor}/{dna_type}/{sample}_R2.fastq.gz",
