@@ -13,8 +13,9 @@ snakefmt .
 # run lint checks
 snakemake --lint
 
-# NOTE: Tests do not work from within tmux environment
+# NOTE: sra download for tests fails within tmux session
 # test a single sample
+export SNAKEMAKE_OUTPUT_CACHE=$(pwd)/.snakemake-cache
 snakemake --cores 1 all --configfile .test/config_sample/config.yml --rerun-incomplete --show-failed-logs --use-conda --debug
 
 # test multiple samples from a single individual
