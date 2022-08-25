@@ -232,7 +232,7 @@ def my_cluster_id_cell(df):
         prev_iv = iv
         prev_cell = (x[4], x[5]) 
 
-def write_insertions(outDir, df0):
+def write_insertions(outDir, df0, sample, window_size):
     """
     Modify the given DataFrame such that two csvs are output:
     "slavseq_sz-intersections-cluster.csv" and "somatic_candidates-cluster.csv"
@@ -243,6 +243,10 @@ def write_insertions(outDir, df0):
         Output directory
     df0: DataFrame
         DataFrame pre-filtered for candidate somatic insertions
+    sample: string
+        {donor}_{dna_type}
+    window_size: int
+        size of genomic window used for feature extraction
     """
     df_sz = pd.DataFrame(data=None)
     slavseq_sz = pd.DataFrame(data=None)
@@ -458,7 +462,7 @@ def main():
     df_filter = df_label[ cond2 & cond3 & cond4 & cond5 ].reset_index(drop=True)
     
     # write somatic insertion candidates to csvs
-    write_insertions(outDir, df_filter)
+    write_insertions(outDir, df_filter, sample, window_size)
     
 
     # write cross-validation metrics to csv
