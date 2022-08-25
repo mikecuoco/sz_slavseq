@@ -23,8 +23,7 @@ rule gen_ref:
         "../envs/env.yml"
     params:
         region=config["ref"]["region"],
-    cache: 
-        True
+    cache: True
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
