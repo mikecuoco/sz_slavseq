@@ -7,7 +7,6 @@ __author__ = 'Michael Cuoco'
 import pandas as pd
 from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
-from pathlib import Path
     
 def main():
     url = "http://eul1db.unice.fr/UserLists/DATA/downloads/SRIP.txt"
@@ -16,22 +15,11 @@ def main():
 
     df = df0[(df0['lineage']=='germline') & (df0['study_id'].isin(['Ewing2010', 'Ewing2011', 'Stewart2011', 'Beck2010', 'Brouha2002', 'Iskow2010'])) & (df0['g_start']==df0['g_stop'])]
 
-    # bed = df[['chromosome', 'g_start', 'g_stop']]
-    # outDir = str(Path(snakemake.output[0]).parent.resolve())
-    # bed.to_csv(outDir + "/insertions.bed", sep="\t", header=False)
+    bed = df[['chromosome', 'g_start', 'g_stop']]
+    bed = bed.rename(columns={'chromosome': 'chr', 'g_start': 'start', 'g_stop': 'stop'})
+    bed['start'] -= 1
 
-    eul1db_pos = set()
-
-    for (_, chrom, start, end) in df[['chromosome', 'g_start', 'g_stop']].itertuples():
-        eul1db_pos.update([Interval(chrom, start, end)])
-    
-        len(eul1db_pos)
-
-    genome = Genome(snakemake.input[0])
-    xx = list(ig.windows_overlapping_intervals(genome, eul1db_pos, 750, 250))
-    eul1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
-    eul1['in_NRdb'] = True # NR = non-reference
-    eul1.to_csv(snakemake.output[0]) # why not use bed file for this?
+    bed.to_csv(snakemake.output[0], sep="\t", header=True)
 
 if __name__ == '__main__':
     main()

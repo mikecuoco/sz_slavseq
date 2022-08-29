@@ -68,6 +68,60 @@ rule get_eul1db:
         "../scripts/get_eul1db.py"
 
 
+rule liftover:
+    input:
+        insert=expand("resources/{db}/insertions.bed", db=config["ref"]["database"]),
+        fa=expand(rules.fix_names_clean.output.fa, ref=config["genome"]["build"]),
+    output:
+        expand("resources/{db}/insertions_stable.vcf", db=config["ref"]["database"]),
+    log:
+        expand("resources/{db}/liftover.log", db=config["ref"]["database"]),
+    conda:
+        "../envs/env.yml"
+    params:
+        build=config["genome"]["build"]
+        source=config["germline_line1"]["source"]
+        # chain=config["chain"]
+    shell:
+        """
+        touch {log} && exec 1>{log} 2>&1
+
+        if [[ {params.chain} != None ]]; then
+            wget -P resources/liftover/ -q --no-config \
+                https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
+
+            Rscript workflow/scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions.vcf \
+                resources/{wildcards.ref}/genome.fa
+
+            vcftools --vcf insertions.vcf --exclude-bed FASTA_BED.ALL_GRCh3N.novel_CUPs.bed \
+                --recode --recode-INFO-all --out insertions_stable.vcf
+
+            picard CreateSequenceDictionary -R {input.fa} -O resources/{wildcards.ref}/genome.dict
+
+            picard LiftoverVcf -I insertions_stable.vcf -O insertions_lifted.vcf \
+                -C resources/{params.chain} \
+                --REJECT rejected_insertions.vcf -R {input.fa}
+        else
+            # make output consistent for all cases
+            Rscript workflow/scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions_stable.vcf \
+                resources/{wildcards.ref}/genome.fa
+        fi
+        """
+    
+
+rule get_windows:
+    input: 
+        rules.liftover.output
+    output:
+        expand("resources/{db}/windows.csv", db=config["ref"]["database"]),
+    log:
+        expand("resources/{db}/get_windows.log", db=config["ref"]["database"]),
+    conda:
+        "../envs/env.yml"
+    script:
+        "../scripts/get_windows.py"
+
+
 rule get_rmsk:
     input:
         "resources/{ref}/genome.genome",
@@ -80,45 +134,3 @@ rule get_rmsk:
         "../envs/env.yml"
     script:
         "../scripts/get_rmsk.py"
-
-
-rule liftover:
-    input:
-        insert=expand("resources/{db}/insertions.bed", db=config["ref"]["database"]),
-        fa=expand(rules.fix_names_clean.output.fa, ref=config["genome"]["build"]),
-    output:
-        expand("resources/{db}/insertions_stable.vcf", db=config["ref"]["database"]),
-    log:
-        "resources/liftover/liftover.log"
-    conda:
-        "../envs/env.yml"
-    params:
-        build=config["genome"]["build"]
-        source=config["germline_line1"]["source"]
-        chain=config["chain"]
-    shell:
-        """
-        touch {log} && exec 1>{log} 2>&1
-
-        if [[ {params.chain} != None ]]; then
-            wget -P resources/liftover/ -q --no-config \
-                https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
-
-            Rscript ../scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions.vcf resources/{wildcards.ref}/genome.fa
-
-            vcftools --vcf insertions.vcf --exclude-bed FASTA_BED.ALL_GRCh3N.novel_CUPs.bed \
-                --recode --recode-INFO-all --out insertions_stable.vcf
-
-            picard CreateSequenceDictionary -R {input.fa} -O resources/{wildcards.ref}/genome.dict
-
-            picard LiftoverVcf -I insertions_stable.vcf -O insertions_lifted.vcf -C resources/{params.chain} \
-                --REJECT rejected_insertions.vcf -R {input.fa}
-        else
-            # make output consistent for all cases
-            Rscript ../scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions_stable.vcf \
-                resources/{wildcards.ref}/genome.fa
-        fi
-        """
-    
-
-# rule get_windows:
