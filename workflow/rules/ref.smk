@@ -41,7 +41,7 @@ rule gen_ref:
 # TODO: edit fix_names.py to also change the names for hg38
 rule fix_names_clean:
     input:
-        fa=rules.gen_ref.output,
+        rules.gen_ref.output,
     output:
         fa="resources/{ref}/genome.fa",
         fai="resources/{ref}/genome.fa.fai",
@@ -82,21 +82,43 @@ rule get_rmsk:
         "../scripts/get_rmsk.py"
 
 
-# rule liftover:
-#     input:
-#         expand("resources/{db}/insertions.bed", db=config["ref"]["database"]),
-#     output:
-#         expand("resources/{db}/insertions.stable.vcf", db=config["ref"]["database"]),
-#     shell:
-#         """
-#         wget -O- -q --no-config https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
+rule liftover:
+    input:
+        insert=expand("resources/{db}/insertions.bed", db=config["ref"]["database"]),
+        fa=expand(rules.fix_names_clean.output.fa, ref=config["genome"]["build"]),
+    output:
+        expand("resources/{db}/insertions_stable.vcf", db=config["ref"]["database"]),
+    log:
+        "resources/liftover/liftover.log"
+    conda:
+        "../envs/env.yml"
+    params:
+        build=config["genome"]["build"]
+        source=config["germline_line1"]["source"]
+        chain=config["chain"]
+    shell:
+        """
+        touch {log} && exec 1>{log} 2>&1
 
-#         R -e "bed2vcf({input}, filename='insertions.vcf', zero-based=FALSE, header=NULL, fasta='resources/{params.build}/genome.fa')"
+        if [[ {params.chain} != None ]]; then
+            wget -P resources/liftover/ -q --no-config \
+                https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
 
-#         vcftools --vcf insertions.vcf --exclude-bed FASTA_BED.ALL_GRCh3N.novel_CUPs.bed \
-#         --recode --recode-INFO-all --out insertions.stable.vcf
+            Rscript ../scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions.vcf resources/{wildcards.ref}/genome.fa
 
-#         """
+            vcftools --vcf insertions.vcf --exclude-bed FASTA_BED.ALL_GRCh3N.novel_CUPs.bed \
+                --recode --recode-INFO-all --out insertions_stable.vcf
+
+            picard CreateSequenceDictionary -R {input.fa} -O resources/{wildcards.ref}/genome.dict
+
+            picard LiftoverVcf -I insertions_stable.vcf -O insertions_lifted.vcf -C resources/{params.chain} \
+                --REJECT rejected_insertions.vcf -R {input.fa}
+        else
+            # make output consistent for all cases
+            Rscript ../scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions_stable.vcf \
+                resources/{wildcards.ref}/genome.fa
+        fi
+        """
     
 
 # rule get_windows:

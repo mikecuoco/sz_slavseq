@@ -16,7 +16,7 @@ if "37" in snakemake.wildcards.ref:
 	chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", header=None)
 
 	# save filenames to objects
-	original_file = snakemake.input.fa[0]
+	original_file = snakemake.input[0]
 	corrected_file = snakemake.output.fa
 
 	with open(corrected_file, 'w') as corrected:
@@ -34,7 +34,7 @@ if "37" in snakemake.wildcards.ref:
 			# write the record to the output file
 			SeqIO.write(record, corrected, 'fasta')
 else:
-	os.rename(snakemake.input.fa[0], snakemake.output.fa)
+	os.rename(snakemake.input[0], snakemake.output.fa)
 
 # samtools faidx
 pysam.faidx(snakemake.output.fa)

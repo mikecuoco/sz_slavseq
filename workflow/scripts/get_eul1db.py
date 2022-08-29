@@ -7,6 +7,7 @@ __author__ = 'Michael Cuoco'
 import pandas as pd
 from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
+from pathlib import Path
     
 def main():
     url = "http://eul1db.unice.fr/UserLists/DATA/downloads/SRIP.txt"
@@ -14,6 +15,10 @@ def main():
     df0['chromosome'] = 'chr' + df0['chromosome']
 
     df = df0[(df0['lineage']=='germline') & (df0['study_id'].isin(['Ewing2010', 'Ewing2011', 'Stewart2011', 'Beck2010', 'Brouha2002', 'Iskow2010'])) & (df0['g_start']==df0['g_stop'])]
+
+    # bed = df[['chromosome', 'g_start', 'g_stop']]
+    # outDir = str(Path(snakemake.output[0]).parent.resolve())
+    # bed.to_csv(outDir + "/insertions.bed", sep="\t", header=False)
 
     eul1db_pos = set()
 
