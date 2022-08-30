@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import re
 import subprocess
+import pdb
 
 import pyslavseq
 from pyslavseq.genome import Genome, Interval, overlaps
@@ -102,7 +103,7 @@ class Cell():
     def print_windows_max(self):
         self.__printlist(self.windows_max)
 
-    def to_dataframe(self,sample=None):
+    def to_dataframe(self, sample=None):
         
         if len(self.windows_max) > 1:
             df = pd.DataFrame(data=None)
@@ -111,7 +112,8 @@ class Cell():
                 df = df.append( [ w.as_tuple() ] )
         else:
             import numpy as np
-            df = np.transpose((pd.DataFrame(data=w1.as_tuple())))
+            w = self.windows_max[0][0]
+            df = np.transpose((pd.DataFrame(data=w.as_tuple())))
 
         df.columns = ['chrom','start','end','intv', 'proba_max', 'reads_max']
        
@@ -242,7 +244,7 @@ def write_insertions(outDir, df0, sample, window_size):
     outDir: string
         Output directory
     df0: DataFrame
-        DataFrame pre-filtered for candidate somatic insertions
+        DataFrame pre-filtered windows for candidate somatic insertions
     sample: string
         {donor}_{dna_type}
     window_size: int
@@ -252,14 +254,13 @@ def write_insertions(outDir, df0, sample, window_size):
     slavseq_sz = pd.DataFrame(data=None)
 
     cells = set(df0['cell_id'])
-
     if len(df0) > 0:
         for c in cells:
 
             print(sample, "-", c)
 
             c1 = Cell(cell=c)
-            
+
             # drop rows with different cell type
             cond1 = df0['cell_id'] == c 
             df_cell = df0[ cond1 ].reset_index(drop=True)
