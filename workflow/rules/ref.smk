@@ -56,7 +56,8 @@ rule fix_names_clean:
 
 rule get_eul1db:
     input:
-        expand("resources/{ref}/genome.genome", ref=config["ref"]["build"]),
+        genome = expand("resources/{ref}/genome.genome", ref=config["ref"]["build"]),
+        eul1db = "resources/eul1db_SRIP.txt",
     output:
         "resources/eul1db/windows.csv",
     conda:
