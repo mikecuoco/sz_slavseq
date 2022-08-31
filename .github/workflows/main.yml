@@ -12,10 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          lfs: true
-      - name: Checkout LFS objects
-        run: git lfs checkout
       - name: Formatting
         uses: github/super-linter@v4
         env:
@@ -43,6 +39,10 @@ jobs:
       - Formatting
     steps: 
     - uses: actions/checkout@v2
+        with:
+          lfs: true
+    - name: Checkout LFS objects
+      run: git lfs checkout
     - name: Test workflow on single sample
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
@@ -52,7 +52,7 @@ jobs:
           export SNAKEMAKE_OUTPUT_CACHE=$(pwd)/.snakemake-cache/
           mkdir -p $SNAKEMAKE_OUTPUT_CACHE
         snakefile: workflow/Snakefile
-        args: "--use-conda --cache --show-failed-logs --cores 1 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_sample/config.yml --debug"
+        args: "--use-conda --cache --show-failed-logs --cores 4 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_sample/config.yml"
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0

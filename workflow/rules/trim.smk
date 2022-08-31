@@ -10,7 +10,7 @@ rule cutadapt1:
         extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4",
     log:
         "results/cutadapt1/{donor}/{dna_type}/{sample}.log",
-    threads: 1
+    threads: 4
     wrapper:
         "v1.12.0/bio/cutadapt/pe"
 
@@ -27,6 +27,6 @@ rule cutadapt2:
         extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4",
     log:
         "results/cutadapt2/{donor}/{dna_type}/{sample}.log",
-    threads: 1
+    threads: 4
     wrapper:
         "v1.12.0/bio/cutadapt/pe"
