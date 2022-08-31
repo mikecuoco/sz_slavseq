@@ -45,7 +45,8 @@ jobs:
         directory: .
         stagein: |
           mamba install -n snakemake -c conda-forge biopython -y -q
-          export SNAKEMAKE_OUTPUT_CACHE=/mnt/snakemake-cache/
+          export SNAKEMAKE_OUTPUT_CACHE=$(pwd)/.snakemake-cache/
+          mkdir -p $SNAKEMAKE_OUTPUT_CACHE
         snakefile: workflow/Snakefile
         args: "--use-conda --cache --show-failed-logs --cores 1 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_sample/config.yml --debug"
 
