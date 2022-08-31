@@ -47,18 +47,15 @@ def get_folds_input_samples(wildcards):
 # get file of non-reference germline L1s
 # if not from eul1db, should be a csv file with 3 or 4 columns:
 # chrom, start, end, in_NRdb (optional)
-def get_non_ref_l1():
+def get_non_ref_l1(wildcards):
     db = config["ref"]["database"]
-    NR_l1 = expand("resources/{db}/windows.csv", db=config["ref"]["database"])
+    NR_l1 = f"resources/{db}/windows.csv"
 
     if db != "eul1db":
         NR_df = pd.read_csv(NR_l1[0])
         validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
 
     return NR_l1
-
-
-l1db = get_non_ref_l1()
 
 num_folds = config["model"]["num_folds"]
 fold_dirs = [f"fold_{fold}" for fold in range(num_folds)]
