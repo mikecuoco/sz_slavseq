@@ -1,10 +1,14 @@
 #!/usr/bin/env python
+# adapted from Ricardo's jupyter notebook from rf pipeline: pipeline/eul1db/to_windows/_h/main.ipynb
+__author__ = 'Michael Cuoco, Rohini Gadde'
 
 import pandas as pd
 from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
 
 def main():
+    df = pd.read_csv(snakemake.input[0], sep="\t")
+
     db_pos = set()
 
     for (_, chrom, start, end) in df[['chr', 'start', 'stop']].itertuples():

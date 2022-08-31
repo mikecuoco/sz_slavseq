@@ -14,7 +14,8 @@ def download_rmsk(ref):
     if "38" in ref:
         url="ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/GCA_000001405.15_GRCh38_rm.out.gz"
         sm.shell(f"wget -O- --no-config -q {url} > resources/{snakemake.wildcards.ref}rmsk.out.gz")
-        sm.shell(f"rmToUCSCTables.pl -out resources/{snakemake.wildcards.ref}/rmsk.out.gz") # utility from RepeatMasker``
+        sm.shell("perl -e 'use Data::Dumper; print Dumper(\@INC)'") # print value of @INC
+        sm.shell(f"rmToUCSCTables.pl -out resources/{snakemake.wildcards.ref}/rmsk.out.gz") # utility from RepeatMasker
         sm.shell(f"gzip -c resources/{snakemake.wildcards.ref}/rmsk.out.tsv > {snakemake.output.rmsk}")
     elif "37" in ref:
         url="http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz"

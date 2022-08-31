@@ -54,68 +54,67 @@ rule fix_names_clean:
         "../scripts/fix_names.py"
 
 
-rule get_eul1db:
-    input:
-        rules.fix_names_clean.output.chromsizes
-    output:
-        "resources/eul1db/insertions.bed",
-        # "resources/eul1db/windows.csv",
-    conda:
-        "../envs/env.yml"
-    log:
-        "resources/eul1db/get_eul1db.log",
-    script:
-        "../scripts/get_eul1db.py"
+# rule get_eul1db:
+#     input:
+#         rules.fix_names_clean.output.chromsizes
+#     output:
+#         "resources/eul1db/insertions.bed",
+#         # "resources/eul1db/windows.csv",
+#     conda:
+#         "../envs/env.yml"
+#     log:
+#         "resources/eul1db/get_eul1db.log",
+#     script:
+#         "../scripts/get_eul1db.py"
 
 
 rule liftover:
     input:
-        insert=expand("resources/{db}/insertions.bed", db=config["ref"]["database"]),
+        srip="resources/{db}/insertions.bed",
         fa=expand(rules.fix_names_clean.output.fa, ref=config["genome"]["build"]),
     output:
-        expand("resources/{db}/insertions_stable.vcf", db=config["ref"]["database"]),
+        "resources/{db}/insertions_stable.bed",
     log:
-        expand("resources/{db}/liftover.log", db=config["ref"]["database"]),
+        "resources/{db}/liftover.log",
     conda:
         "../envs/env.yml"
     params:
-        build=config["genome"]["build"]
-        source=config["germline_line1"]["source"]
-        # chain=config["chain"]
+        build=config["genome"]["build"],
+        source=config["germline_line1"]["source"],
+        chain=config["chain"],
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        if [[ {params.chain} != None ]]; then
-            wget -P resources/liftover/ -q --no-config \
-                https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
-
-            Rscript workflow/scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions.vcf \
+        # TESTING SCRIPT
+        if [[ {params.chain} != "None" ]]; then
+            # bed -> vcf
+            Rscript workflow/scripts/bed_to_vcf.R {input.srip} \
+                resources/{params.source}/insertions_stable.vcf \
                 resources/{wildcards.ref}/genome.fa
 
-            vcftools --vcf insertions.vcf --exclude-bed FASTA_BED.ALL_GRCh3N.novel_CUPs.bed \
-                --recode --recode-INFO-all --out insertions_stable.vcf
+            # Remove unstable positions
+            # picard LiftoverVcf
 
-            picard CreateSequenceDictionary -R {input.fa} -O resources/{wildcards.ref}/genome.dict
-
-            picard LiftoverVcf -I insertions_stable.vcf -O insertions_lifted.vcf \
-                -C resources/{params.chain} \
-                --REJECT rejected_insertions.vcf -R {input.fa}
+            # vcf -> bed
+            tail -n +6 resources/{params.source}/insertions_stable.vcf | \
+                awk -v OFS="\t" '{print $1, $2-1, $2}' \
+                > liftover.tmp
+            sed -i '1s/^/chr\tstart\tend\n/' liftover.tmp > {output}
+            rm liftover.tmp
         else
-            # make output consistent for all cases
-            Rscript workflow/scripts/bed_to_vcf.R {input.insert} resources/liftover/insertions_stable.vcf \
-                resources/{wildcards.ref}/genome.fa
-        fi
+            # no liftover necessary
+            mv {input.srip} {output}
         """
-    
+
 
 rule get_windows:
-    input: 
-        rules.liftover.output
+    input:
+        rules.liftover.output,
     output:
-        expand("resources/{db}/windows.csv", db=config["ref"]["database"]),
+        "resources/{db}/windows.csv",
     log:
-        expand("resources/{db}/get_windows.log", db=config["ref"]["database"]),
+        "resources/{db}/get_windows.log",
     conda:
         "../envs/env.yml"
     script:
