@@ -1,6 +1,7 @@
 rule features:
     input:
         bgz=rules.tabix.output.bgz,
+        tbi=rules.tabix.output.tbi,
         fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]["build"]),
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
@@ -46,6 +47,7 @@ rule features:
 rule flank_features:
     input:
         bgz=rules.features.output.bgz,
+        tbi=rules.features.output.tbi,
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
         ),
