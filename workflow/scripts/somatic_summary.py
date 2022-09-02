@@ -412,7 +412,7 @@ def main():
     # rule is run one donor and one dna_type at a time
 
     # get input directory containing each fold directory
-    inDirs = [str(Path(d).parent.resolve()) for d in snakemake.input]
+    inDirs = [str(Path(d).parent.parent.resolve()) for d in snakemake.input]
     
     # get only unique directories
     # i.e. one directory equal to "results/train_test/{{donor}}/{{dna_type}}"
