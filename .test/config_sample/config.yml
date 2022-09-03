@@ -2,7 +2,7 @@
 samples: .test/config_sample/test.tsv
 
 ref: 
-  build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
+  build: hs37d5 # options: <hs37d5>
   region: all # all = use all regions. When specifying other regions, ensure compatible with build
   database: eul1db # options: eul1db or a csv file (chrom, start, end, in_NRdb=True)
   # located under resources/{database}/windows.csv
