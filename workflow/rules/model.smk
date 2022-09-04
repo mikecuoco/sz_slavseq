@@ -1,6 +1,7 @@
 rule features:
     input:
         bgz=rules.tabix.output.bgz,
+        tbi=rules.tabix.output.tbi,
         fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]["build"]),
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
@@ -46,6 +47,7 @@ rule features:
 rule flank_features:
     input:
         bgz=rules.features.output.bgz,
+        tbi=rules.features.output.tbi,
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
         ),
@@ -65,7 +67,7 @@ rule folds:
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
         ),
-        non_ref_l1=l1db,
+        non_ref_l1=get_non_ref_l1,
         ref_l1=expand(rules.get_rmsk.output.ref_l1, ref=config["ref"]["build"]),
     params:
         # non_ref_db=config["ref"]["database"]
@@ -104,8 +106,9 @@ rule train_test:
             ],
         ),
     output:
-        directory(
-            expand("results/train_test/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs)
+        expand(
+            "results/train_test/{{donor}}/{{dna_type}}/{fold}/Testing_y_pred.csv",
+            fold=fold_dirs,
         ),
     params:
         num_folds=config["model"]["num_folds"],

@@ -141,13 +141,14 @@ class TrainTest:
         for k in range(snakemake.params.num_folds):
 
             # TODO make this robust to output being a directory or a file
-            self.outDir = set([str(Path(f)) for f in snakemake.output if re.search(f'fold_{k}', f)]).pop()
+            for f in snakemake.output:
+                if re.search(f'fold_{k}', f):
+                    self.outDir = str(Path(f).parent)
             
             self.inFiles = [Path(f) for f in snakemake.input if re.search(f'fold_{k}', f)]
             
             # TODO: examine why this if statement is not entered; why does the path exist?
             # if not Path(self.outDir).exists():
-                
             self.create_directory(self.outDir)
 
             # clear_output()
