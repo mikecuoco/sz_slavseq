@@ -15,7 +15,6 @@ rule features:
         "results/features/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/env.yml"
-    cache: True
     shell:
         """
         touch {log} && exec 2>{log} 
@@ -67,7 +66,7 @@ rule folds:
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["genome"]["build"]
         ),
-        non_ref_l1=l1db,
+        non_ref_l1=get_non_ref_l1,
         ref_l1=expand(rules.get_rmsk.output.ref_l1, ref=config["genome"]["build"]),
     params:
         # non_ref_db=config["ref"]["database"]
