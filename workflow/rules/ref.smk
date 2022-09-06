@@ -61,7 +61,6 @@ rule get_eul1db:
         eul1db="resources/eul1db_SRIP.txt",
     output:
         "resources/eul1db/insertions.bed",
-        # "resources/eul1db/windows.csv",
     conda:
         "../envs/env.yml"
     log:

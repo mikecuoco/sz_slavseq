@@ -5,6 +5,8 @@ rule bwa_index:
         idx=multiext("resources/{ref}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"),
     log:
         "resources/{ref}/bwa_index.log",
+    conda:
+        "../envs/env.yml"
     cache: True
     wrapper:
         "v1.7.1/bio/bwa/index"
@@ -24,6 +26,7 @@ rule bwa_mem:
     threads: 4
     conda:
         "../envs/env.yml"
+    cache: True
     wrapper:
         "v1.7.0/bio/bwa/mem"
 

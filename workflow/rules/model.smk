@@ -15,6 +15,7 @@ rule features:
         "results/features/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/env.yml"
+    cache: True
     shell:
         """
         touch {log} && exec 2>{log} 
