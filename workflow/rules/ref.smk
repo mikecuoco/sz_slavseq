@@ -54,18 +54,18 @@ rule fix_names_clean:
         "../scripts/fix_names.py"
 
 
-# rule get_eul1db:
-#     input:
-#         rules.fix_names_clean.output.chromsizes
-#     output:
-#         "resources/eul1db/insertions.bed",
-#         # "resources/eul1db/windows.csv",
-#     conda:
-#         "../envs/env.yml"
-#     log:
-#         "resources/eul1db/get_eul1db.log",
-#     script:
-#         "../scripts/get_eul1db.py"
+rule get_eul1db:
+    input:
+        rules.fix_names_clean.output.chromsizes
+    output:
+        "resources/eul1db/insertions.bed",
+        # "resources/eul1db/windows.csv",
+    conda:
+        "../envs/env.yml"
+    log:
+        "resources/eul1db/get_eul1db.log",
+    script:
+        "../scripts/get_eul1db.py"
 
 
 rule liftover:

@@ -12,33 +12,34 @@ import logging
 import os
 
 def download_rmsk(ref):
-    if "38" in ref:
-        url="ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/GCA_000001405.15_GRCh38_rm.out.gz"
-        sm.shell(f"wget -O- --no-config -q {url} > resources/{snakemake.wildcards.ref}/rmsk.out.gz")
-        os.environ['PERL5LIB'] = os.environ['CONDA_PREFIX'] + "/share/RepeatMasker"
-        sm.shell(f"rmToUCSCTables.pl -out resources/{snakemake.wildcards.ref}/rmsk.out.gz") # utility from RepeatMasker
-        sm.shell(f"gzip -c resources/{snakemake.wildcards.ref}/rmsk.out.tsv > {snakemake.output.rmsk}")
-    elif "37" in ref:
-        url="http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz"
-        sm.shell(f"wget -O- --no-config -q {url} > {snakemake.output.rmsk}")
+    
+    url="https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz"
+    sm.shell(f"wget --no-config -q {url}")
+    sm.shell("gunzip Dfam-p1_curatedonly.h5.gz")
+    sm.shell("mv Dfam-p1_curatedonly.h5.gz $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5")
+    # os.environ['PERL5LIB'] = os.environ['CONDA_PREFIX'] + "/share/RepeatMasker"
+    sm.shell(f"RepeatMasker -pa 4 -s -nolow -species human -dir resources/{snakemake.wildcards.ref}/ \
+        resources/{snakemake.wildcards.ref}/genome.fa")
+    sm.shell(f"mv resources/{snakemake.wildcards.ref}/genome.fa.out {snakemake.output.rmsk}")
 
 
 def read_rmsk():
 
     # read the rmsk file
-    df0 = pd.read_csv(snakemake.output.rmsk, compression="gzip", sep="\t", header = None, usecols = [5,6,7,9,10])
+    df0 = pd.read_csv(snakemake.output.rmsk, compression='gzip', skiprows=3, delim_whitespace=True, 
+        names=["chrom", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
 
     # filter for rep_names
     rep_names = ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]
     logging.info(f"Filtering for rep_names: {rep_names}")
-    df0 =  df0.loc[df0.iloc[:,4].isin(rep_names)]
+    df0 =  df0[df0['repeat'].isin(rep_names)]
 
     # save to new dataframe
     df1 = pd.DataFrame()
-    df1['chrom'] = df0.iloc[:,0]
+    df1['chrom'] = df0['chrom']
     # set start positions depending on strand
-    df1['pos'] = df0.apply(lambda x: x.iloc[2] if x.iloc[3] == '+' else x.iloc[1], axis=1)
-    df1['l1_name'] = df0.iloc[:,4]
+    df1['pos'] = df0.apply(lambda x: x['end'] if x['strand'] != '+' else x['start'], axis=1)
+    df1['l1_name'] = df0['repeat']
 
     return df1
 
