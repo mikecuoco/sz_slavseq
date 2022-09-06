@@ -1,5 +1,5 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: .test/config/test.tsv
+samples: .test/config_indv/test.tsv
 
 genome:
   build: hs38DH # options: <hs38DH|hs37d5>

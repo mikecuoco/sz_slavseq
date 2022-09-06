@@ -23,6 +23,7 @@ rule gen_ref:
         "../envs/env.yml"
     params:
         region=config["genome"]["region"],
+    cache: True
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -56,7 +57,8 @@ rule fix_names_clean:
 
 rule get_eul1db:
     input:
-        rules.fix_names_clean.output.chromsizes
+        genome="resources/{ref}/genome.genome",
+        eul1db="resources/eul1db_SRIP.txt",
     output:
         "resources/eul1db/insertions.bed",
         # "resources/eul1db/windows.csv",
@@ -79,8 +81,6 @@ rule liftover:
     conda:
         "../envs/env.yml"
     params:
-        build=config["genome"]["build"],
-        source=config["germline_line1"]["source"],
         chain=config["chain"],
     shell:
         """

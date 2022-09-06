@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import re
 import subprocess
+import pdb
 
 import pyslavseq
 from pyslavseq.genome import Genome, Interval, overlaps
@@ -102,7 +103,7 @@ class Cell():
     def print_windows_max(self):
         self.__printlist(self.windows_max)
 
-    def to_dataframe(self,sample=None):
+    def to_dataframe(self, sample=None):
         
         if len(self.windows_max) > 1:
             df = pd.DataFrame(data=None)
@@ -111,7 +112,8 @@ class Cell():
                 df = df.append( [ w.as_tuple() ] )
         else:
             import numpy as np
-            df = np.transpose((pd.DataFrame(data=w1.as_tuple())))
+            w = self.windows_max[0][0]
+            df = np.transpose((pd.DataFrame(data=w.as_tuple())))
 
         df.columns = ['chrom','start','end','intv', 'proba_max', 'reads_max']
        
@@ -232,7 +234,7 @@ def my_cluster_id_cell(df):
         prev_iv = iv
         prev_cell = (x[4], x[5]) 
 
-def write_insertions(outDir, df0):
+def write_insertions(outDir, df0, sample, window_size):
     """
     Modify the given DataFrame such that two csvs are output:
     "slavseq_sz-intersections-cluster.csv" and "somatic_candidates-cluster.csv"
@@ -242,20 +244,23 @@ def write_insertions(outDir, df0):
     outDir: string
         Output directory
     df0: DataFrame
-        DataFrame pre-filtered for candidate somatic insertions
+        DataFrame pre-filtered windows for candidate somatic insertions
+    sample: string
+        {donor}_{dna_type}
+    window_size: int
+        size of genomic window used for feature extraction
     """
     df_sz = pd.DataFrame(data=None)
     slavseq_sz = pd.DataFrame(data=None)
 
     cells = set(df0['cell_id'])
-
     if len(df0) > 0:
         for c in cells:
 
             print(sample, "-", c)
 
             c1 = Cell(cell=c)
-            
+
             # drop rows with different cell type
             cond1 = df0['cell_id'] == c 
             df_cell = df0[ cond1 ].reset_index(drop=True)
@@ -407,7 +412,7 @@ def main():
     # rule is run one donor and one dna_type at a time
 
     # get input directory containing each fold directory
-    inDirs = [str(Path(d).parent.resolve()) for d in snakemake.input]
+    inDirs = [str(Path(d).parent.parent.resolve()) for d in snakemake.input]
     
     # get only unique directories
     # i.e. one directory equal to "results/train_test/{{donor}}/{{dna_type}}"
@@ -458,7 +463,7 @@ def main():
     df_filter = df_label[ cond2 & cond3 & cond4 & cond5 ].reset_index(drop=True)
     
     # write somatic insertion candidates to csvs
-    write_insertions(outDir, df_filter)
+    write_insertions(outDir, df_filter, sample, window_size)
     
 
     # write cross-validation metrics to csv

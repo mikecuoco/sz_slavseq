@@ -1,9 +1,6 @@
 rule cutadapt1:
     input:
-        [
-            lambda wildcards: samples.loc[wildcards.sample, "R1"],
-            lambda wildcards: samples.loc[wildcards.sample, "R2"],
-        ],
+        get_cutadapt_input,
     output:
         fastq1="results/cutadapt1/{donor}/{dna_type}/{sample}_R1.fastq.gz",
         fastq2="results/cutadapt1/{donor}/{dna_type}/{sample}_R2.fastq.gz",
@@ -14,10 +11,8 @@ rule cutadapt1:
     log:
         "results/cutadapt1/{donor}/{dna_type}/{sample}.log",
     threads: 4
-    conda:
-        "../envs/env.yml"
     wrapper:
-        "v1.7.1/bio/cutadapt/pe"
+        "v1.12.0/bio/cutadapt/pe"
 
 
 rule cutadapt2:
@@ -33,7 +28,5 @@ rule cutadapt2:
     log:
         "results/cutadapt2/{donor}/{dna_type}/{sample}.log",
     threads: 4
-    conda:
-        "../envs/env.yml"
     wrapper:
-        "v1.7.1/bio/cutadapt/pe"
+        "v1.12.0/bio/cutadapt/pe"

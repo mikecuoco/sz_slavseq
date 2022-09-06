@@ -14,15 +14,18 @@ properties:
     description: type of sequencing (bulk, mda,...)
   R1:
     type: string
-    description: file path to read 1
+    description: file path to read 1 fastq file
   R2:
     type: string
-    description: file path to read 2
+    description: file path to read 2 fastq file
+  sra:
+    type: string
+    description: SRA/ENA accession number for automatic download of fastq files
 
 required:
   - donor
   - sample
   - dna_type
-  - R1
-  - R2
+
+# Add necessity for R1/R2 or sra
   

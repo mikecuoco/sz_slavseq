@@ -43,7 +43,7 @@ def get_reference_l1():
 
 @functools.lru_cache()
 def get_non_ref_db():
-    df = pd.read_csv(snakemake.input.non_ref_l1[0], index_col=[0,1,2])
+    df = pd.read_csv(snakemake.input.non_ref_l1, index_col=[0,1,2])
     return df
 
 # @functools.lru_cache(maxsize=1500)

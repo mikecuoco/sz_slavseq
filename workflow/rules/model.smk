@@ -46,6 +46,7 @@ rule features:
 rule flank_features:
     input:
         bgz=rules.features.output.bgz,
+        tbi=rules.features.output.tbi,
         chromsizes=expand(
             rules.fix_names_clean.output.chromsizes, ref=config["genome"]["build"]
         ),
@@ -104,8 +105,9 @@ rule train_test:
             ],
         ),
     output:
-        directory(
-            expand("results/train_test/{{donor}}/{{dna_type}}/{fold}", fold=fold_dirs)
+        expand(
+            "results/train_test/{{donor}}/{{dna_type}}/{fold}/Testing_y_pred.csv",
+            fold=fold_dirs,
         ),
     params:
         num_folds=config["model"]["num_folds"],
