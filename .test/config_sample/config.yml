@@ -1,11 +1,16 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
 samples: .test/config_sample/test.tsv
 
-ref: 
-  build: hs37d5 # options: <hs37d5>
-  region: all # all = use all regions. When specifying other regions, ensure compatible with build
-  database: eul1db # options: eul1db or a csv file (chrom, start, end, in_NRdb=True)
-  # located under resources/{database}/windows.csv
+genome:
+  build: hs38DH # options: <hs38DH|hs37d5>
+  region: all # use 22 for hs37d5
+
+germline_line1: # given by eul1db or a BED file (resources/{source}/insertions.bed)
+  source: eul1db
+  build: hg19
+
+# basename of chain file (None if no liftover expected)
+chain: None
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
