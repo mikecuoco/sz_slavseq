@@ -57,8 +57,7 @@ rule fix_names_clean:
 
 rule get_eul1db:
     input:
-        genome="resources/{ref}/genome.genome",
-        eul1db="resources/eul1db_SRIP.txt",
+        "resources/eul1db_SRIP.txt",
     output:
         "resources/eul1db/insertions.bed",
     conda:
@@ -74,36 +73,19 @@ rule liftover:
         srip="resources/{db}/insertions.bed",
         fa=expand(rules.fix_names_clean.output.fa, ref=config["genome"]["build"]),
     output:
-        "resources/{db}/insertions_stable.bed",
+        "resources/{db}/insertions_lifted.bed",
     log:
         "resources/{db}/liftover.log",
     conda:
         "../envs/env.yml"
     params:
+        ref=config["genome"]["build"],
         chain=config["chain"],
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        # TESTING SCRIPT
-        if [[ {params.chain} != "None" ]]; then
-            # bed -> vcf
-            Rscript workflow/scripts/bed_to_vcf.R {input.srip} \
-                resources/{params.source}/insertions_stable.vcf \
-                resources/{wildcards.ref}/genome.fa
-
-            # Remove unstable positions
-            # picard LiftoverVcf
-
-            # vcf -> bed
-            tail -n +6 resources/{params.source}/insertions_stable.vcf | \
-                awk -v OFS="\t" '{print $1, $2-1, $2}' \
-                > liftover.tmp
-            sed -i '1s/^/chr\tstart\tend\n/' liftover.tmp > {output}
-            rm liftover.tmp
-        else
-            # no liftover necessary
-            mv {input.srip} {output}
+        workflow/scripts/liftover.sh
         """
 
 
@@ -124,7 +106,7 @@ rule get_rmsk:
     input:
         "resources/{ref}/genome.genome",
     output:
-        rmsk="resources/{ref}/rmsk.txt.gz",
+        rmsk="resources/{ref}/rmsk.out",
         ref_l1="resources/{ref}/reference_l1.csv",
     log:
         "resources/{ref}/rmsk.log",

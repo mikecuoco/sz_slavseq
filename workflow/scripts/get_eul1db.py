@@ -9,7 +9,7 @@ import pyslavseq.genome.interval_generator as ig
     
 def main():
     # load the eul1db file
-    df0 = pd.read_csv(snakemake.input.eul1db, sep="\t", skiprows=5, dtype={'chromosome':str})
+    df0 = pd.read_csv(snakemake.input[0], sep="\t", skiprows=5, dtype={'chromosome':str})
     df0['chromosome'] = 'chr' + df0['chromosome']
 
     # filter for germline insertions from trusted studies
@@ -19,7 +19,7 @@ def main():
     bed = bed.rename(columns={'chromosome': 'chr', 'g_start': 'start', 'g_stop': 'stop'})
     bed['start'] -= 1
 
-    bed.to_csv(snakemake.output[0], sep="\t", header=True)
+    bed.to_csv(snakemake.output[0], sep="\t", header=True, index=False)
 
 if __name__ == '__main__':
 

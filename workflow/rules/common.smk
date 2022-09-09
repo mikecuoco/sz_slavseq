@@ -48,7 +48,7 @@ def get_folds_input_samples(wildcards):
 # if not from eul1db, should be a csv file with 3 or 4 columns:
 # chrom, start, end, in_NRdb (optional)
 def get_non_ref_l1(wildcards):
-    db = config["ref"]["database"]
+    db = config["germline_line1"]["source"]
     NR_l1 = f"resources/{db}/windows.csv"
 
     if db != "eul1db":
