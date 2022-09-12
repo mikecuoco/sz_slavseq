@@ -11,7 +11,7 @@ def main():
 
     db_pos = set()
 
-    for (_, chrom, start, end) in df[['chr', 'start', 'stop']].itertuples():
+    for (_, chrom, start, end) in df[['chr', 'start', 'end']].itertuples():
         db_pos.update([Interval(chrom, start, end)])
     
         len(db_pos)

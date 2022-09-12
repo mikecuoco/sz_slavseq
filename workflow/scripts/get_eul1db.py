@@ -16,8 +16,11 @@ def main():
     df = df0[(df0['lineage']=='germline') & (df0['study_id'].isin(['Ewing2010', 'Ewing2011', 'Stewart2011', 'Beck2010', 'Brouha2002', 'Iskow2010'])) & (df0['g_start']==df0['g_stop'])]
 
     bed = df[['chromosome', 'g_start', 'g_stop']]
-    bed = bed.rename(columns={'chromosome': 'chr', 'g_start': 'start', 'g_stop': 'stop'})
+    bed = bed.rename(columns={'chromosome': 'chr', 'g_start': 'start', 'g_stop': 'end'})
     bed['start'] -= 1
+
+    # Filter out random chrs (3 instances)?
+    # bed = bed[~bed['chr'].str.contains("random")]
 
     bed.to_csv(snakemake.output[0], sep="\t", header=True, index=False)
 
