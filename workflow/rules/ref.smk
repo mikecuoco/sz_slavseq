@@ -29,7 +29,15 @@ rule gen_ref:
         touch {log} && exec 1>{log} 2>&1
 
         # run bwa.kit function
-        {input}/run-gen-ref {wildcards.ref}
+        if [ {wildcards.ref} == "hs38DH" ]; then
+            wget -q --no-config ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_full_analysis_set.fna.gz
+            gunzip GCA_000001405.15_GRCh38_full_analysis_set.fna.gz
+            cat GCA_000001405.15_GRCh38_full_analysis_set.fna {input}/resource-GRCh38/hs38DH-extra.fa > hs38DH.fa
+            rm GCA_000001405.15_GRCh38_full_analysis_set.fna
+        else
+            {input}/run-gen-ref {wildcards.ref}
+        fi
+        
         if [ {params.region} != "all" ]; then
             samtools faidx {wildcards.ref}.fa {params.region} > {output}
             rm -f {wildcards.ref}.fa*
@@ -85,7 +93,8 @@ rule liftover:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        workflow/scripts/liftover.sh
+        workflow/scripts/liftover.sh \
+            {input.srip} {input.fa} {output} {wildcards.db} {params.ref} {params.chain}
         """
 
 
