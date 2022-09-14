@@ -35,7 +35,8 @@ rule gen_ref:
             cat GCA_000001405.15_GRCh38_full_analysis_set.fna {input}/resource-GRCh38/hs38DH-extra.fa > hs38DH.fa
             rm GCA_000001405.15_GRCh38_full_analysis_set.fna
         else
-            {input}/run-gen-ref {wildcards.ref}
+            wget -q --no-config ftp://ftp.ncbi.nlm.nih.gov/1000genomes/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
+            gunzip hs37d5.fa.gz
         fi
         
         if [ {params.region} != "all" ]; then
@@ -47,7 +48,7 @@ rule gen_ref:
         """
 
 
-# TODO: edit fix_names.py to also change the names for hg38
+# TODO: integrate fix_names in liftover
 rule fix_names_clean:
     input:
         rules.gen_ref.output,
