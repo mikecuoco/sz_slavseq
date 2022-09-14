@@ -6,8 +6,7 @@
 # Liftover L1 (single-base) insertion positions from hg19 to hg38
 
 if [[ "$6" == "hg19ToHg38.over.chain.gz" ]]; then
-    echo "True"
-    wget -P resources/ -q --no-config \
+    wget -O resources/GRCh37.novel_CUPs.bed -q --no-config \
         https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
 
     # bed -> vcf
@@ -16,7 +15,7 @@ if [[ "$6" == "hg19ToHg38.over.chain.gz" ]]; then
         "resources/$5/genome.fa"
 
     # Remove unstable positions
-    vcftools --vcf insertions.vcf --exclude-bed resources/FASTA_BED.ALL_GRCh37.novel_CUPs.bed \
+    vcftools --vcf insertions.vcf --exclude-bed resources/GRCh37.novel_CUPs.bed \
         --recode --recode-INFO-all --out insertions_stable.vcf
     
     # picard LiftoverVcf
@@ -32,6 +31,5 @@ if [[ "$6" == "hg19ToHg38.over.chain.gz" ]]; then
     rm liftover.tmp
 else
     # no liftover necessary
-    echo "False"
     mv "$1" "$3"
 fi
