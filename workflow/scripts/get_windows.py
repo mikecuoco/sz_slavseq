@@ -7,7 +7,7 @@ from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
 
 def main():
-    df = pd.read_csv(snakemake.input[0], sep="\t")
+    df = pd.read_csv(snakemake.input[0], sep="\t", names=["chr", "start", "end"])
 
     db_pos = set()
 

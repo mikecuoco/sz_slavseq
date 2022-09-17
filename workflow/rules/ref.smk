@@ -90,14 +90,22 @@ rule liftover:
     conda:
         "../envs/env.yml"
     params:
-        ref=config["genome"]["build"],
+        # ref=config["genome"]["build"],
         chain=config["chain"],
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        workflow/scripts/liftover.sh \
-            {input.srip} {input.fa} {output} {wildcards.db} {params.ref} {params.chain}
+        if [[ {params.chain} == "hg19ToHg38.over.chain.gz" ]]; then
+            wget -O resources/GRCh37.novel_CUPs.bed -q --no-config \
+                https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
+
+            grep -v -f resources/GRCh37.novel_CUPs.bed {input.srip} > resources/{wildcards.db}/insertions_stable.bed
+            CrossMap.py bed resources/{params.chain} resources/{wildcards.db}/insertions_stable.bed {output}
+        else
+            # no liftover necessary
+            mv {input.srip} {output}
+        fi
         """
 
 

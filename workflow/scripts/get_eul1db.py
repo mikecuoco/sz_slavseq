@@ -22,7 +22,7 @@ def main():
     # Filter out random chrs (3 instances)?
     # bed = bed[~bed['chr'].str.contains("random")]
 
-    bed.to_csv(snakemake.output[0], sep="\t", header=True, index=False)
+    bed.to_csv(snakemake.output[0], sep="\t", header=False, index=False)
 
 if __name__ == '__main__':
 
