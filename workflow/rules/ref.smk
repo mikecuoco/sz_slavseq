@@ -111,7 +111,8 @@ rule liftover:
 
 rule get_windows:
     input:
-        rules.liftover.output,
+        srip=rules.liftover.output,
+        genome=expand("resources/{ref}/genome.genome", ref=config["genome"]["build"]),
     output:
         "resources/{db}/windows.csv",
     log:
