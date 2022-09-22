@@ -40,7 +40,7 @@ rule gen_ref:
                 ftp://ftp.ncbi.nlm.nih.gov/1000genomes/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
             gunzip hs37d5.fa.gz
         fi
-        
+
         if [ {params.region} != "all" ]; then
             samtools faidx {wildcards.ref}.fa {params.region} > {output}
             rm -f {wildcards.ref}.fa*
