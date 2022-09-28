@@ -136,6 +136,5 @@ rule get_rmsk:
     conda:
         "../envs/env.yml"
     threads: 16
-    cache: True
     script:
         "../scripts/get_rmsk.py"
