@@ -64,8 +64,8 @@ rule index_genome:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        samtools faidx {snakemake.input}
-        cut -f 1,2 {snakemake.output.fai} > {snakemake.output.chromsizes}
+        samtools faidx {input}
+        cut -f 1,2 {output.fai} > {output.chromsizes}
         """
 
 
