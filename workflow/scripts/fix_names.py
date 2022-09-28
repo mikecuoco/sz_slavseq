@@ -21,7 +21,3 @@ if "37" in snakemake.wildcards.ref:
 		
 else:
 	os.rename(snakemake.input.srip_og, snakemake.output.srip)
-
-# samtools faidx
-pysam.faidx(snakemake.input.fa)
-sm.shell("cut -f 1,2 {snakemake.output.idx[0]} > {snakemake.output.idx[1]}")

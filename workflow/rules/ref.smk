@@ -49,6 +49,24 @@ rule gen_ref:
         fi
         """
 
+rule index_genome:
+    input:
+        rules.gen_ref.output,
+    output:
+        fai="resources/{ref}/genome.fa.fai",
+        chromsizes="resources/{ref}/genome.genome",
+    log:
+        "resources/{ref}/index_genome.log"
+    conda:
+        "../envs/env.yml"
+    shell:
+        """
+        touch {log} && exec 1>{log} 2>&1
+
+        samtools faidx {snakemake.input}
+        cut -f 1,2 {snakemake.output.fai} > {snakemake.output.chromsizes}
+        """
+    
 
 rule get_eul1db:
     input:
@@ -69,9 +87,8 @@ rule fix_names_clean:
         fa=rules.gen_ref.output,
     output:
         srip="resources/{db}/insertions.bed",
-        idx=expand("resources/{ref}/genome.{ext}", ref=config["genome"]["build"], ext=["fa.fai", "genome"]),
     log:
-        "resources/{ref}/fix_names.log",
+        "resources/{db}/fix_names.log",
     conda:
         "../envs/env.yml"
     script:
