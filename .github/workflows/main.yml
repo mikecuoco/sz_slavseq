@@ -32,7 +32,7 @@ jobs:
         snakefile: workflow/Snakefile
         args: "--lint"
 
-  Testing:
+  Test preprocessing on chr22:
     timeout-minutes: 1000
     runs-on: ubuntu-latest
     needs:
@@ -44,14 +44,27 @@ jobs:
         lfs: true
     - name: Checkout LFS objects
       run: git lfs checkout
-    - name: Test workflow through flank_features on chr22 data only
+    - name: Test 
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .
         stagein: mamba install -n snakemake -c conda-forge biopython -y -q
         snakefile: workflow/Snakefile
-        args: "--until results/flank_features/test/mda/chr22.pickle.gz --use-conda --show-failed-logs --cores 4 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_github/config.yml"
-    - name: Test workflow after flank_features, using pickle from full
+        args: "--until results/flank_features/test/mda/chr22.pickle.gz --use-conda --show-failed-logs --cores 4 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_chr22/config.yml"
+
+  Test classifier all chr feature matrix: 
+    timeout-minutes: 1000
+    runs-on: ubuntu-latest
+    needs:
+      - Linting
+      - Formatting
+    steps: 
+    - uses: actions/checkout@v2
+      with:
+        lfs: true
+    - name: Checkout LFS objects
+      run: git lfs checkout
+    - name: Test
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .
