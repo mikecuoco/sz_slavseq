@@ -5,6 +5,7 @@ __author__ = 'Michael Cuoco, Rohini Gadde'
 import pandas as pd
 from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
+import sys, gc, traceback
 
 def main():
     df = pd.read_csv(snakemake.input[0], sep="\t", names=["chr", "start", "end"])
@@ -23,4 +24,14 @@ def main():
     l1.to_csv(snakemake.output[0])
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+
+    except:  # catch *all* exceptions
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
+
+    finally:
+        # cleanup code in here
+        gc.collect()
