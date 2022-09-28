@@ -90,13 +90,17 @@ rule liftover:
     conda:
         "../envs/env.yml"
     params:
-        # ref=config["genome"]["build"],
         chain=config["chain"],
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
 
         if [[ {params.chain} == "hg19ToHg38.over.chain.gz" ]]; then
+            # download chain file
+            wget -O resources/hg19ToHg38.over.chain.gz -q --no-config \
+                https://hgdownload.soe.ucsc.edu/gbdb/hg19/liftOver/hg19ToHg38.over.chain.gz 
+
+            # download CUPs
             wget -O resources/GRCh37.novel_CUPs.bed -q --no-config \
                 https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
 
@@ -126,11 +130,12 @@ rule get_rmsk:
     input:
         "resources/{ref}/genome.genome",
     output:
-        rmsk="resources/{ref}/rmsk.out",
-        ref_l1="resources/{ref}/reference_l1.csv",
+        multiext("resources/{ref}/", "rmsk.out", "reference_l1.csv"),
     log:
         "resources/{ref}/rmsk.log",
     conda:
         "../envs/env.yml"
+    threads: 16
+    cache: True
     script:
         "../scripts/get_rmsk.py"

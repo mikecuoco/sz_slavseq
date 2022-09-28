@@ -2,30 +2,29 @@
 # adapted from Ricardo's jupyter notebook from rf pipeline: pipeline/eul1db/to_windows/_h/main.ipynb
 __author__ = 'Michael Cuoco, Rohini Gadde'
 
-# TODO: add comments 
-
 import pandas as pd
 from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
 import snakemake as sm
 import logging
-import os
+import sys, gc, traceback
 
-def download_rmsk(ref):
+def download_dfam():
     
+    # Download dfam database
     url="https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz"
     sm.shell(f"wget --no-config -q {url}")
     sm.shell("gunzip Dfam-p1_curatedonly.h5.gz")
     sm.shell("mv Dfam-p1_curatedonly.h5 $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5")
-    sm.shell(f"RepeatMasker -pa 4 -s -nolow -species human -dir resources/{snakemake.wildcards.ref}/ \
-        resources/{snakemake.wildcards.ref}/genome.fa")
-    sm.shell(f"mv resources/{snakemake.wildcards.ref}/genome.fa.out {snakemake.output.rmsk}")
 
+def run_rmsk():
+    sm.shell(f"RepeatMasker -pa {int(snakemake.threads/4)} -s -nolow -species human -dir resources/{snakemake.wildcards.ref}/ \
+        resources/{snakemake.wildcards.ref}/genome.fa")
+    sm.shell(f"mv resources/{snakemake.wildcards.ref}/genome.fa.out {snakemake.output[0]}")
 
 def read_rmsk():
-
     # read the rmsk file
-    df0 = pd.read_csv(snakemake.output.rmsk, skiprows=3, delim_whitespace=True, 
+    df0 = pd.read_csv(snakemake.output[0], skiprows=3, delim_whitespace=True, 
         names=["chr", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
 
     # filter for rep_names
@@ -42,13 +41,13 @@ def read_rmsk():
 
     return df1
 
-
 def main():
 
     # setup logging
     logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
 
-    download_rmsk(snakemake.wildcards.ref)
+    download_dfam()
+    run_rmsk()
     df = read_rmsk()
     l1_pos = set()
 
@@ -61,7 +60,17 @@ def main():
     refl1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chr', 'start', 'end']).set_index(['chr', 'start', 'end'])
     refl1['reference_l1hs_l1pa2_6'] = True
 
-    refl1.to_csv(snakemake.output.ref_l1)
+    refl1.to_csv(snakemake.output[1])
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+
+    except:  # catch *all* exceptions
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
+
+    finally:
+        # cleanup code in here
+        gc.collect()
