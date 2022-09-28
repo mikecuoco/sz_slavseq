@@ -16,7 +16,7 @@ rule gen_ref:
     input:
         rules.install_bwakit.output,
     output:
-        "resources/{ref}/genome_og.fa",
+        "resources/{ref}/genome.fa",
     log:
         "resources/{ref}/gen_ref.log",
     conda:
@@ -50,27 +50,11 @@ rule gen_ref:
         """
 
 
-# TODO: integrate fix_names in liftover
-rule fix_names_clean:
-    input:
-        rules.gen_ref.output,
-    output:
-        fa="resources/{ref}/genome.fa",
-        fai="resources/{ref}/genome.fa.fai",
-        chromsizes="resources/{ref}/genome.genome",
-    log:
-        "resources/{ref}/fix_names.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/fix_names.py"
-
-
 rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/eul1db/insertions.bed",
+        "resources/eul1db/insertions_og.bed",
     conda:
         "../envs/env.yml"
     log:
@@ -79,10 +63,25 @@ rule get_eul1db:
         "../scripts/get_eul1db.py"
 
 
+rule fix_names_clean:
+    input:
+        srip_og="resources/{db}/insertions_og.bed",
+        fa=rules.gen_ref.output,
+    output:
+        srip="resources/{db}/insertions.bed",
+        idx=expand("resources/{ref}/genome.{ext}", ref=config["genome"]["build"], ext=["fa.fai", "genome"]),
+    log:
+        "resources/{ref}/fix_names.log",
+    conda:
+        "../envs/env.yml"
+    script:
+        "../scripts/fix_names.py"
+
+
 rule liftover:
     input:
         srip="resources/{db}/insertions.bed",
-        fa=expand(rules.fix_names_clean.output.fa, ref=config["genome"]["build"]),
+        fa=expand("resources/{ref}/genome.fa", ref=config["genome"]["build"]),
     output:
         "resources/{db}/insertions_lifted.bed",
     log:

@@ -13,29 +13,15 @@ logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
 if "37" in snakemake.wildcards.ref:
 	# read in the chromosome map
 	# TODO: make this a parameter specified in snakemake
-	chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", header=None)
+	chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", names=["hs37d5", "ann"])
+	insert = pd.read_csv(snakemake.input.srip_og, sep="\t", header=True)
 
-	# save filenames to objects
-	original_file = snakemake.input[0]
-	corrected_file = snakemake.output.fa
-
-	with open(corrected_file, 'w') as corrected:
-		records = SeqIO.parse(original_file, 'fasta')
-		for record in records:
-
-			# check if the record is in the chromosome map and change it
-			if chrom_map.iloc[:,0].str.contains(record.id).any():
-				logging.info(f"found {record.id} in map")
-				record.id = chrom_map.iloc[:,1][chrom_map.iloc[:,0] == record.id].values[0]
-				logging.info(f"change to {record.id}")
-			else:
-				logging.info(f"did not find {record.id} in map")
-
-			# write the record to the output file
-			SeqIO.write(record, corrected, 'fasta')
+	for name in chrom_map["ann"].to_list():
+		insert.loc[ insert["chr"].str.contains(name), "chr"] = chrom_map.loc[ chrom_map["ann"] == name, "hs37d5"].values[0]
+		
 else:
-	os.rename(snakemake.input[0], snakemake.output.fa)
+	os.rename(snakemake.input.srip_og, snakemake.output.srip)
 
 # samtools faidx
-pysam.faidx(snakemake.output.fa)
-sm.shell("cut -f 1,2 {snakemake.output.fai} > {snakemake.output.chromsizes}")
+pysam.faidx(snakemake.input.fa)
+sm.shell("cut -f 1,2 {snakemake.output.idx[0]} > {snakemake.output.idx[1]}")
