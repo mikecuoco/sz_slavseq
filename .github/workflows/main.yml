@@ -32,7 +32,7 @@ jobs:
         snakefile: workflow/Snakefile
         args: "--lint"
 
-  Test Preprocessing:
+  Test-Preprocessing:
     timeout-minutes: 1000
     runs-on: ubuntu-latest
     needs:
@@ -52,7 +52,7 @@ jobs:
         snakefile: workflow/Snakefile
         args: "--until results/flank_features/test/mda/chr22.pickle.gz --use-conda --show-failed-logs --cores 4 --conda-cleanup-pkgs cache --all-temp --configfile .test/config_chr22/config.yml"
 
-  Test Model: 
+  Test-Model: 
     timeout-minutes: 1000
     runs-on: ubuntu-latest
     needs:
