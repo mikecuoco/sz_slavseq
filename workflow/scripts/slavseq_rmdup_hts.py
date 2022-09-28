@@ -3,7 +3,7 @@ __author__ = "Rohini Gadde"
 
 import pysam
 import subprocess
-import sys
+import sys, gc, traceback
 import os
 import tempfile
 import shutil
@@ -117,6 +117,15 @@ def main():
     return tmpdir
 
 if __name__ == "__main__":
-    dirname = main()
-    
-    shutil.rmtree(dirname)
+    try:
+        dirname = main()    
+        shutil.rmtree(dirname)
+
+    except:  # catch *all* exceptions
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
+
+    finally:
+        # cleanup code in here
+        gc.collect()

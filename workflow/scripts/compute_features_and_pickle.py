@@ -6,6 +6,7 @@ import gzip
 import pandas as pd
 from pyslavseq.genome import interval_generator as ig
 from pyslavseq.genome import Genome
+import sys, gc, traceback
 
 def genome_empty_df(chromsizes):
     genome = Genome(chromsizes)
@@ -36,4 +37,14 @@ def main():
     f.close()
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+
+    except:  # catch *all* exceptions
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
+
+    finally:
+        # cleanup code in here
+        gc.collect()
