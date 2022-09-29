@@ -9,22 +9,9 @@ import snakemake as sm
 import logging
 import sys, gc, traceback
 
-def download_dfam():
-    
-    # Download dfam database
-    url="https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz"
-    sm.shell(f"wget --no-config -q {url}")
-    sm.shell("gunzip Dfam-p1_curatedonly.h5.gz")
-    sm.shell("mv Dfam-p1_curatedonly.h5 $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5")
-
-def run_rmsk():
-    sm.shell(f"RepeatMasker -pa {int(snakemake.threads/4)} -s -nolow -species human -dir resources/{snakemake.wildcards.ref}/ \
-        resources/{snakemake.wildcards.ref}/genome.fa")
-    sm.shell(f"mv resources/{snakemake.wildcards.ref}/genome.fa.out {snakemake.output[0]}")
-
 def read_rmsk():
     # read the rmsk file
-    df0 = pd.read_csv(snakemake.output[0], skiprows=3, delim_whitespace=True, 
+    df0 = pd.read_csv(snakemake.input['rmsk'], skiprows=3, delim_whitespace=True, 
         names=["chr", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
 
     # filter for rep_names
@@ -46,21 +33,19 @@ def main():
     # setup logging
     logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
 
-    download_dfam()
-    run_rmsk()
     df = read_rmsk()
     l1_pos = set()
 
     for (_, chrom, pos) in df[['chr', 'pos']].itertuples():
         l1_pos.update([Interval(chrom, pos, pos)])
         
-    genome = Genome(snakemake.input[0])
+    genome = Genome(snakemake.input['genome'])
     xx = list(ig.windows_overlapping_intervals(genome, l1_pos, 750, 250))
 
     refl1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chr', 'start', 'end']).set_index(['chr', 'start', 'end'])
     refl1['reference_l1hs_l1pa2_6'] = True
 
-    refl1.to_csv(snakemake.output[1])
+    refl1.to_csv(snakemake.output[0])
 
 if __name__ == '__main__':
     try:

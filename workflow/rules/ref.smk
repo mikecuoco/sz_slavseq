@@ -142,15 +142,39 @@ rule get_windows:
         "../scripts/get_windows.py"
 
 
-rule get_rmsk:
+rule run_rmsk:
     input:
-        "resources/{ref}/genome.genome",
+        "resources/{ref}/genome.fa",
     output:
-        multiext("resources/{ref}/", "rmsk.out", "reference_l1.csv"),
+        multiext("resources/{ref}/", "rmsk.out", "rmsk.align"),
     log:
-        "resources/{ref}/rmsk.log",
+        "resources/{ref}/run_rmsk.log",
     conda:
         "../envs/env.yml"
+    cache: True
     threads: 16
+    shell:
+        """
+        touch {log} && exec 1>{log} 2>&1
+
+        # download dfam
+        wget -O- https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz | \
+            gzip -dc > $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5 
+
+        # run RepeatMasker
+        RepeatMasker -pa {threads} -s -nolow -species human -dir $(dirname {input}) {input}
+        """
+
+
+rule get_rmsk:
+    input:
+        rmsk=rules.run_rmsk.output[0],
+        genome="resources/{ref}/genome.genome",
+    output:
+        "resources/{ref}/reference_l1.csv",
+    log:
+        "resources/{ref}/get_rmsk.log",
+    conda:
+        "../envs/env.yml"
     script:
         "../scripts/get_rmsk.py"
