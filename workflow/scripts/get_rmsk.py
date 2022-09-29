@@ -9,9 +9,12 @@ import snakemake as sm
 import logging
 import sys, gc, traceback
 
-def read_rmsk():
+def read_rmsk(rmsk_outfile=snakemake.input['rmsk']):
+    """
+    Read the repeatmasker output table and return locations of L1HS and L1PA2-6
+    """
     # read the rmsk file
-    df0 = pd.read_csv(snakemake.input['rmsk'], skiprows=3, delim_whitespace=True, 
+    df0 = pd.read_csv(rmsk_outfile, skiprows=3, delim_whitespace=True, 
         names=["chr", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
 
     # filter for rep_names
@@ -28,28 +31,29 @@ def read_rmsk():
 
     return df1
 
-def main():
-
-    # setup logging
-    logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
-
-    df = read_rmsk()
+def make_intervals(df, chr_sizes = snakemake.input['genome'], outfile=snakemake.output[0]):
+    """
+    Make L1 positions into genomic intervals
+    """
+    # TODO: add interval size and overlap as parameters
+    # TODO: move this function out of this file, to be accessible to other scripts
     l1_pos = set()
 
     for (_, chrom, pos) in df[['chr', 'pos']].itertuples():
         l1_pos.update([Interval(chrom, pos, pos)])
         
-    genome = Genome(snakemake.input['genome'])
+    genome = Genome(chr_sizes)
     xx = list(ig.windows_overlapping_intervals(genome, l1_pos, 750, 250))
 
     refl1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chr', 'start', 'end']).set_index(['chr', 'start', 'end'])
     refl1['reference_l1hs_l1pa2_6'] = True
 
-    refl1.to_csv(snakemake.output[0])
+    refl1.to_csv(outfile)
 
 if __name__ == '__main__':
     try:
-        main()
+        df = read_rmsk()
+        make_intervals(df)
 
     except:  # catch *all* exceptions
         sys.stderr = open(snakemake.log[0], 'w')
