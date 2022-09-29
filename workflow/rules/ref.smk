@@ -131,7 +131,7 @@ rule liftover:
 
 rule get_windows:
     input:
-        srip=rules.liftover.output,
+        non_ref_l1=rules.liftover.output,
     output:
         "resources/{db}/windows.csv",
     log:
