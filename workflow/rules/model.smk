@@ -1,6 +1,7 @@
 rule features:
     input:
         bgz=rules.tabix.output.bgz,
+        tbi=rules.tabix.output.tbi,
         fa=expand(rules.gen_ref.output, ref=config["genome"]["build"]),
         chromsizes=expand(
             rules.index_genome.output.chromsizes, ref=config["genome"]["build"]

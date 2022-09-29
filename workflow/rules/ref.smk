@@ -85,6 +85,7 @@ rule get_eul1db:
 rule fix_names_clean:
     input:
         "resources/{db}/insertions_og.bed",
+        "resources/{ref}/genome.fa",
     output:
         "resources/{db}/insertions.bed",
     log:
@@ -98,7 +99,7 @@ rule fix_names_clean:
 rule liftover:
     input:
         srip="resources/{db}/insertions.bed",
-        fa=expand("resources/{ref}/genome.fa", ref=config["genome"]["build"]),
+        fa="resources/{ref}/genome.fa",
     output:
         "resources/{db}/insertions_lifted.bed",
     log:
@@ -132,7 +133,7 @@ rule liftover:
 rule get_windows:
     input:
         srip=rules.liftover.output,
-        genome=expand("resources/{ref}/genome.genome", ref=config["genome"]["build"]),
+        genome="resources/{ref}/genome.genome",
     output:
         "resources/{db}/windows.csv",
     log:
