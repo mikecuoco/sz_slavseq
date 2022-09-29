@@ -44,6 +44,13 @@ def get_folds_input_samples(wildcards):
     )
 
 
+def get_non_ref_l1_for_liftover(wildcards):
+    db = config["germline_line1"]["source"]
+
+    if db == "eul1db":
+        return f"resources/{db}/insertions_hs37d5.bed"
+
+
 # get file of non-reference germline L1s
 # if not from eul1db, should be a csv file with 3 or 4 columns:
 # chrom, start, end, in_NRdb (optional)

@@ -73,7 +73,7 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/eul1db/insertions_og.bed",
+        "resources/eul1db/insertions_hg19.bed",
     conda:
         "../envs/env.yml"
     log:
@@ -82,12 +82,11 @@ rule get_eul1db:
         "../scripts/get_eul1db.py"
 
 
-rule fix_names_clean:
+rule fix_names:
     input:
-        "resources/{db}/insertions_og.bed",
-        "resources/{ref}/genome.fa",
+        "resources/{db}/insertions_hg19.bed",
     output:
-        "resources/{db}/insertions.bed",
+        "resources/{db}/insertions_hs37d5.bed",
     log:
         "resources/{db}/fix_names.log",
     conda:
@@ -98,8 +97,8 @@ rule fix_names_clean:
 
 rule liftover:
     input:
-        srip="resources/{db}/insertions.bed",
-        fa="resources/{ref}/genome.fa",
+        non_ref_l1=get_non_ref_l1_for_liftover,
+        fa=expand("resources/{ref}/genome.fa", ref=config["genome"]["build"]),
     output:
         "resources/{db}/insertions_lifted.bed",
     log:
@@ -121,11 +120,11 @@ rule liftover:
             wget -O resources/GRCh37.novel_CUPs.bed -q --no-config \
                 https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
 
-            grep -v -f resources/GRCh37.novel_CUPs.bed {input.srip} > resources/{wildcards.db}/insertions_stable.bed
+            grep -v -f resources/GRCh37.novel_CUPs.bed {input.non_ref_l1} > resources/{wildcards.db}/insertions_stable.bed
             CrossMap.py bed resources/{params.chain} resources/{wildcards.db}/insertions_stable.bed {output}
         else
             # no liftover necessary
-            mv {input.srip} {output}
+            mv {input.non_ref_l1} {output}
         fi
         """
 
