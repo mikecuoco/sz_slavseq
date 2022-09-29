@@ -133,7 +133,6 @@ rule liftover:
 rule get_windows:
     input:
         srip=rules.liftover.output,
-        genome="resources/{ref}/genome.genome",
     output:
         "resources/{db}/windows.csv",
     log:
