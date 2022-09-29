@@ -1,20 +1,29 @@
 #!/usr/bin/env python
 __author__ = 'Michael Cuoco'
 
-from Bio import SeqIO
 import pandas as pd
-import pysam
-import os
-import logging
-import snakemake as sm
+import sys, gc, traceback
 
-logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
+def main():
+	# read in the chromosome map
+	chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", names=["hs37d5", "ann"])
+	insert = pd.read_csv(snakemake.input[0], sep="\t")
 
-# read in the chromosome map
-# TODO: make this a parameter specified in snakemake
-chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", names=["hs37d5", "ann"])
-insert = pd.read_csv(snakemake.input[0], sep="\t", header=True)
+	for name in chrom_map["ann"].to_list():
+		insert.loc[insert["chr"] == name, "chr"] = chrom_map.loc[ chrom_map["ann"] == name, "hs37d5"].values[0]
 
-for name in chrom_map["ann"].to_list():
-	insert.loc[ insert["chr"].str.contains(name), "chr"] = chrom_map.loc[ chrom_map["ann"] == name, "hs37d5"].values[0]
+	insert.to_csv(snakemake.output[0])
+
+if __name__ == '__main__':
+	try:
+		main()
+
+	except:  # catch *all* exceptions
+		sys.stderr = open(snakemake.log[0], 'w')
+		traceback.print_exc()
+		sys.stderr.close()
+
+	finally:
+		# cleanup code in here
+		gc.collect()
 
