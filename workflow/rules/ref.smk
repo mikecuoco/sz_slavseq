@@ -151,6 +151,12 @@ rule run_rmsk:
         "resources/{ref}/run_rmsk.log",
     conda:
         "../envs/env.yml"
+    params:
+        # -s Slow search; 0-5% more sensitive, 2-3 times slower than default;
+        # empty string is default
+        # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
+        # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
+        speed="-qq",
     cache: True
     threads: 16
     shell:
@@ -162,7 +168,7 @@ rule run_rmsk:
             gzip -dc > $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5 
 
         # run RepeatMasker
-        RepeatMasker -pa {threads} -s -nolow -species human -dir $(dirname {input}) {input}
+        RepeatMasker -pa {threads} {params.speed} -species human -dir $(dirname {input}) {input}
         """
 
 
