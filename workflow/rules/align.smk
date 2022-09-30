@@ -2,9 +2,11 @@ rule bwa_index:
     input:
         rules.fix_names_clean.output.fa,
     output:
-        idx=multiext("resources/{ref}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"),
+        idx=multiext(
+            "resources/{ref}_{region}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"
+        ),
     log:
-        "resources/{ref}/bwa_index.log",
+        "resources/{ref}_{region}/bwa_index.log",
     cache: True
     wrapper:
         "v1.7.1/bio/bwa/index"
@@ -13,7 +15,11 @@ rule bwa_index:
 rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
-        idx=expand(rules.bwa_index.output.idx, ref=config["ref"]["build"]),
+        idx=expand(
+            rules.bwa_index.output.idx,
+            ref=config["ref"]["build"],
+            region=config["ref"]["region"],
+        ),
     output:
         "results/bwa_mem/{donor}/{dna_type}/{sample}.bam",
     log:
@@ -64,7 +70,11 @@ rule install_gapafim:
 rule tags:
     input:
         bam=rules.rmdup.output,
-        fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]["build"]),
+        fa=expand(
+            rules.fix_names_clean.output.fa,
+            ref=config["ref"]["build"],
+            region=config["ref"]["region"],
+        ),
         gapafim=rules.install_gapafim.output,
     output:
         "results/tags/{donor}/{dna_type}/{sample}.bam",

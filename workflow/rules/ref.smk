@@ -1,37 +1,19 @@
-rule install_bwakit:
-    output:
-        directory("resources/bwa.kit"),
-    conda:
-        "../envs/env.yml"
-    log:
-        "resources/install_bwakit.log",
-    shell:
-        """
-        mkdir -p resources && cd resources
-        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
-        """
-
-
 rule gen_ref:
-    input:
-        rules.install_bwakit.output,
     output:
-        "resources/{ref}/genome_og.fa",
+        "resources/{ref}_{region}/genome.fa",
     log:
-        "resources/{ref}/gen_ref.log",
+        "resources/{ref}_{region}/gen_ref.log",
     conda:
         "../envs/env.yml"
-    params:
-        region=config["ref"]["region"],
     cache: True
     shell:
         """
-        touch {log} && exec 1>{log} 2>&1
+        # run the script
+        bash workflow/scripts/run-gen-ref.sh {wildcards.ref} 
 
-        # run bwa.kit function
-        {input}/run-gen-ref {wildcards.ref}
-        if [ {params.region} != "all" ]; then
-            samtools faidx {wildcards.ref}.fa {params.region} > {output}
+        # filter for the region if specified
+        if [ {wildcards.region} != "all" ]; then
+            samtools faidx {wildcards.ref}.fa {wildcards.region} > {output}
             rm -f {wildcards.ref}.fa*
         else
             mv {wildcards.ref}.fa {output}
@@ -44,11 +26,11 @@ rule fix_names_clean:
     input:
         fa=rules.gen_ref.output,
     output:
-        fa="resources/{ref}/genome.fa",
-        fai="resources/{ref}/genome.fa.fai",
-        chromsizes="resources/{ref}/genome.genome",
+        fa="resources/{ref}_{region}/genome.fa",
+        fai="resources/{ref}_{region}/genome.fa.fai",
+        chromsizes="resources/{ref}_{region}/genome.genome",
     log:
-        "resources/{ref}/fix_names.log",
+        "resources/{ref}_{region}/fix_names.log",
     conda:
         "../envs/env.yml"
     script:
@@ -57,7 +39,11 @@ rule fix_names_clean:
 
 rule get_eul1db:
     input:
-        genome=expand("resources/{ref}/genome.genome", ref=config["ref"]["build"]),
+        genome=expand(
+            "resources/{ref}_{region}/genome.genome",
+            ref=config["ref"]["build"],
+            region=config["ref"]["region"],
+        ),
         eul1db="resources/eul1db_SRIP.txt",
     output:
         "resources/eul1db/windows.csv",
@@ -71,12 +57,12 @@ rule get_eul1db:
 
 rule get_rmsk:
     input:
-        "resources/{ref}/genome.genome",
+        "resources/{ref}_{region}/genome.genome",
     output:
-        rmsk="resources/{ref}/rmsk.txt.gz",
-        ref_l1="resources/{ref}/reference_l1.csv",
+        rmsk="resources/{ref}_{region}/rmsk.txt.gz",
+        ref_l1="resources/{ref}_{region}/reference_l1.csv",
     log:
-        "resources/{ref}/rmsk.log",
+        "resources/{ref}_{region}/rmsk.log",
     conda:
         "../envs/env.yml"
     script:
