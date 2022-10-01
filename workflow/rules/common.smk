@@ -29,6 +29,7 @@ def get_cutadapt_input(wildcards):
             read=[1, 2],
         )
 
+
 # handle conditional alterations to reference genome
 ref = config["ref"]["build"]
 gen_ref_basename = "genome"

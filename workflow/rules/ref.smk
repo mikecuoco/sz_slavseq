@@ -1,12 +1,12 @@
 rule gen_ref:
     output:
-        f"resources/{{ref}}/{gen_ref_basename}.fa"
+        f"resources/{{ref}}/{gen_ref_basename}.fa",
     log:
         "resources/{ref}/gen_ref.log",
     conda:
         "../envs/env.yml"
     params:
-        region = config["ref"]["region"]
+        region=config["ref"]["region"],
     cache: True
     shell:
         """
@@ -15,10 +15,10 @@ rule gen_ref:
 
         # create temp dir, and clean up on exit
         TMP=$(mktemp -d)
-	    trap 'rm -rf -- "$TMP"' EXIT
+        trap 'rm -rf -- "$TMP"' EXIT
 
         # run the script in the temp dir
-	    cd $TMP
+        cd $TMP
         set +e # allow errors temporarily to handle broken pipe with hs37d5
         bash $OLDPWD/workflow/scripts/run-gen-ref.sh {wildcards.ref}
         set -e
@@ -52,8 +52,7 @@ rule fix_names_clean:
 rule get_eul1db:
     input:
         genome=expand(
-            f"resources/{{ref}}/{ref_basename}.genome",
-            ref=config["ref"]["build"]
+            f"resources/{{ref}}/{ref_basename}.genome", ref=config["ref"]["build"]
         ),
         eul1db="resources/eul1db_SRIP.txt",
     output:
