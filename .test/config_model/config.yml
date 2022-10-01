@@ -1,0 +1,22 @@
+# path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
+samples: .test/config_model/test.tsv
+
+genome:
+  build: hs37d5 # options: <hs38DH|hs37d5>
+  region: all # use 22 for hs37d5, use chr22 for hs38DH
+  database: eul1db
+
+# chain file (None if no liftover expected)
+chain: hg19ToHg38.over.chain.gz
+
+adapters:
+  r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
+  r2_adapter: 'CAAGCAGAAGACGGCATACGAGANNNNNNNGTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT'
+  nested_primer: 'TAACTAACCTGCACAATGTGCAC'
+
+model:
+  num_folds: 4
+  min_reads: 3
+  fold_window: 20_000_000
+  window_size: 750
+  prob: 0.7
