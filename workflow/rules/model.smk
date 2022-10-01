@@ -2,9 +2,9 @@ rule features:
     input:
         bgz=rules.tabix.output.bgz,
         tbi=rules.tabix.output.tbi,
-        fa=expand(rules.fix_names_clean.output.fa, ref=config["ref"]["build"]),
+        fa=expand(f"resources/{{ref}}/{ref_basename}.fa", ref=config["ref"]["build"]),
         chromsizes=expand(
-            rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
+            f"resources/{{ref}}/{ref_basename}.genome", ref=config["ref"]["build"]
         ),
     output:
         bgz="results/features/{donor}/{dna_type}/{sample}.bgz",
@@ -49,7 +49,7 @@ rule flank_features:
         bgz=rules.features.output.bgz,
         tbi=rules.features.output.tbi,
         chromsizes=expand(
-            rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
+            f"resources/{{ref}}/{ref_basename}.genome", ref=config["ref"]["build"]
         ),
     output:
         "results/flank_features/{donor}/{dna_type}/{sample}.pickle.gz",
@@ -65,7 +65,7 @@ rule folds:
     input:
         samples=get_folds_input_samples,
         chromsizes=expand(
-            rules.fix_names_clean.output.chromsizes, ref=config["ref"]["build"]
+            f"resources/{{ref}}/{ref_basename}.genome", ref=config["ref"]["build"]
         ),
         non_ref_l1=get_non_ref_l1,
         ref_l1=expand(rules.get_rmsk.output.ref_l1, ref=config["ref"]["build"]),

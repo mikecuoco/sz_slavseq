@@ -30,6 +30,21 @@ def get_cutadapt_input(wildcards):
         )
 
 
+# handle conditional alterations to reference genome
+ref = config["ref"]["build"]
+gen_ref_basename = "genome"
+
+# handle trimming for a region
+region = config["ref"]["region"]
+if region != "all":
+    gen_ref_basename = f"genome_{region}"
+
+# handle fixing chr names
+if "hs37" in ref:
+    ref_basename = f"{gen_ref_basename}_hg19names"
+else:
+    ref_basename = gen_ref_basename
+
 # setup input/output for folds rule
 def get_folds_input_samples(wildcards):
     my_samples = samples.loc[
