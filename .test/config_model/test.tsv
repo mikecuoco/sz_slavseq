@@ -1,0 +1,2 @@
+donor	sample	dna_type	R1	R2
+test	test	mda	.test/data/USD07_F1_S92_R1.fastq.gz	.test/data/USD07_F1_S92_R2.fastq.gz

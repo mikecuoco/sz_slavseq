@@ -1,11 +1,10 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: .test/config_indv/test.tsv
+samples: .test/config_model/test.tsv
 
-ref: 
-  build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
-  region: all # all = use all regions. When specifying other regions, ensure compatible with build
-  database: eul1db # options: eul1db or a csv file (chrom, start, end, in_NRdb=True)
-  # located under resources/{database}/windows.csv
+ref:
+  build: hs37d5 # options: <hs38DH|hs37d5>
+  region: all # use 22 for hs37d5, use chr22 for hs38DH
+  database: eul1db
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
@@ -15,6 +14,6 @@ adapters:
 model:
   num_folds: 4
   min_reads: 3
-  fold_window: 2_000_000
+  fold_window: 20_000_000
   window_size: 750
   prob: 0.7
