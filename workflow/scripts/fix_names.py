@@ -4,15 +4,14 @@ __author__ = 'Michael Cuoco'
 from Bio import SeqIO
 import pandas as pd
 import pysam
-import os
-import logging
+import sys, gc, traceback
 import snakemake as sm
+import logging 
 
-logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
+def main():
 
-if "37" in snakemake.wildcards.ref:
+	logging.basicConfig(filename=snakemake.log[0], level=logging.INFO)
 	# read in the chromosome map
-	# TODO: make this a parameter specified in snakemake
 	chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", header=None)
 
 	# save filenames to objects
@@ -33,9 +32,21 @@ if "37" in snakemake.wildcards.ref:
 
 			# write the record to the output file
 			SeqIO.write(record, corrected, 'fasta')
-else:
-	os.rename(snakemake.input.fa[0], snakemake.output.fa)
 
-# samtools faidx
-pysam.faidx(snakemake.output.fa)
-sm.shell("cut -f 1,2 {snakemake.output.fai} > {snakemake.output.chromsizes}")
+
+	# samtools faidx
+	pysam.faidx(snakemake.output.fa)
+	sm.shell("cut -f 1,2 {snakemake.output.fai} > {snakemake.output.chromsizes}")
+
+if __name__ == '__main__':
+    try:
+        main()
+
+    except:  # catch *all* exceptions
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
+
+    finally:
+        # cleanup code in here
+        gc.collect()
