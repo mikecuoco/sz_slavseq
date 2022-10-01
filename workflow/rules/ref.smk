@@ -1,22 +1,6 @@
-rule install_bwakit:
-    output:
-        directory("resources/bwa.kit"),
-    conda:
-        "../envs/env.yml"
-    log:
-        "resources/install_bwakit.log",
-    shell:
-        """
-        mkdir -p resources && cd resources
-        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
-        """
-
-
 rule gen_ref:
-    input:
-        rules.install_bwakit.output,
     output:
-        "resources/{ref}/genome.fa",
+        multiext(f"resources/{{ref}}/{gen_ref_basename}", ".fa", ".fa.fai", ".genome"),
     log:
         "resources/{ref}/gen_ref.log",
     conda:
@@ -26,46 +10,29 @@ rule gen_ref:
     cache: True
     shell:
         """
-        touch {log} && exec 1>{log} 2>&1
+        # start logging
+        touch {log} && exec 2>{log} 
 
-        # run bwa.kit function
-        if [ {wildcards.ref} == "hs38DH" ]; then
-            wget -O GRCh38_full_analysis_set.fna.gz -q --no-config \
-                ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_full_analysis_set.fna.gz
-            gunzip GRCh38_full_analysis_set.fna.gz
-            cat GRCh38_full_analysis_set.fna {input}/resource-GRCh38/hs38DH-extra.fa > hs38DH.fa
-            rm GRCh38_full_analysis_set.fna
-        else
-            wget -O hs37d5.fa.gz -q --no-config \
-                ftp://ftp.ncbi.nlm.nih.gov/1000genomes/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
-            gunzip hs37d5.fa.gz
-        fi
+        # create temp dir, and clean up on exit
+        TMP=$(mktemp -d)
+        trap 'rm -rf -- "$TMP"' EXIT
 
+        # run the script in the temp dir
+        cd $TMP
+        set +e # allow errors temporarily to handle broken pipe with hs37d5
+        bash $OLDPWD/workflow/scripts/run-gen-ref.sh {wildcards.ref}
+        set -e
+
+        # filter for the region if specified
+        cd $OLDPWD
         if [ {params.region} != "all" ]; then
-            samtools faidx {wildcards.ref}.fa {params.region} > {output}
-            rm -f {wildcards.ref}.fa*
+            samtools faidx $TMP/{wildcards.ref}.fa {params.region} > {output[0]}
         else
-            mv {wildcards.ref}.fa {output}
+            mv $TMP/{wildcards.ref}.fa {output[0]}
         fi
-        """
 
-
-rule index_genome:
-    input:
-        rules.gen_ref.output,
-    output:
-        fai="resources/{ref}/genome.fa.fai",
-        chromsizes="resources/{ref}/genome.genome",
-    log:
-        "resources/{ref}/index_genome.log",
-    conda:
-        "../envs/env.yml"
-    shell:
-        """
-        touch {log} && exec 1>{log} 2>&1
-
-        samtools faidx {input}
-        cut -f 1,2 {output.fai} > {output.chromsizes}
+        samtools faidx {output[0]}
+        cut -f 1,2 {output[1]} > {output[2]}
         """
 
 
@@ -98,7 +65,7 @@ rule fix_names:
 rule liftover:
     input:
         non_ref_l1=get_non_ref_l1_for_liftover,
-        fa=expand("resources/{ref}/genome.fa", ref=config["genome"]["build"]),
+        fa=expand(rules.gen_ref.output[0], ref=config["genome"]["build"]),
     output:
         "resources/{db}/insertions_lifted.bed",
     log:
@@ -144,7 +111,7 @@ rule get_windows:
 
 rule run_rmsk:
     input:
-        "resources/{ref}/genome.fa",
+        rules.gen_ref.output[0],
     output:
         multiext("resources/{ref}/", "rmsk.out", "rmsk.align"),
     log:
@@ -175,7 +142,7 @@ rule run_rmsk:
 rule get_rmsk:
     input:
         rmsk=rules.run_rmsk.output[0],
-        genome="resources/{ref}/genome.genome",
+        chromsizes=rules.gen_ref.output[2],
     output:
         "resources/{ref}/reference_l1.csv",
     log:

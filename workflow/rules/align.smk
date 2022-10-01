@@ -1,8 +1,15 @@
 rule bwa_index:
     input:
-        rules.gen_ref.output,
+        rules.gen_ref.output[0],
     output:
-        idx=multiext("resources/{ref}/genome", ".amb", ".ann", ".bwt", ".pac", ".sa"),
+        idx=multiext(
+            f"resources/{{ref}}/{gen_ref_basename}",
+            ".amb",
+            ".ann",
+            ".bwt",
+            ".pac",
+            ".sa",
+        ),
     log:
         "resources/{ref}/bwa_index.log",
     cache: True
@@ -67,7 +74,7 @@ rule install_gapafim:
 rule tags:
     input:
         bam=rules.rmdup.output,
-        fa=expand(rules.gen_ref.output, ref=config["genome"]["build"]),
+        fa=expand(rules.gen_ref.output[0], ref=config["genome"]["build"]),
         gapafim=rules.install_gapafim.output,
     output:
         "results/tags/{donor}/{dna_type}/{sample}.bam",

@@ -31,7 +31,7 @@ def read_rmsk(rmsk_outfile=snakemake.input['rmsk']):
 
     return df1
 
-def make_intervals(df, chr_sizes = snakemake.input['genome'], outfile=snakemake.output[0]):
+def make_intervals(df, chr_sizes = snakemake.input['chromsizes'], outfile=snakemake.output[0]):
     """
     Make L1 positions into genomic intervals
     """
