@@ -113,7 +113,7 @@ rule run_rmsk:
     input:
         rules.gen_ref.output[0],
     output:
-        multiext("resources/{ref}/", "rmsk.out", "rmsk.align"),
+        multiext(f"resources/{{ref}}/{gen_ref_basename}.fa", ".out", ".masked"),
     log:
         "resources/{ref}/run_rmsk.log",
     conda:
@@ -128,18 +128,17 @@ rule run_rmsk:
     threads: 16
     shell:
         """
-        touch {log} && exec 1>{log} 2>&1
-
         # download dfam
         wget -O- https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz | \
             gzip -dc > $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5 
 
         # run RepeatMasker
-        RepeatMasker -pa {threads} {params.speed} -species human -dir $(dirname {input}) {input}
+        RepeatMasker -pa {threads} {params.speed} -species human -dir $(dirname {input}) {input} > {log} 2>&1
+
+        # TODO: convert to bed
         """
 
-
-rule get_rmsk:
+rule get_rmsk_windows:
     input:
         rmsk=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
