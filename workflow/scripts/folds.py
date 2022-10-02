@@ -6,13 +6,10 @@ import os
 os.environ['OPENBLAS_NUM_THREADS'] = str(snakemake.threads)
 
 import pandas as pd
-import pickle
 import functools
 import re
 import numpy as np
 from pathlib import Path
-import pyslavseq
-import pdb
 from pyslavseq.genome import Interval, Genome, is_within
 import pyslavseq.genome.interval_generator as ig
 
@@ -119,7 +116,7 @@ def folds(sample_files):
         df = get_cell_features(*x[0])
     else:
         df = pd.concat([get_cell_features(fn, cell_id).reset_index() for fn, cell_id in cells_from_sample(sample_files)]).sort_values(['chrom', 'start', 'end', 'cell_id']).set_index(['chrom', 'start', 'end', 'cell_id'])
-    pdb.set_trace()
+
     df['fold'] = list(my_fold(df, fold_window, num_folds))
 
     for fold in range(num_folds):
