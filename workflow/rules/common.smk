@@ -32,12 +32,35 @@ def get_cutadapt_input(wildcards):
 
 # handle conditional alterations to reference genome
 ref = config["genome"]["build"]
-gen_ref_basename = "genome"
+gen_ref_basename = ref
 
 # handle trimming for a region
 region = config["genome"]["region"]
 if region != "all":
-    gen_ref_basename = f"genome_{region}"
+    gen_ref_basename = f"{ref}_{region}"
+
+# handle non-reference L1 conversion to bed
+# TODO: move rule input to variable here, make script amenable to any input
+db = config["germline_line1"]["source"]
+
+# final desired bed file, including wildcards
+non_ref_l1_bed_final = "resources/{ref}/{ref}_{db}_insertions.bed"
+
+# make name of bed file for get_eul1db rule
+if db == "eul1db":
+    if ref == "hs37d5":
+        non_ref_l1_bed = f"resources/{ref}/{ref}_{db}_insertions.bed"
+    else:
+        non_ref_l1_bed = f"resources/hg19/hg19_{db}_insertions.bed"
+
+# get raw non-reference germline L1s file
+# if not from eul1db, should be a csv file with 3 or 4 columns:
+# chrom, start, end, in_NRdb (optional)
+non_ref_l1_windows = f"resources/{ref}/{db}_windows.csv"
+if db != "eul1db":
+    NR_df = pd.read_csv(non_ref_l1_windows)
+    validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
+
 
 # setup input/output for folds rule
 def get_folds_input_samples(wildcards):
@@ -53,26 +76,6 @@ def get_folds_input_samples(wildcards):
     )
 
 
-def get_non_ref_l1_for_liftover(wildcards):
-    db = config["germline_line1"]["source"]
-
-    if db == "eul1db":
-        return f"resources/{db}/insertions_hs37d5.bed"
-
-
-# get file of non-reference germline L1s
-# if not from eul1db, should be a csv file with 3 or 4 columns:
-# chrom, start, end, in_NRdb (optional)
-def get_non_ref_l1(wildcards):
-    db = config["germline_line1"]["source"]
-    NR_l1 = f"resources/{db}/windows.csv"
-
-    if db != "eul1db":
-        NR_df = pd.read_csv(NR_l1[0])
-        validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
-
-    return NR_l1
-
-
+# handle number of folds
 num_folds = config["model"]["num_folds"]
 fold_dirs = [f"fold_{fold}" for fold in range(num_folds)]

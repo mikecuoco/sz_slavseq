@@ -40,36 +40,24 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/eul1db/insertions_hg19.bed",
+        non_ref_l1_bed,
     conda:
         "../envs/env.yml"
+    params:
+        ref=config["genome"]["build"],
     log:
-        "resources/eul1db/get_eul1db.log",
+        "resources/get_eul1db.log",
     script:
         "../scripts/get_eul1db.py"
 
 
-rule fix_names:
-    input:
-        "resources/{db}/insertions_hg19.bed",
-    output:
-        "resources/{db}/insertions_hs37d5.bed",
-    log:
-        "resources/{db}/fix_names.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/fix_names.py"
-
-
 rule liftover:
     input:
-        non_ref_l1=get_non_ref_l1_for_liftover,
-        fa=expand(rules.gen_ref.output[0], ref=config["genome"]["build"]),
+        non_ref_l1_bed,
     output:
-        "resources/{db}/insertions_lifted.bed",
+        multiext(non_ref_l1_bed_final, "", ".unmap"),
     log:
-        "resources/{db}/liftover.log",
+        "resources/{ref}/{ref}_{db}_liftover.log",
     conda:
         "../envs/env.yml"
     params:
@@ -87,22 +75,21 @@ rule liftover:
             wget -O resources/GRCh37.novel_CUPs.bed -q --no-config \
                 https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
 
-            grep -v -f resources/GRCh37.novel_CUPs.bed {input.non_ref_l1} > resources/{wildcards.db}/insertions_stable.bed
-            CrossMap.py bed resources/{params.chain} resources/{wildcards.db}/insertions_stable.bed {output}
+            CrossMap.py bed resources/{params.chain} <(grep -v -f resources/GRCh37.novel_CUPs.bed {input}) {output[0]}
         else
-            # no liftover necessary
-            mv {input.non_ref_l1} {output}
+            echo "unable to liftover, chain file unavailable" && exit 1
         fi
         """
 
 
-rule get_windows:
+rule get_non_ref_l1_windows:
     input:
-        non_ref_l1=rules.liftover.output,
+        non_ref_l1=non_ref_l1_bed_final,
+        chromsizes=rules.gen_ref.output[2],
     output:
-        "resources/{db}/windows.csv",
+        "resources/{ref}/{ref}_{db}_windows.csv",
     log:
-        "resources/{db}/get_windows.log",
+        "resources/{ref}/{ref}_{db}_windows.log",
     conda:
         "../envs/env.yml"
     script:
@@ -137,6 +124,7 @@ rule run_rmsk:
 
         # TODO: convert to bed
         """
+
 
 rule get_rmsk_windows:
     input:

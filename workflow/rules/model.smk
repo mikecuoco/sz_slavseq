@@ -62,9 +62,11 @@ rule folds:
         samples=get_folds_input_samples,
         chromsizes=expand(rules.gen_ref.output[2], ref=config["genome"]["build"]),
         non_ref_l1=expand(
-            rules.get_windows.output, db=config["germline_line1"]["source"]
+            rules.get_non_ref_l1_windows.output,
+            ref=config["genome"]["build"],
+            db=config["germline_line1"]["source"],
         ),
-        ref_l1=expand(rules.get_rmsk.output, ref=config["genome"]["build"]),
+        ref_l1=expand(rules.get_rmsk_windows.output, ref=config["genome"]["build"]),
     params:
         # non_ref_db=config["ref"]["database"]
         num_folds=config["model"]["num_folds"],
