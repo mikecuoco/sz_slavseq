@@ -19,7 +19,7 @@ properties:
     required:
       - build
 
-  germline_line1:
+  non_ref_germline_l1:
     type: object
     properties:
       source:

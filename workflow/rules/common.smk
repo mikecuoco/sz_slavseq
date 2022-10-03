@@ -41,7 +41,7 @@ if region != "all":
 
 # handle non-reference L1 conversion to bed
 # TODO: move rule input to variable here, make script amenable to any input
-db = config["germline_line1"]["source"]
+db = config["non_ref_germline_l1"]["source"]
 
 # final desired bed file, including wildcards
 non_ref_l1_bed_final = "resources/{ref}/{ref}_{db}_insertions.bed"

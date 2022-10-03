@@ -64,7 +64,7 @@ rule folds:
         non_ref_l1=expand(
             rules.get_non_ref_l1_windows.output,
             ref=config["genome"]["build"],
-            db=config["germline_line1"]["source"],
+            db=config["non_ref_germline_l1"]["source"],
         ),
         ref_l1=expand(rules.get_rmsk_windows.output, ref=config["genome"]["build"]),
     params:

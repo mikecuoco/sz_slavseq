@@ -10,6 +10,7 @@ rule gen_ref:
     cache: True
     shell:
         """
+        # TODO: use shallow directive for this rule?
         # start logging
         touch {log} && exec 2>{log} 
 
@@ -32,7 +33,7 @@ rule gen_ref:
         fi
 
         samtools faidx {output[0]}
-        cut -f 1,2 {output[1]} > {output[2]}
+        cut -f 1,2 {output[1]} > {output[2]} # TODO: use samtools dict instead?
         """
 
 
@@ -61,24 +62,13 @@ rule liftover:
     conda:
         "../envs/env.yml"
     params:
-        chain=config["chain"],
+        source_build=config["non_ref_germline_l1"]["build"],
+        target_build=config["genome"]["build"],  # this is the same as wildcards.ref
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        if [[ {params.chain} == "hg19ToHg38.over.chain.gz" ]]; then
-            # download chain file
-            wget -O resources/hg19ToHg38.over.chain.gz -q --no-config \
-                https://hgdownload.soe.ucsc.edu/gbdb/hg19/liftOver/hg19ToHg38.over.chain.gz 
-
-            # download CUPs
-            wget -O resources/GRCh37.novel_CUPs.bed -q --no-config \
-                https://raw.githubusercontent.com/cathaloruaidh/genomeBuildConversion/master/CUP_FILES/FASTA_BED.ALL_GRCh37.novel_CUPs.bed
-
-            CrossMap.py bed resources/{params.chain} <(grep -v -f resources/GRCh37.novel_CUPs.bed {input}) {output[0]}
-        else
-            echo "unable to liftover, chain file unavailable" && exit 1
-        fi
+        bash workflow/scripts/liftover_bed.sh -s {params.source_build} -t {params.target_build} -i {input} -o {output[0]} 
         """
 
 
