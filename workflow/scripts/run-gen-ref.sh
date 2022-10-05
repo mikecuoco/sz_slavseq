@@ -36,7 +36,8 @@ fi
 if [ $1 == "chm13v2" ]; then
 	wget -O- $url13v2 | gzip -dc > $1.fa 2> /dev/null
 elif [ $1 == "hs38DH" ]; then
-	(wget -O- $url38 | gzip -dc; cat $tmp/bwa.kit/resource-GRCh38/hs38DH-extra.fa) > $1.fa 
+	wget -O- $url38 | gzip -dc > $1.fa 
+	cat $tmp/bwa.kit/resource-GRCh38/hs38DH-extra.fa >> $1.fa 
 	# [ ! -f $1.fa.alt ] && cp $tmp/bwa.kit/resource-GRCh38/hs38DH.fa.alt $1.fa.alt
 elif [ $1 == "hs38a" ]; then
 	wget -O- $url38 | gzip -dc > $1.fa
