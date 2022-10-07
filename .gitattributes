@@ -2,5 +2,6 @@
 *.gz filter=lfs diff=lfs merge=lfs -text
 resources/eul1db_SRIP.txt filter=lfs diff=lfs merge=lfs -text
 .test/data/USD07_F1_S92_chr22_R2.fastq.gz filter=lfs diff=lfs merge=lfs -text
-.test/data/USD7_F1_S92.pickle.gz filter=lfs diff=lfs merge=lfs -text
 .test/data/USD07_F1_S92_chr22_R1.fastq.gz filter=lfs diff=lfs merge=lfs -text
+.test/data/chm13v2 filter=lfs diff=lfs merge=lfs -text
+.test/data/hs37d5 filter=lfs diff=lfs merge=lfs -text

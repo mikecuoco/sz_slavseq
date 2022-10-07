@@ -1,0 +1,5 @@
+samples: .test/allchrs/samples.tsv
+
+genome:
+  build: chm13v2
+  region: all 
