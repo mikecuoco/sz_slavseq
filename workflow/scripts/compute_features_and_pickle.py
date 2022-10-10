@@ -21,7 +21,7 @@ def flank_features(df):
         df[field_name] = df['all_reads.count'].rolling(window=2*flank_size + 1, center=True, min_periods=1).max().fillna(0)
 
 def main():
-    emptydf = genome_empty_df(snakemake.input.chromsizes[0])
+    emptydf = genome_empty_df(snakemake.input.chromsizes)
 
     df = pd.read_csv(snakemake.input.bgz, compression='gzip', sep='\t', index_col=[0, 1, 2])
     arcdf = df[['all_reads.count']]

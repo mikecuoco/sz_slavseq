@@ -14,7 +14,7 @@ from pyslavseq.genome import Interval, Genome, is_within
 import pyslavseq.genome.interval_generator as ig
 
 def interval_hash(iv, window_size):
-    return iv.chrom + "_" + str(iv.start // window_size)
+    return str(iv.chrom) + "_" + str(iv.start // window_size)
     
 @functools.lru_cache()
 def interval_dict(genome, window_size):
@@ -60,7 +60,7 @@ def cells_from_sample(sample_files):
         yield fn, m.group(1)
 
 def my_fold(df, window_size, num_folds):
-    genome = Genome(snakemake.input.chromsizes[0])
+    genome = Genome(snakemake.input.chromsizes)
     d = interval_dict(genome, window_size)
 
     for x in df.index:
