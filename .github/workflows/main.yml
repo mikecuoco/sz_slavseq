@@ -21,7 +21,6 @@ jobs:
           VALIDATE_SNAKEMAKE_SNAKEFMT: true
           
   Testing: 
-    timeout-minutes: 30
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
