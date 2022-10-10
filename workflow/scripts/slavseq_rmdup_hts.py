@@ -70,6 +70,7 @@ def main():
     input_bam_fn = snakemake.input[0]
     
     input_bam_path = os.path.abspath(input_bam_fn)
+    pysam.index(input_bam_path)
 
     if os.path.exists(output_bam_fn):
         sys.exit("Output file already exists!")
@@ -79,6 +80,7 @@ def main():
     curdir = os.getcwd()
     tmpdir = tempfile.mkdtemp(dir="./")
     os.symlink(input_bam_path, tmpdir + "/input.bam")
+    os.symlink(input_bam_path+".bai", tmpdir + "/input.bam.bai")
     os.chdir(tmpdir)
 
     prio_pair_rmdup(
@@ -112,7 +114,7 @@ def main():
     output_bam.close()
 
     os.chdir(curdir)
-    shutil.move(tmpdir + "/output.bam", output_bam_fn)
+    pysam.sort("-n", tmpdir + "/output.bam", "-o", output_bam_fn)
 
     return tmpdir
 
