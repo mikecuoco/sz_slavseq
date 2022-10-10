@@ -23,6 +23,7 @@ jobs:
   Testing: 
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
         genome: ["hs37d5", "hs38DH", "chm13v2"]
@@ -38,7 +39,7 @@ jobs:
         if [ ${{ matrix.test }} == "preproc" ]; then
 
           echo "configfile=.test/chr22/${{ matrix.genome }}.yml" >> $GITHUB_ENV
-          echo "target=results/folds/${{ matrix.genome }}/test/mda/Y_test.pickle.gz" >> $GITHUB_ENV
+          echo "target=results/folds/${{ matrix.genome }}/test/mda/fold_0/Y_test.pickle.gz" >> $GITHUB_ENV
 
         elif [ ${{ matrix.test }} == "model" ]; then
 
