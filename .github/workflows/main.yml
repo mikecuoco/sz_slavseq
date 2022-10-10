@@ -35,28 +35,29 @@ jobs:
         lfs: true
     - name: Checkout LFS objects
       run: git lfs checkout
+    - name: Set conditional test values
+      run: |
+        if [ ${{ matrix.test }} == "preproc" ]; then
+
+          echo "configfile=.test/chr22/${{ matrix.genome }}.yml" >> $GITHUB_ENV
+          echo "target=results/folds/${{ matrix.genome }}/test/mda/Y_test.pickle.gz" >> $GITHUB_ENV
+
+        elif [ ${{ matrix.test }} == "model" ]; then
+
+          # use saved flank_features output to force snakemake to skip alignment
+          mkdir -p results/folds/
+          cp -r .test/data/${{ matrix.genome }} results/folds/
+
+          echo "configfile=.test/allchrs/${{ matrix.genome }}.yml" >> $GITHUB_ENV
+          echo "target=all" >> $GITHUB_ENV
+
+        fi
     - name: Run workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .
         stagein: |
           mamba install -n snakemake -c conda-forge biopython -y -q
-
-          if [ ${{ matrix.test }} == "preproc" ]; then
-
-            echo "configfile=.test/chr22/${{ matrix.genome }}.yml" >> $GITHUB_ENV
-            echo "target=results/folds/${{ matrix.genome }}/test/mda/Y_test.pickle.gz" >> $GITHUB_ENV
-
-          elif [ ${{ matrix.test }} == "model" ]; then
-
-            # use saved flank_features output to force snakemake to skip alignment
-            mkdir -p results/folds/
-            cp -r .test/data/${{ matrix.genome }} results/folds/
-
-            echo "configfile=.test/allchrs/${{ matrix.genome }}.yml" >> $GITHUB_ENV
-            echo "target=all" >> $GITHUB_ENV
-
-          fi
         snakefile: workflow/Snakefile
         args: "${{ env.target }} --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile ${{ env.configfile }}"
 
