@@ -33,8 +33,6 @@ jobs:
     - uses: actions/checkout@v2
       with:
         lfs: true
-    - name: Checkout LFS objects
-      run: git lfs checkout
     - name: Set conditional test values
       run: |
         if [ ${{ matrix.test }} == "preproc" ]; then
