@@ -22,13 +22,14 @@ rule bwa_index:
 rule bwa_mem:
     input:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
-        idx=expand(rules.bwa_index.output.idx, ref=config["genome"]["build"]),
+        idx=rules.bwa_index.output.idx,
     output:
-        "results/bwa_mem/{donor}/{dna_type}/{sample}.bam",
+        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "results/bwa_mem/{donor}/{dna_type}/{sample}.log",
+        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
         extra="-T 19",
+        sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
         sorting="samtools",
     threads: 4
     conda:
@@ -42,9 +43,9 @@ rule rmdup:
     input:
         rules.bwa_mem.output,
     output:
-        "results/rmdup/{donor}/{dna_type}/{sample}.bam",
+        "results/rmdup/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "results/rmdup/{donor}/{dna_type}/{sample}.log",
+        "results/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/env.yml"
     script:
@@ -77,9 +78,9 @@ rule tags:
         fa=expand(rules.gen_ref.output[0], ref=config["genome"]["build"]),
         gapafim=rules.install_gapafim.output,
     output:
-        "results/tags/{donor}/{dna_type}/{sample}.bam",
+        "results/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "results/tags/{donor}/{dna_type}/{sample}.err",
+        "results/tags/{ref}/{donor}/{dna_type}/{sample}.err",
     conda:
         "../envs/env.yml"
     shell:
@@ -110,10 +111,10 @@ rule tabix:
     input:
         rules.tags.output,
     output:
-        bgz="results/tabix/{donor}/{dna_type}/{sample}.bgz",
-        tbi="results/tabix/{donor}/{dna_type}/{sample}.bgz.tbi",
+        bgz="results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
+        tbi="results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
     log:
-        "results/tabix/{donor}/{dna_type}/{sample}.log",
+        "results/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/env.yml"
     shell:

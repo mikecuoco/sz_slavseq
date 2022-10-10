@@ -10,7 +10,7 @@ rule gen_ref:
     cache: True
     shell:
         """
-        # TODO: use shallow directive for this rule?
+        # TODO: use shadow directive for this rule?
         # start logging
         touch {log} && exec 2>{log} 
 
@@ -56,7 +56,7 @@ rule liftover:
     input:
         non_ref_l1_bed,
     output:
-        multiext(non_ref_l1_bed_final, "", ".unmap"),
+        multiext("resources/{ref}/{ref}_{db}_insertions.bed", "", ".unmap"),  # is unmap file always generated?
     log:
         "resources/{ref}/{ref}_{db}_liftover.log",
     conda:
@@ -74,7 +74,7 @@ rule liftover:
 
 rule get_non_ref_l1_windows:
     input:
-        non_ref_l1=non_ref_l1_bed_final,
+        non_ref_l1="resources/{ref}/{ref}_{db}_insertions.bed",
         chromsizes=rules.gen_ref.output[2],
     output:
         "resources/{ref}/{ref}_{db}_windows.csv",
@@ -100,11 +100,12 @@ rule run_rmsk:
         # empty string is default
         # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
         # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
-        speed="-qq",
+        speed="-s",
     cache: True
     threads: 16
     shell:
         """
+        # TODO: use shadow directive for this rule
         # download dfam
         wget -O- https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz | \
             gzip -dc > $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5 

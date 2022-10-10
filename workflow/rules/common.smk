@@ -43,10 +43,8 @@ if region != "all":
 # TODO: move rule input to variable here, make script amenable to any input
 db = config["non_ref_germline_l1"]["source"]
 
-# final desired bed file, including wildcards
-non_ref_l1_bed_final = "resources/{ref}/{ref}_{db}_insertions.bed"
-
 # make name of bed file for get_eul1db rule
+# TODO: make this flexible to other dbs
 if db == "eul1db":
     if ref == "hs37d5":
         non_ref_l1_bed = f"resources/{ref}/{ref}_{db}_insertions.bed"
@@ -69,7 +67,8 @@ def get_folds_input_samples(wildcards):
         & (samples["donor"] == wildcards.donor)
     ]["sample"]
     return expand(
-        "results/flank_features/{donor}/{dna_type}/{sample}.pickle.gz",
+        "results/flank_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
+        ref=wildcards.ref,
         donor=wildcards.donor,
         dna_type=wildcards.dna_type,
         sample=my_samples,

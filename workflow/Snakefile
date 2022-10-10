@@ -18,7 +18,8 @@ include: "rules/model.smk"
 rule all:
     input:
         expand(
-            "results/somatic_summary/{donor}/{dna_type}/{file}",
+            "results/somatic_summary/{ref}/{donor}/{dna_type}/{file}",
+            ref=config["genome"]["build"],
             donor=samples["donor"],
             dna_type=samples["dna_type"],
             file=[
