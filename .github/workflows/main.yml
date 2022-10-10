@@ -44,21 +44,21 @@ jobs:
 
           if [ ${{ matrix.test }} == "preproc" ]; then
 
-            export CONFIGFILE=".test/chr22/${{ matrix.genome }}.yml"
-            export TARGET="results/folds/${{ matrix.genome }}/test/mda/Y_test.pickle.gz"
+            echo "configfile=.test/chr22/${{ matrix.genome }}.yml" >> $GITHUB_ENV
+            echo "target=results/folds/${{ matrix.genome }}/test/mda/Y_test.pickle.gz" >> $GITHUB_ENV
 
           elif [ ${{ matrix.test }} == "model" ]; then
 
             # use saved flank_features output to force snakemake to skip alignment
             mkdir -p results/folds/
-            cp -r .test/data/${ matrix.genome }} results/folds/
+            cp -r .test/data/${{ matrix.genome }} results/folds/
 
-            export CONFIGFILE=".test/allchrs/${{ matrix.genome }}.yml"
-            export TARGET="all"
+            echo "configfile=.test/allchrs/${{ matrix.genome }}.yml" >> $GITHUB_ENV
+            echo "target=all" >> $GITHUB_ENV
 
           fi
         snakefile: workflow/Snakefile
-        args: "$TARGET --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile $CONFIGFILE"
+        args: "${{ env.target }} --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile ${{ env.configfile }}"
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0
