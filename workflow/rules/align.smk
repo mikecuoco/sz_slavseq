@@ -75,7 +75,7 @@ rule install_gapafim:
 rule tags:
     input:
         bam=rules.rmdup.output,
-        fa=expand(rules.gen_ref.output[0], ref=config["genome"]["build"]),
+        fa=rules.gen_ref.output[0]
         gapafim=rules.install_gapafim.output,
     output:
         "results/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
