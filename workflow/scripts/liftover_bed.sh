@@ -22,6 +22,8 @@ done
 final_input=$input
 
 # select chain file based off input source and target
+# TODO: look for CUP Files for other liftovers
+# TODO: can we use source CUP files for liftovers to other targets?
 if [[ "$source" == "hg19" ]]; then
 
 	if [[ "$target" == *"38"* ]]; then
@@ -56,7 +58,7 @@ else
 fi
 
 # download Conversion Unstable Positions (CUPs) to exclude from liftover input
-if [ ! -z $CUP_URL ]; then
+if [[ -v CUP_URL ]]; then
 	wget -O resources/${source}To${target}_mask.bed -q --no-config $CUP_URL
 
 	final_input=$(mktemp)
