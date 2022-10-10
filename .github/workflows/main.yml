@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        genome: ["hs37d5", "hg38DH", "chm13v2"]
+        genome: ["hs37d5", "hs38DH", "chm13v2"]
         test: ["preproc", "model"]
     needs:
       - Formatting
