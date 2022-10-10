@@ -2,4 +2,4 @@ samples: .test/chr22/samples.tsv
 
 genome:
   build: chm13v2
-  region: CP068256.2
+  region: chr22
