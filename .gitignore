@@ -8,4 +8,4 @@ workflow/envs/src/**
 .vscode/
 !resources/eul1db_SRIP.txt
 !resources/hs37d5_map.tsv
-!resources/slavseq_metadata.csv
+!resources/slavseq_metadata.tsv

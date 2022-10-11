@@ -1,23 +1,20 @@
 #!/usr/bin/env python
 __author__ = 'Ricardo S Jacomini, Michael Cuoco'
 
-import sys,gc
+import sys, gc, traceback
 import os
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = str(snakemake.threads)
 
 import pandas as pd
-import pickle
 import functools
 import re
 import numpy as np
 from pathlib import Path
-import pyslavseq
-import pdb
 from pyslavseq.genome import Interval, Genome, is_within
 import pyslavseq.genome.interval_generator as ig
 
 def interval_hash(iv, window_size):
-    return iv.chrom + "_" + str(iv.start // window_size)
+    return str(iv.chrom) + "_" + str(iv.start // window_size)
     
 @functools.lru_cache()
 def interval_dict(genome, window_size):
@@ -43,7 +40,7 @@ def get_reference_l1():
 
 @functools.lru_cache()
 def get_non_ref_db():
-    df = pd.read_csv(snakemake.input.non_ref_l1, index_col=[0,1,2])
+    df = pd.read_csv(snakemake.input.non_ref_l1[0], index_col=[0,1,2])
     return df
 
 # @functools.lru_cache(maxsize=1500)
@@ -63,7 +60,7 @@ def cells_from_sample(sample_files):
         yield fn, m.group(1)
 
 def my_fold(df, window_size, num_folds):
-    genome = Genome(snakemake.input.chromsizes[0])
+    genome = Genome(snakemake.input.chromsizes)
     d = interval_dict(genome, window_size)
 
     for x in df.index:
@@ -119,7 +116,7 @@ def folds(sample_files):
         df = get_cell_features(*x[0])
     else:
         df = pd.concat([get_cell_features(fn, cell_id).reset_index() for fn, cell_id in cells_from_sample(sample_files)]).sort_values(['chrom', 'start', 'end', 'cell_id']).set_index(['chrom', 'start', 'end', 'cell_id'])
-        
+
     df['fold'] = list(my_fold(df, fold_window, num_folds))
 
     for fold in range(num_folds):
@@ -150,10 +147,10 @@ if __name__ == '__main__':
     try:
         folds(sample_files)
     except: # catch *all* exceptions
-        sys.stderr = open(snakemake.log, 'w')
-        print_err( "Message : %s" % sys.exc_info()[0])
-        print_err( "%s" % sys.exc_info()[1])
-        print_err( "%s" % sys.exc_info()[2])
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
     finally:
         # cleanup code in here
         gc.collect()
+

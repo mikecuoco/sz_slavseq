@@ -8,26 +8,32 @@ from pyslavseq.genome import Interval, Genome
 import pyslavseq.genome.interval_generator as ig
     
 def main():
+    '''
+    Convert eul1db_SRIPs.txt to a bed file, convert chr names to hs37d5 if necessary
+    '''
+    
     # load the eul1db file
-    df0 = pd.read_csv(snakemake.input.eul1db, sep="\t", skiprows=5, dtype={'chromosome':str})
+    df0 = pd.read_csv(snakemake.input[0], sep="\t", skiprows=5, dtype={'chromosome':str})
     df0['chromosome'] = 'chr' + df0['chromosome']
 
     # filter for germline insertions from trusted studies
     df = df0[(df0['lineage']=='germline') & (df0['study_id'].isin(['Ewing2010', 'Ewing2011', 'Stewart2011', 'Beck2010', 'Brouha2002', 'Iskow2010'])) & (df0['g_start']==df0['g_stop'])]
 
-    # generate intervals for db
-    eul1db_pos = set()
-    for (_, chrom, start, end) in df[['chromosome', 'g_start', 'g_stop']].itertuples():
-        eul1db_pos.update([Interval(chrom, start, end)])
+    bed = df[['chromosome', 'g_start', 'g_stop']]
+    bed = bed.rename(columns={'chromosome': 'chr', 'g_start': 'start', 'g_stop': 'end'})
+    bed['start'] -= 1
 
-    # generate intervals for genome
-    genome = Genome(snakemake.input.genome[0])
+    # fix names if necessary
+    if snakemake.params.ref == 'hs37d5':
+        # read in the chromosome map
+        chrom_map = pd.read_csv("resources/hs37d5_map.tsv", sep="\t", names=["hs37d5", "ann"])
 
-    # place eul1db intervals into genome
-    xx = list(ig.windows_overlapping_intervals(genome, eul1db_pos, 750, 250))
-    eul1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
-    eul1['in_NRdb'] = True # NR = non-reference
-    eul1.to_csv(snakemake.output[0]) # why not use bed file for this?
+        for name in chrom_map["ann"].to_list():
+            bed.loc[bed["chr"] == name, "chr"] = chrom_map.loc[ chrom_map["ann"] == name, "hs37d5"].values[0]
+
+    # Filter out random chrs (3 instances)?
+    # bed[~bed['chr'].str.contains("random")]
+    bed.to_csv(snakemake.output[0], sep="\t", header=False, index=False)
 
 if __name__ == '__main__':
 

@@ -3,7 +3,7 @@ __author__ = "Rohini Gadde"
 
 import pysam
 import subprocess
-import sys
+import sys, gc, traceback
 import os
 import tempfile
 import shutil
@@ -70,6 +70,7 @@ def main():
     input_bam_fn = snakemake.input[0]
     
     input_bam_path = os.path.abspath(input_bam_fn)
+    pysam.index(input_bam_path)
 
     if os.path.exists(output_bam_fn):
         sys.exit("Output file already exists!")
@@ -79,6 +80,7 @@ def main():
     curdir = os.getcwd()
     tmpdir = tempfile.mkdtemp(dir="./")
     os.symlink(input_bam_path, tmpdir + "/input.bam")
+    os.symlink(input_bam_path+".bai", tmpdir + "/input.bam.bai")
     os.chdir(tmpdir)
 
     prio_pair_rmdup(
@@ -112,11 +114,20 @@ def main():
     output_bam.close()
 
     os.chdir(curdir)
-    shutil.move(tmpdir + "/output.bam", output_bam_fn)
+    pysam.sort("-n", tmpdir + "/output.bam", "-o", output_bam_fn)
 
     return tmpdir
 
 if __name__ == "__main__":
-    dirname = main()
-    
-    shutil.rmtree(dirname)
+    try:
+        dirname = main()    
+        shutil.rmtree(dirname)
+
+    except:  # catch *all* exceptions
+        sys.stderr = open(snakemake.log[0], 'w')
+        traceback.print_exc()
+        sys.stderr.close()
+
+    finally:
+        # cleanup code in here
+        gc.collect()

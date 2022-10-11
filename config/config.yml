@@ -1,10 +1,13 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
 samples: config/single_donor.tsv
 
-ref:
-  build: hs37d5 # options: <hs38|hs38a|hs38DH|hs37|hs37d5>
-  region: all # all = use all regions. When specifying other regions, ensure compatible with build
-  database: eul1db # options: eul1db
+genome:
+  build: hs37d5 # options: <hs37d5|hs38DH|chm13v2>
+  region: all # for chromosome 22: use "22" for hs37d5, use "chr22" for hs38DH and chm13v2
+
+non_ref_germline_l1: # given by eul1db or a BED file (resources/{source}/insertions.bed)
+   source: eul1db
+   build: hg19
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
