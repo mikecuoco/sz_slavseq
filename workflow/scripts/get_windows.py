@@ -8,18 +8,18 @@ import pyslavseq.genome.interval_generator as ig
 import sys, gc, traceback
 
 def main():
-    df = pd.read_csv(snakemake.input.non_ref_l1, sep="\t", names=["chr", "start", "end"])
+    df = pd.read_csv(snakemake.input.non_ref_l1, sep="\t", names=["chrom", "start", "end"])
     
     db_pos = set()
 
-    for (_, chrom, start, end) in df[['chr', 'start', 'end']].itertuples():
+    for (_, chrom, start, end) in df[['chrom', 'start', 'end']].itertuples():
         db_pos.update([Interval(chrom, start, end)])
     
         len(db_pos)
 
     genome = Genome(snakemake.input.chromsizes)
     xx = list(ig.windows_overlapping_intervals(genome, db_pos, 750, 250))
-    l1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chr', 'start', 'end']).set_index(['chr', 'start', 'end'])
+    l1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
     l1['in_NRdb'] = True # NR = non-reference
     l1.to_csv(snakemake.output[0])
 
