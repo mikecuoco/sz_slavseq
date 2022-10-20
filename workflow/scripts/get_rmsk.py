@@ -15,7 +15,7 @@ def read_rmsk(rmsk_outfile=snakemake.input['rmsk']):
     """
     # read the rmsk file
     df0 = pd.read_csv(rmsk_outfile, skiprows=3, delim_whitespace=True, 
-        names=["chr", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
+        names=["chrom", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
 
     # filter for rep_names
     rep_names = ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]
@@ -24,7 +24,7 @@ def read_rmsk(rmsk_outfile=snakemake.input['rmsk']):
 
     # save to new dataframe
     df1 = pd.DataFrame()
-    df1['chr'] = df0['chr']
+    df1['chrom'] = df0['chrom']
     # set start positions depending on strand
     df1['pos'] = df0.apply(lambda x: x['end'] if x['strand'] != '+' else x['start'], axis=1)
     df1['l1_name'] = df0['repeat']
@@ -39,13 +39,13 @@ def make_intervals(df, chr_sizes = snakemake.input['chromsizes'], outfile=snakem
     # TODO: move this function out of this file, to be accessible to other scripts
     l1_pos = set()
 
-    for (_, chrom, pos) in df[['chr', 'pos']].itertuples():
+    for (_, chrom, pos) in df[['chrom', 'pos']].itertuples():
         l1_pos.update([Interval(chrom, pos, pos)])
         
     genome = Genome(chr_sizes)
     xx = list(ig.windows_overlapping_intervals(genome, l1_pos, 750, 250))
 
-    refl1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chr', 'start', 'end']).set_index(['chr', 'start', 'end'])
+    refl1 = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
     refl1['reference_l1hs_l1pa2_6'] = True
 
     refl1.to_csv(outfile)
