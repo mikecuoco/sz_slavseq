@@ -19,7 +19,7 @@ rule features:
         """
         touch {log} && exec 2>{log} 
 
-        pyslavseq_extract_features \
+        workflow/scripts/get_window_features_occupied.py \
             --genome_fasta_file {input.fa} \
             --library_3_or_5 3 \
             --occupied \
