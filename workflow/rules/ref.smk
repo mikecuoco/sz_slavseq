@@ -72,20 +72,6 @@ rule liftover:
         """
 
 
-rule get_non_ref_l1_windows:
-    input:
-        non_ref_l1="resources/{ref}/{ref}_{db}_insertions.bed",
-        chromsizes=rules.gen_ref.output[2],
-    output:
-        "resources/{ref}/{ref}_{db}_windows.csv",
-    log:
-        "resources/{ref}/{ref}_{db}_windows.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/get_windows.py"
-
-
 rule run_rmsk:
     input:
         rules.gen_ref.output[0],
@@ -115,17 +101,3 @@ rule run_rmsk:
 
         # TODO: convert to bed
         """
-
-
-rule get_rmsk_windows:
-    input:
-        rmsk=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2],
-    output:
-        "resources/{ref}/reference_l1.csv",
-    log:
-        "resources/{ref}/get_rmsk.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/get_rmsk.py"
