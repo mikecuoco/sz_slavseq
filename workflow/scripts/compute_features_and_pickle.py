@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 __author__ = 'Apua Paquola, Michael Cuoco'
 
+import argparse
 import pickle
 import gzip
 import pandas as pd
@@ -21,9 +22,15 @@ def flank_features(df):
         df[field_name] = df['all_reads.count'].rolling(window=2*flank_size + 1, center=True, min_periods=1).max().fillna(0)
 
 def main():
-    emptydf = genome_empty_df(snakemake.input.chromsizes)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bgz', required=True)
+    parser.add_argument('--chromsizes', required=True)
+    parser.add_argument('--outfile', required=True)
+    args=parser.parse_args()
 
-    df = pd.read_csv(snakemake.input.bgz, compression='gzip', sep='\t', index_col=[0, 1, 2])
+    emptydf = genome_empty_df(args.chromsizes)
+
+    df = pd.read_csv(args.bgz, compression='gzip', sep='\t', index_col=[0, 1, 2])
     arcdf = df[['all_reads.count']]
     arcdf = pd.merge(emptydf, arcdf, how='outer', left_index=True, right_index=True).fillna(0)
     flank_features(arcdf)
@@ -32,19 +39,9 @@ def main():
 
     df = pd.merge(df, arcdf, how='inner', left_index=True, right_index=True)
 
-    f = gzip.open(snakemake.output[0],'wb')
+    f = gzip.open(args.outfile,'wb')
     pickle.dump(df, f)
     f.close()
 
 if __name__ == '__main__':
-    try:
-        main()
-
-    except:  # catch *all* exceptions
-        sys.stderr = open(snakemake.log[0], 'w')
-        traceback.print_exc()
-        sys.stderr.close()
-
-    finally:
-        # cleanup code in here
-        gc.collect()
+    main()

@@ -5,12 +5,15 @@ rule features:
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     output:
-        # TODO: cleanup with multiext
-        bgz="results/features/{ref}/{donor}/{dna_type}/{sample}.bgz",
-        tbi="results/features/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
-        header="results/features/{ref}/{donor}/{dna_type}/{sample}.header.txt",
-        unsorted="results/features/{ref}/{donor}/{dna_type}/{sample}.unsorted.txt",
-        sorted="results/features/{ref}/{donor}/{dna_type}/{sample}.sorted.txt",
+        multiext(
+            "results/features/{ref}/{donor}/{dna_type}/{sample}",
+            ".bgz",
+            ".bgz.tbi",
+            ".header.txt",
+            ".unsorted.txt",
+            ".sorted.txt",
+            ".pickle.gz"
+        ),
     log:
         "results/features/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
@@ -31,31 +34,21 @@ rule features:
             --window_step 250 \
             --min_secondary_mapq 20 \
             {input.bgz} \
-            --write_header_to {output.header} \
-            > {output.unsorted} 
+            --write_header_to {output[2]} \
+            > {output[3]} 
 
         # Maybe need to add tmpdir?
-        sort --buffer-size=1G -k1,1 -k2,2n -k3,3n < {output.unsorted} > {output.sorted}
+        sort --buffer-size=1G -k1,1 -k2,2n -k3,3n < {output[3]} > {output[4]}
 
-        cat {output.header} {output.sorted} | bgzip -c > {output.bgz}
+        cat {output[2]} {output[4]} | bgzip -c > {output[0]}
 
-        tabix -S 1 -s 1 -b 2 -e 3 -0 {output.bgz}
+        tabix -S 1 -s 1 -b 2 -e 3 -0 {output[0]}
+
+        workflow/scripts/compute_features_and_pickle.py \
+            --bgz {output[0]} \
+            --chromsizes {input.chromsizes} \
+            --outfile {output[5]}
         """
-
-
-rule flank_features:
-    input:
-        bgz=rules.features.output.bgz,
-        tbi=rules.features.output.tbi,
-        chromsizes=rules.gen_ref.output[2],
-    output:
-        "results/flank_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
-    log:
-        "results/flank_features/{ref}/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/compute_features_and_pickle.py"
 
 
 rule folds:
