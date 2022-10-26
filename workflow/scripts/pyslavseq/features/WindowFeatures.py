@@ -207,7 +207,7 @@ class WindowFeatures:
         return feature_dict
 
     def features(self):
-        all_alignments = list(self.tabixsam.fetch(self.chrom, self.start, self.end))
+        all_alignments = list(self.tabixsam.fetch_polyA(self.chrom, self.start, self.end))
         alignments_from_well_mapped_reads = list(
             primary_read_filter(all_alignments, lambda x: x['sam'][4] >= self.min_mapq))
 

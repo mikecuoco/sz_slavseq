@@ -6,7 +6,7 @@ import pysam
 from pyslavseq.genome import interval_generator as ig
 from pyslavseq.genome import Genome, Interval
 from pyslavseq.features.WindowFeatures import WindowFeatures
-from pyslavseq.features.TabixSamWithPolyA import TabixSamWithPolyA
+from pyslavseq.features.TabixSam import TabixSam
 from pyslavseq.features.occupied_windows import occupied_windows_in_genome
 from pyslavseq.features.ttaaaa import ENSearch
 
@@ -32,7 +32,7 @@ def main():
     parser.add_argument('filename')
     args=parser.parse_args()
 
-    tabixsam = TabixSamWithPolyA(pysam.Tabixfile(args.filename))
+    tabixsam = TabixSam(pysam.Tabixfile(args.filename))
 
     genome = Genome(args.chromsizes)
 

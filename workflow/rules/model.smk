@@ -22,6 +22,7 @@ rule features:
         """
         touch {log} && exec 2>{log} 
 
+        # get features for each window
         workflow/scripts/get_window_features_occupied.py \
             --genome_fasta_file {input.fa} \
             --library_3_or_5 3 \
@@ -38,12 +39,15 @@ rule features:
             > {output[3]} 
 
         # Maybe need to add tmpdir?
+        # sort features table
         sort --buffer-size=1G -k1,1 -k2,2n -k3,3n < {output[3]} > {output[4]}
 
+        # add header to features table and compress
         cat {output[2]} {output[4]} | bgzip -c > {output[0]}
 
         tabix -S 1 -s 1 -b 2 -e 3 -0 {output[0]}
 
+        # get additional features: flanking reads
         workflow/scripts/compute_features_and_pickle.py \
             --bgz {output[0]} \
             --chromsizes {input.chromsizes} \
