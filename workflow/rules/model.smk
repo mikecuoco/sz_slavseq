@@ -58,6 +58,29 @@ rule flank_features:
         "../scripts/compute_features_and_pickle.py"
 
 
+rule split_train_test:
+    input:
+        samples=get_folds_input_samples,
+        non_ref_l1=expand(
+            rules.get_non_ref_l1_windows.output,
+            ref=config["genome"]["build"],
+            db=config["non_ref_germline_l1"]["source"],
+        ),
+        ref_l1=rules.get_rmsk_windows.output,
+    params:
+        num_folds=config["model"]["num_folds"],
+        min_reads=config["model"]["min_reads"],
+        fold_window=config["model"]["fold_window"],
+    output:
+        pred="results/split_train_test/{ref}/{donor}/{dna_type}.pred.tsv",
+    log:
+        "results/split_train_test/{ref}/{donor}/{dna_type}.log",
+    conda:
+        "../envs/env.yml"
+    script:
+        "../scripts/split_train_test.py"
+
+
 rule folds:
     input:
         samples=get_folds_input_samples,
