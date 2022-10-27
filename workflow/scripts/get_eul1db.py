@@ -5,7 +5,6 @@ __author__ = 'Michael Cuoco'
 import pandas as pd
 import sys,gc,traceback
 from pyslavseq.genome import Interval, Genome
-import pyslavseq.genome.interval_generator as ig
     
 def main():
     '''

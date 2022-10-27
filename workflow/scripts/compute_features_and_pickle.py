@@ -5,7 +5,6 @@ import argparse
 import pickle
 import gzip
 import pandas as pd
-from pyslavseq.genome import interval_generator as ig
 from pyslavseq.genome import Genome
 from get_windows import make_genome_windows
 import sys, gc, traceback
