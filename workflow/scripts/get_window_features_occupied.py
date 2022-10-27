@@ -4,7 +4,8 @@ import argparse
 import pysam
 
 from pyslavseq.genome import interval_generator as ig
-from pyslavseq.genome import Genome, Interval
+from pyslavseq.genome.Genome import Genome
+from pyslavseq.genome.Interval import Interval
 from pyslavseq.features.WindowFeatures import WindowFeatures
 from pyslavseq.features.TabixSam import TabixSam
 from pyslavseq.features.occupied_windows import occupied_windows_in_genome

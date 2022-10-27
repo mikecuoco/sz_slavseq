@@ -2,7 +2,7 @@
 __author__ = "Apuã Paquola"
 
 import subprocess
-from ..genome import Interval
+from ..genome.Interval import Interval
 
 
 def occupied_windows_in_genome(genome, window_size, step, tabix_filename):

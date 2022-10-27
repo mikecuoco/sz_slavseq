@@ -10,7 +10,8 @@ import functools
 import re
 import numpy as np
 from pathlib import Path
-from pyslavseq.genome import Interval, Genome, is_within
+from pyslavseq.genome.Genome import Genome
+from pyslavseq.genome.Interval import Interval, is_within
 import pyslavseq.genome.interval_generator as ig
 from get_windows import read_rmsk, make_l1_windows
 

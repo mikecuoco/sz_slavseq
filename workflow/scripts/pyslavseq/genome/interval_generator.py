@@ -2,7 +2,7 @@
 __author__ = "Apuã Paquola"
 
 import numpy as np
-from . import Interval, overlaps
+from .Interval import Interval, overlaps
 
 
 def chromosome_intervals(genome):

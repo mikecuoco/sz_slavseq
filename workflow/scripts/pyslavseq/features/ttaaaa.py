@@ -5,7 +5,7 @@ import pysam
 import MOODS.tools
 import MOODS.scan
 
-from ..genome import Interval
+from ..genome.Interval import Interval
 from ..util import rc
 import numpy as np
 import functools
