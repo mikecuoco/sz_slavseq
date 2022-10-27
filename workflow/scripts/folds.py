@@ -12,6 +12,7 @@ import numpy as np
 from pathlib import Path
 from pyslavseq.genome import Interval, Genome, is_within
 import pyslavseq.genome.interval_generator as ig
+from get_windows import read_rmsk, make_l1_windows
 
 def interval_hash(iv, window_size):
     return str(iv.chrom) + "_" + str(iv.start // window_size)
@@ -33,54 +34,17 @@ def interval_fold_assignment(d, iv, window_size, num_folds):
     else:
         return -1
 
-def read_rmsk(rmsk_outfile=snakemake.input.ref_l1):
-    """
-    Read the repeatmasker output table and return locations of L1HS and L1PA2-6
-    """
-    # read the rmsk file
-    df0 = pd.read_csv(rmsk_outfile, skiprows=3, delim_whitespace=True, 
-        names=["chrom", "start", "end", "strand", "repeat"], usecols=[4,5,6,8,9])
-
-    # filter for rep_names
-    rep_names = ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]
-    # logging.info(f"Filtering for rep_names: {rep_names}")
-    df0 =  df0[df0['repeat'].isin(rep_names)]
-
-    # save to new dataframe
-    df1 = pd.DataFrame()
-    df1['chrom'] = df0['chrom']
-    # set start positions depending on strand
-    df1['start'] = df0.apply(lambda x: x['end'] if x['strand'] != '+' else x['start'], axis=1)
-    df1['end'] = df1['start']
-    df1['start'] -= 1 # make zero-based
-
-    return df1
-
-def make_windows(df, field):
-    l1_pos = set()
-
-    for (_, chrom, start, end) in df[['chrom', 'start', 'end']].itertuples():
-        l1_pos.update([Interval(chrom, start, end)])
-
-    genome = Genome(snakemake.input.chromsizes)
-    xx = list(ig.windows_overlapping_intervals(genome, l1_pos, 750, 250))
-    
-    l1_df = pd.DataFrame.from_records((x.as_tuple() for x in xx), columns=['chrom', 'start', 'end']).set_index(['chrom', 'start', 'end'])
-    l1_df[field] = True 
-    
-    return l1_df
-
 @functools.lru_cache()
 def get_reference_l1():
-    rmsk_df = read_rmsk()
-    l1_df = make_windows(rmsk_df, "reference_l1hs_l1pa2_6")
+    rmsk_df = read_rmsk(snakemake.input.ref_l1)
+    l1_df = make_l1_windows(rmsk_df, snakemake.input.chromsizes, "reference_l1hs_l1pa2_6")
     # df = pd.read_csv(snakemake.input.ref_l1[0], index_col=[0,1,2])
     return l1_df
 
 @functools.lru_cache()
 def get_non_ref_db():
     nr_df = pd.read_csv(snakemake.input.non_ref_l1, sep="\t", names=["chrom", "start", "end"])
-    l1_df = make_windows(nr_df, "in_NRdb")
+    l1_df = make_l1_windows(nr_df, snakemake.input.chromsizes, "in_NRdb")
     # df = pd.read_csv(snakemake.input.non_ref_l1[0], index_col=[0,1,2])
     return l1_df
 

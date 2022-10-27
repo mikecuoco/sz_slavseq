@@ -7,13 +7,8 @@ import gzip
 import pandas as pd
 from pyslavseq.genome import interval_generator as ig
 from pyslavseq.genome import Genome
+from get_windows import make_genome_windows
 import sys, gc, traceback
-
-def genome_empty_df(chromsizes):
-    genome = Genome(chromsizes)
-    wg_iter = ig.windows_in_genome(genome, 750, 250)
-    df = pd.DataFrame.from_records((xx.as_tuple() for xx in wg_iter), columns=['chrom', 'start', 'end'])
-    return df.set_index(['chrom', 'start', 'end'])
 
 def flank_features(df):
     for i in range(1, 8):
@@ -28,7 +23,7 @@ def main():
     parser.add_argument('--outfile', required=True)
     args=parser.parse_args()
 
-    emptydf = genome_empty_df(args.chromsizes)
+    emptydf = make_genome_windows(args.chromsizes)
 
     df = pd.read_csv(args.bgz, compression='gzip', sep='\t', index_col=[0, 1, 2])
     arcdf = df[['all_reads.count']]

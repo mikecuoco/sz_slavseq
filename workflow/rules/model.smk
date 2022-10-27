@@ -12,7 +12,7 @@ rule features:
             ".header.txt",
             ".unsorted.txt",
             ".sorted.txt",
-            ".pickle.gz"
+            ".pickle.gz",
         ),
     log:
         "results/features/{ref}/{donor}/{dna_type}/{sample}.log",
