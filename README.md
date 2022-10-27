@@ -1,6 +1,6 @@
 # SLAV-seq Snakemake Pipeline
 
-![Tests](https://github.com/mikecuoco/sz_slavseq/actions/workflows/main.yml/badge.svg)
+[![Tests](https://github.com/mikecuoco/sz_slavseq/actions/workflows/main.yml/badge.svg)](https://github.com/mikecuoco/sz_slavseq/actions/workflows/main.yml)
 
 Adapted from work by Apua Paquola and Ricardo Jacomini
 
@@ -41,5 +41,6 @@ snakemake \
    --use-conda \
    --show-failed-logs \
    --conda-cleanup-pkgs cache \
+   --rerun-triggers mtime \
    --all-temp 
 ```
