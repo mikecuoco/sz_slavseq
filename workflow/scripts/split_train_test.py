@@ -113,20 +113,10 @@ def main(files, num_folds, min_reads):
     pred_df = pd.DataFrame()  # create df to predictions for each fold
 
     for fold, (train_index, test_index) in enumerate(sgkf.split(X, y, groups=chroms)):
-        print(f"Fold {fold+1} of {num_folds}", file=sys.stderr)
-        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-        print(
-            f"""
-            training on chromosomes: {set(X_train.index.get_level_values('chrom'))}\n
-            Train_x Shape: {X_train.shape}\n
-            Train_y Shape: {y_train.shape}\n
-            testing on chromosomes {set(X_test.index.get_level_values('chrom'))}\n
-            Test_x Shape: {X_test.shape}\n
-            Test_y Shape: {y_test.shape}\n
-            """,
-            file=sys.stderr,
-        )
+        tt = {
+            "train": {"X": X.iloc[train_index], "y": y[train_index]},
+            "test": {"X": X.iloc[test_index], "y": y[test_index]},
+        }
 
         # TODO: make classifier customizable by passing it as an argument
         cla = RandomForestClassifier(
@@ -135,43 +125,44 @@ def main(files, num_folds, min_reads):
             oob_score=True,
             n_jobs=-1,
         )
-        cla = cla.fit(X_train, y_train)  # train
+        cla = cla.fit(tt["train"]["X"], tt["train"]["y"])  # train
 
-        # train predictions
-        train_df = X_train.copy()
-        train_df["class"] = le.inverse_transform(y_train)
-        train_df["pred"] = le.inverse_transform(
-            cla.predict(
-                X_train,
+        # make dataframe of predictions
+        for phase in ["train", "test"]:
+
+            fold_df = tt[phase]["X"].copy()
+
+            # create output file for appending
+            if "proba" in locals():
+                for f in [snakemake.output.train, snakemake.output.test]:
+                    fold_df.drop(fold_df.index).to_csv(f, header=True, index=True)
+
+            # get labels and predictions
+            fold_df["Y"] = le.inverse_transform(tt[phase]["y"])
+            fold_df["Y_pred"] = le.inverse_transform(
+                cla.predict(
+                    tt[phase]["X"],
+                )
             )
-        )
-        train_df["phase"] = "train"
-        pred_df = pred_df.append(train_df)
+            proba = cla.predict_proba(tt[phase]["X"])
+            proba = pd.DataFrame(
+                proba, columns=le.classes_ + "_proba", index=fold_df.index
+            )
+            fold_df = fold_df.join(proba)
 
-        # test predictions
-        test_df = X_test.copy()
-        test_df["class"] = le.inverse_transform(y_test)
-        test_df["pred"] = le.inverse_transform(cla.predict(X_test))
-        test_df["phase"] = "test"
-        pred_df = pred_df.append(test_df)
+            # add phase and fold columns
+            fold_df["phase"] = phase
+            fold_df["fold"] = fold
 
-        # generate metrics
-        # TODO: generate metrics for training and testing
-        # TODO: report feature importance
-        # print(metrics.confusion_matrix(y_test, y_pred))
-        # report = metrics.classification_report(
-        #     y_test, y_pred, target_names=le.classes_, output_dict=True
-        # )
-        # del report["accuracy"]
-        # for key in report.keys():
-        #     report[key]["fold"] = fold + 1
-        # metrics_df = metrics_df.append(
-        #     pd.DataFrame(report).T.reset_index().rename(columns={"index": "class"})
-        # )
-
-    # save metrics to file
-    pred_df.to_csv(snakemake.output.pred, index=True, sep="\t")
-
+            # save predictions to files
+            if phase == "train":
+                fold_df.to_csv(
+                    snakemake.output.train, mode="a", header=False, index=True
+                )
+            else:
+                fold_df.to_csv(
+                    snakemake.output.test, mode="a", header=False, index=True
+                )
 
 if __name__ == "__main__":
 
