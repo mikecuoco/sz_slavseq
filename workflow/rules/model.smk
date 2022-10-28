@@ -60,7 +60,11 @@ rule flank_features:
 
 rule split_train_test:
     input:
-        samples=get_folds_input_samples,
+        samples=expand(
+            "results/flank_features/{{ref}}/{donor}/{{dna_type}}/{sample}.pickle.gz",
+            donor=samples.loc[(samples["dna_type"] == "mda")]["sample"],
+            sample=samples.loc[(samples["dna_type"] == "mda")]["donor"],
+        ),
         non_ref_l1=expand(
             rules.get_non_ref_l1_windows.output,
             ref=config["genome"]["build"],
@@ -72,96 +76,11 @@ rule split_train_test:
         min_reads=config["model"]["min_reads"],
         fold_window=config["model"]["fold_window"],
     output:
-        pred="results/split_train_test/{ref}/{donor}/{dna_type}.pred.tsv",
+        train="results/split_train_test/{ref}/{dna_type}/Training_y_pred.csv",
+        test="results/split_train_test/{ref}/{dna_type}/Testing_y_pred.csv",
     log:
-        "results/split_train_test/{ref}/{donor}/{dna_type}.log",
+        "results/split_train_test/{ref}/{dna_type}.log",
     conda:
         "../envs/env.yml"
     script:
         "../scripts/split_train_test.py"
-
-
-rule folds:
-    input:
-        samples=get_folds_input_samples,
-        chromsizes=rules.gen_ref.output[2],
-        non_ref_l1=expand(
-            rules.get_non_ref_l1_windows.output,
-            ref=config["genome"]["build"],
-            db=config["non_ref_germline_l1"]["source"],
-        ),
-        ref_l1=rules.get_rmsk_windows.output,
-    params:
-        num_folds=config["model"]["num_folds"],
-        min_reads=config["model"]["min_reads"],
-        fold_window=config["model"]["fold_window"],
-    output:
-        expand(
-            "results/folds/{{ref}}/{{donor}}/{{dna_type}}/{fold}/{file}",
-            fold=fold_dirs,
-            file=[
-                "X_train.pickle.gz",
-                "X_test.pickle.gz",
-                "Y_train.pickle.gz",
-                "Y_test.pickle.gz",
-            ],
-        ),
-    log:
-        "results/folds/{ref}/{donor}/{dna_type}.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/folds.py"
-
-
-rule train_test:
-    input:
-        expand(
-            "results/folds/{{ref}}/{{donor}}/{{dna_type}}/{fold}/{file}",
-            fold=fold_dirs,
-            file=[
-                "X_train.pickle.gz",
-                "X_test.pickle.gz",
-                "Y_train.pickle.gz",
-                "Y_test.pickle.gz",
-            ],
-        ),
-    output:
-        expand(
-            "results/train_test/{{ref}}/{{donor}}/{{dna_type}}/{fold}/Testing_y_pred.csv",
-            fold=fold_dirs,
-        ),
-    params:
-        num_folds=config["model"]["num_folds"],
-    log:
-        "results/train_test/{ref}/{donor}/{dna_type}.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/rfc.py"
-
-
-rule somatic_summary:
-    input:
-        rules.train_test.output,
-    output:
-        expand(
-            "results/somatic_summary/{{ref}}/{{donor}}/{{dna_type}}/{file}",
-            file=[
-                "Merged_y_pred.csv",
-                "slavseq_sz-intersections-cluster.csv",
-                "somatic_candidates-cluster.csv",
-                "Cross_validation_metrics.csv",
-            ],
-        ),
-    params:
-        num_folds=config["model"]["num_folds"],
-        min_reads=config["model"]["min_reads"],
-        window_size=config["model"]["window_size"],
-        min_prob=config["model"]["prob"],
-    log:
-        "results/somatic_summary/{ref}/{donor}/{dna_type}.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/somatic_summary.py"

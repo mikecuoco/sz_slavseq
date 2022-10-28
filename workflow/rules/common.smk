@@ -58,23 +58,3 @@ non_ref_l1_windows = f"resources/{ref}/{db}_windows.csv"
 if db != "eul1db":
     NR_df = pd.read_csv(non_ref_l1_windows)
     validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
-
-
-# setup input/output for folds rule
-def get_folds_input_samples(wildcards):
-    my_samples = samples.loc[
-        (samples["dna_type"] == wildcards.dna_type)
-        & (samples["donor"] == wildcards.donor)
-    ]["sample"]
-    return expand(
-        "results/flank_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
-        ref=wildcards.ref,
-        donor=wildcards.donor,
-        dna_type=wildcards.dna_type,
-        sample=my_samples,
-    )
-
-
-# handle number of folds
-num_folds = config["model"]["num_folds"]
-fold_dirs = [f"fold_{fold}" for fold in range(num_folds)]

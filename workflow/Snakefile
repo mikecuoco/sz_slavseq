@@ -18,17 +18,9 @@ include: "rules/model.smk"
 rule all:
     input:
         expand(
-            "results/somatic_summary/{ref}/{donor}/{dna_type}/{file}",
+            rules.split_train_test.output.train,
             ref=config["genome"]["build"],
-            donor=samples["donor"],
-            dna_type=samples["dna_type"],
-            file=[
-                "Merged_y_pred.csv",
-                "slavseq_sz-intersections-cluster.csv",
-                "somatic_candidates-cluster.csv",
-                "Cross_validation_metrics.csv",
-            ],
+            dna_type="mda",
         ),
     wildcard_constraints:
         dna_type="\w+",
-        donor="\d+",
