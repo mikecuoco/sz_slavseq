@@ -5,12 +5,12 @@ __author__ = "Michael Cuoco"
 import pysam
 import pandas as pd
 import sys
-from pyslavseq.genome import interval_generator as ig
-from pyslavseq.genome.Genome import Genome
-from pyslavseq.features.TabixSam import TabixSam
-from pyslavseq.features.ttaaaa import ENSearch
-from pyslavseq.features.WindowFeatures import WindowFeatures
-from pyslavseq.features.occupied_windows import occupied_windows_in_genome
+from src.genome import interval_generator as ig
+from src.genome.Genome import Genome
+from src.features.TabixSam import TabixSam
+from src.features.ttaaaa import ENSearch
+from src.features.WindowFeatures import WindowFeatures
+from src.features.occupied_windows import occupied_windows_in_genome
 
 def flank_features(df):
 	for i in range(1, 8):

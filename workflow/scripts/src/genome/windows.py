@@ -3,9 +3,9 @@
 __author__ = 'Michael Cuoco, Rohini Gadde'
 
 import pandas as pd
-from pyslavseq.genome.Genome import Genome
-from pyslavseq.genome.Interval import Interval
-import pyslavseq.genome.interval_generator as ig
+from .Genome import Genome
+from .Interval import Interval
+from . import interval_generator as ig
 import sys, gc, traceback
 
 def read_rmsk(rmsk_outfile):

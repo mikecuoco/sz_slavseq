@@ -12,7 +12,7 @@ import re
 import subprocess
 import pdb
 
-from pyslavseq.genome.Interval import Interval, overlaps
+from src.genome.Interval import Interval, overlaps
 
 from pathlib import Path
 
