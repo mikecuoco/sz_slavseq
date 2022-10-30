@@ -4,7 +4,6 @@ __author__ = "Michael Cuoco"
 
 import pandas as pd
 import sys, gc, traceback
-from src.genome import Interval, Genome
 
 
 def main():

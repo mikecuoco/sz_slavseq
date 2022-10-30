@@ -5,7 +5,6 @@ __author__ = "Michael Cuoco"
 import pysam
 import pandas as pd
 import sys
-from src.genome import interval_generator as ig
 from src.genome.Genome import Genome
 from src.features.TabixSam import TabixSam
 from src.features.ttaaaa import ENSearch

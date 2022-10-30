@@ -7,7 +7,6 @@ import sys, gc, traceback
 import os
 import tempfile
 import shutil
-from pathlib import Path
 
 
 def prio_pair_rmdup(filename, out_filename):

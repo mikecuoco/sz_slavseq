@@ -2,15 +2,9 @@
 # adapted from Ricardo's jupyter notebooks from rf pipeline's somaticMutationSummary step
 __author__ = "Rohini Gadde"
 
-import sys, gc
-import traceback
-import os
-import itertools
+import sys, gc, os, traceback
 import numpy as np
 import pandas as pd
-import re
-import subprocess
-import pdb
 
 from src.genome.Interval import Interval, overlaps
 
