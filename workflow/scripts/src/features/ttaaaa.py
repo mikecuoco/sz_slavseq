@@ -12,21 +12,24 @@ import functools
 
 
 class ENSearch:
-    """ Search for a L1 endonuclease motif given by a PWM from Jurka 1997.
-    """
+    """Search for a L1 endonuclease motif given by a PWM from Jurka 1997."""
 
     def __init__(self, genome, genome_fasta_file, left_flank, right_flank):
         # Matrix from PMID 9050872 Jurka 1997
-        self.matrix = [[60, 71, 279, 248, 238, 241],
-                       [34, 37, 3, 4, 9, 14],
-                       [43, 26, 32, 72, 72, 46],
-                       [207, 210, 30, 20, 25, 43]]
+        self.matrix = [
+            [60, 71, 279, 248, 238, 241],
+            [34, 37, 3, 4, 9, 14],
+            [43, 26, 32, 72, 72, 46],
+            [207, 210, 30, 20, 25, 43],
+        ]
 
         self.genome = genome
         self.fa = pysam.Fastafile(genome_fasta_file)
         self.left_flank = left_flank
         self.right_flank = right_flank
-        self.threshold = MOODS.tools.threshold_from_p(self.matrix, MOODS.tools.flat_bg(4), 0.2)
+        self.threshold = MOODS.tools.threshold_from_p(
+            self.matrix, MOODS.tools.flat_bg(4), 0.2
+        )
 
     @functools.lru_cache(maxsize=1024, typed=False)
     def pos_and_score(self, chrom, pos, te_strand):
@@ -63,13 +66,13 @@ class ENSearch:
 
             results = MOODS.scan.scan_best_hits_dna(s, [matrix], 1, 10, len(s), len(s))
             if len(results) == 0:
-                en_pos = - self.left_flank
+                en_pos = -self.left_flank
                 en_score = 0
-                motif = ''
+                motif = ""
             else:
                 # print(">> ", len(results[0]),  file=sys.stderr, flush=True)
                 spos = results[0][0].pos
-                motif = s[spos:spos + len(matrix[0])]
+                motif = s[spos : spos + len(matrix[0])]
                 en_pos = spos - zeropos
                 en_score = int(results[0][0].score)
 

@@ -9,19 +9,20 @@ import tempfile
 import shutil
 from pathlib import Path
 
+
 def prio_pair_rmdup(filename, out_filename):
-    bam = pysam.AlignmentFile(filename, "rb") # read input bam file
-    outfile = open(out_filename, "a+") # open output file for writing
+    bam = pysam.AlignmentFile(filename, "rb")  # read input bam file
+    outfile = open(out_filename, "a+")  # open output file for writing
 
     r1 = None
     r2 = None
 
-    for r2 in bam.fetch(until_eof = True):
-        
+    for r2 in bam.fetch(until_eof=True):
+
         # filter out secondary (and supplementary) matches (bwa mem compatibility)
-	    # secondary matches won't be used in selection
+        # secondary matches won't be used in selection
         if (r2.is_secondary) or (r2.is_supplementary):
-            continue # continue to next iteration if true
+            continue  # continue to next iteration if true
 
         if r1 != None:
             if not (r2.qname != r1.qname or (r1.is_unmapped and r1.is_read1)):
@@ -39,75 +40,90 @@ def prio_pair_rmdup(filename, out_filename):
                 query_qualities = r1.query_qualities + r2.query_qualities
                 for q in query_qualities:
                     sumqual += q
-                
+
                 # convert from 0-based to 1-based coordinates
-                r1pos = r1.reference_end + 1 if r1.is_reverse else r1.reference_start + 1
-                
+                r1pos = (
+                    r1.reference_end + 1 if r1.is_reverse else r1.reference_start + 1
+                )
+
                 # label strand
                 r1strand = "-" if r1.is_reverse else "+"
 
                 # join target ID, position, and strand info
                 pos = ":".join([r1.reference_name, str(r1pos), r1strand])
-                
+
                 # join and print more metrics to output file
                 all_fields = "\t".join(
-                    [r1.qname,
-                    str(r1.mapping_quality + r2.mapping_quality),
-                    str(sumqual),
-                    pos])
-                
+                    [
+                        r1.qname,
+                        str(r1.mapping_quality + r2.mapping_quality),
+                        str(sumqual),
+                        pos,
+                    ]
+                )
+
                 outfile.write(all_fields + "\n")
 
                 r2 = None
-        
+
         r1 = r2
 
     outfile.close()
 
+
 def main():
-    
+
     output_bam_fn = snakemake.output[0]
     input_bam_fn = snakemake.input[0]
-    
+
     input_bam_path = os.path.abspath(input_bam_fn)
     pysam.index(input_bam_path)
 
     if os.path.exists(output_bam_fn):
         sys.exit("Output file already exists!")
 
-    os.environ['LC_ALL'] = "C"
+    os.environ["LC_ALL"] = "C"
 
     curdir = os.getcwd()
     tmpdir = tempfile.mkdtemp(dir="./")
     os.symlink(input_bam_path, tmpdir + "/input.bam")
-    os.symlink(input_bam_path+".bai", tmpdir + "/input.bam.bai")
+    os.symlink(input_bam_path + ".bai", tmpdir + "/input.bam.bai")
     os.chdir(tmpdir)
 
-    prio_pair_rmdup(
-        "input.bam", 
-        "all_fields.txt")
-    
+    prio_pair_rmdup("input.bam", "all_fields.txt")
+
     unsorted_ids = open("all_fields.txt", "r")
     sorted_ids = open("selected.txt", "w+")
 
     # NOTE: shell=True can lead to security vulnerabilities
     subprocess.run(
-        'sort -S 5000M -k 4,4 -k 2,2rn -k 3,3rn | uniq -f 3 -c | ' +
-        'perl -pe "s/^ +(\\d+) +(\\S+)/\$2\\tXD:i:\$1/" | cut -f 1,2 | sort -S 5000M',
-        stdin=unsorted_ids, stdout=sorted_ids, shell=True, check=True, text=True)
-    
+        "sort -S 5000M -k 4,4 -k 2,2rn -k 3,3rn | uniq -f 3 -c | "
+        + 'perl -pe "s/^ +(\\d+) +(\\S+)/\$2\\tXD:i:\$1/" | cut -f 1,2 | sort -S 5000M',
+        stdin=unsorted_ids,
+        stdout=sorted_ids,
+        shell=True,
+        check=True,
+        text=True,
+    )
+
     input_bam = open("input.bam", "r")
     header = open("header.txt", "w+")
     output_bam = open("output.bam", "w+")
 
-    subprocess.run(["samtools", "view", "-H"], stdin=input_bam, stdout=header, check=True)
+    subprocess.run(
+        ["samtools", "view", "-H"], stdin=input_bam, stdout=header, check=True
+    )
 
-    input_bam.seek(0) # reset file pointer to start of file
+    input_bam.seek(0)  # reset file pointer to start of file
     p1 = subprocess.Popen(["samtools", "view"], stdin=input_bam, stdout=subprocess.PIPE)
     p2 = subprocess.run(
-        'sort -T ./ -S 1500M -s -k 1,1 | ' +
-        'join -t "\t" - selected.txt | cat header.txt - | samtools view -S -b -',
-        stdin=p1.stdout, stdout=output_bam, shell=True, check=True)
+        "sort -T ./ -S 1500M -s -k 1,1 | "
+        + 'join -t "\t" - selected.txt | cat header.txt - | samtools view -S -b -',
+        stdin=p1.stdout,
+        stdout=output_bam,
+        shell=True,
+        check=True,
+    )
 
     input_bam.close()
     header.close()
@@ -118,13 +134,14 @@ def main():
 
     return tmpdir
 
+
 if __name__ == "__main__":
     try:
-        dirname = main()    
+        dirname = main()
         shutil.rmtree(dirname)
 
     except:  # catch *all* exceptions
-        sys.stderr = open(snakemake.log[0], 'w')
+        sys.stderr = open(snakemake.log[0], "w")
         traceback.print_exc()
         sys.stderr.close()
 
