@@ -1,58 +1,25 @@
-rule features:
+rule get_features:
     input:
         bgz=rules.tabix.output.bgz,
         tbi=rules.tabix.output.tbi,
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
+    params:
+        window_size=config["model"]["window_size"],
+        window_step=config["model"]["window_step"],
+        min_mapq=40,
+        min_ya=20,
+        max_yg=15,
+        min_secondary_mapq=20,
+        library_3_or_5=3,
     output:
-        multiext(
-            "results/features/{ref}/{donor}/{dna_type}/{sample}",
-            ".bgz",
-            ".bgz.tbi",
-            ".header.txt",
-            ".unsorted.txt",
-            ".sorted.txt",
-            ".pickle.gz",
-        ),
+        "results/get_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
     log:
-        "results/features/{ref}/{donor}/{dna_type}/{sample}.log",
+        "results/get_features/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/env.yml"
-    shell:
-        """
-        touch {log} && exec 2>{log} 
-
-        # get features for each window
-        workflow/scripts/get_window_features_occupied.py \
-            --genome_fasta_file {input.fa} \
-            --library_3_or_5 3 \
-            --occupied \
-            --min_mapq 40 \
-            --min_ya 20 \
-            --max_yg 15 \
-            --chromsizes {input.chromsizes} \
-            --window_size 750 \
-            --window_step 250 \
-            --min_secondary_mapq 20 \
-            {input.bgz} \
-            --write_header_to {output[2]} \
-            > {output[3]} 
-
-        # Maybe need to add tmpdir?
-        # sort features table
-        sort --buffer-size=1G -k1,1 -k2,2n -k3,3n < {output[3]} > {output[4]}
-
-        # add header to features table and compress
-        cat {output[2]} {output[4]} | bgzip -c > {output[0]}
-
-        tabix -S 1 -s 1 -b 2 -e 3 -0 {output[0]}
-
-        # get additional features: flanking reads
-        workflow/scripts/compute_features_and_pickle.py \
-            --bgz {output[0]} \
-            --chromsizes {input.chromsizes} \
-            --outfile {output[5]}
-        """
+    script:
+        "../scripts/get_features.py"
 
 
 rule folds:
