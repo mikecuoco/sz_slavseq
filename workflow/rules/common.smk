@@ -67,7 +67,7 @@ def get_folds_input_samples(wildcards):
         & (samples["donor"] == wildcards.donor)
     ]["sample"]
     return expand(
-        "results/features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
+        "results/get_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
         ref=wildcards.ref,
         donor=wildcards.donor,
         dna_type=wildcards.dna_type,
