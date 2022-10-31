@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  SNAKEMAKE_OUTPUT_CACHE: /mnt/snakemake-cache/
 
 jobs:
   Formatting:
@@ -28,17 +30,25 @@ jobs:
     needs:
       - Formatting
     steps: 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         lfs: true
+    - name: Snakemake cache
+      id: cache-sm
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        key: ${{ runner.os }}-sm
     - name: Run workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
         directory: .
         stagein: |
           mamba install -n snakemake -c conda-forge biopython -y -q
+          mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+          export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         snakefile: workflow/Snakefile
-        args: "all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml"
+        args: "all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml"
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0
