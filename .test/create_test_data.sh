@@ -19,7 +19,7 @@ fi
 
 export LC_ALL=C
 
-if [[ "$2" != *R1.fastq* ]] || [[ "$3" != *R2.fastq* ]]; then
+if [[ "$2" != *R1*.fastq* ]] || [[ "$3" != *R2*.fastq* ]]; then
     echo "FASTQs incorrectly named"
     exit 1
 fi
