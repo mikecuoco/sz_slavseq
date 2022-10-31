@@ -9,3 +9,4 @@ workflow/envs/src/**
 !resources/eul1db_SRIP.txt
 !resources/hs37d5_map.tsv
 !resources/slavseq_metadata.tsv
+**__pycache__
