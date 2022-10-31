@@ -29,7 +29,7 @@ def read_rmsk(rmsk_outfile):
 
     # save to new dataframe
     df1 = pd.DataFrame()
-    df1["chrom"] = df0["chrom"]
+    df1["chrom"] = df0["chrom"].astype(str)
     # set start positions depending on strand
     df1["start"] = df0.apply(
         lambda x: x["end"] if x["strand"] != "+" else x["start"], axis=1

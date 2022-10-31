@@ -156,6 +156,9 @@ def get_train_and_test_data(df, fold, min_reads):
     # test labels
     Y_test = pd.Series(my_label(df[test_examples]), index=df[test_examples].index)
 
+    # ensure that training labels have all three classes present
+    assert len(set(Y_train)) == 3
+
     return X_train, Y_train, X_test, Y_test
 
 

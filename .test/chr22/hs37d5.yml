@@ -7,4 +7,4 @@ genome:
 model:
   num_folds: 2
   min_reads: 1
-  fold_window: 2_000_000
+  fold_window: 1_000_000
