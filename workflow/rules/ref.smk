@@ -56,7 +56,7 @@ rule liftover:
     input:
         non_ref_l1_bed,
     output:
-        multiext("resources/{ref}/{ref}_{db}_insertions.bed", "", ".unmap"),  # is unmap file always generated?
+        multiext("resources/{ref}/{ref}_{db}_insertions", ".bed", ".bed.unmap"),  # is unmap file always generated?
     log:
         "resources/{ref}/{ref}_{db}_liftover.log",
     conda:

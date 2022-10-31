@@ -26,7 +26,10 @@ rule folds:
     input:
         samples=get_folds_input_samples,
         chromsizes=rules.gen_ref.output[2],
-        non_ref_l1=non_ref_l1_bed,
+        non_ref_l1=expand(
+            "resources/{{ref}}/{{ref}}_{db}_insertions.bed",
+            db=config["non_ref_germline_l1"]["source"],
+        ),
         ref_l1=rules.run_rmsk.output[0],
     params:
         num_folds=config["model"]["num_folds"],

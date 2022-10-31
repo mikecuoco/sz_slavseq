@@ -46,17 +46,15 @@ def get_reference_l1():
     l1_df = make_l1_windows(
         rmsk_df, snakemake.input.chromsizes, "reference_l1hs_l1pa2_6"
     )
-    # df = pd.read_csv(snakemake.input.ref_l1[0], index_col=[0,1,2])
     return l1_df
 
 
 @functools.lru_cache()
 def get_non_ref_db():
     nr_df = pd.read_csv(
-        snakemake.input.non_ref_l1, sep="\t", names=["chrom", "start", "end"]
+        snakemake.input.non_ref_l1[0], sep="\t", names=["chrom", "start", "end"]
     )
     l1_df = make_l1_windows(nr_df, snakemake.input.chromsizes, "in_NRdb")
-    # df = pd.read_csv(snakemake.input.non_ref_l1[0], index_col=[0,1,2])
     return l1_df
 
 
