@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  SNAKEMAKE_OUTPUT_CACHE: /mnt/snakemake_cache/
+  SNAKEMAKE_OUTPUT_CACHE: snakemake_cache
 
 jobs:
   Formatting:
@@ -38,7 +38,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        key: ${{ runner.os }}-sm
+        key: ${{ runner.os }}-${{ matrix.genome }}-sm
     - name: Run workflow
       uses: snakemake/snakemake-github-action@v1.24.0
       with:
