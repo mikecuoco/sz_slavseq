@@ -8,11 +8,11 @@ rule bwa_index:
             ".ann",
             ".bwt",
             ".pac",
-            ".sa"
+            ".sa",
         ),
     log:
-        "resources/{ref}/bwa_index.log"
-    cache: True
+        "resources/{ref}/bwa_index.log",
+    cache: "omit-software"
     params:
         algorithm="bwtsw",
     wrapper:
@@ -24,17 +24,17 @@ rule bwa_mem:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
         idx=rules.bwa_index.output.idx,
     output:
-        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam"
+        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log"
+        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
         extra="-T 19",
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
-        sorting="samtools"
+        sorting="samtools",
     threads: 4
     conda:
         "../envs/env.yml"
-    cache: True
+    cache: "omit-software"
     wrapper:
         "v1.7.0/bio/bwa/mem"
 
