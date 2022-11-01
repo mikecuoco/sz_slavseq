@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  SNAKEMAKE_OUTPUT_CACHE: ${{ env.GITHUB_ACTION_PATH	}}/snakemake_cache/
-
 jobs:
   Formatting:
     runs-on: ubuntu-latest
@@ -37,7 +34,7 @@ jobs:
       id: cache-sm
       uses: actions/cache@v3
       with:
-        path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        path: snakemake_cache
         key: ${{ runner.os }}-sm
     - name: Run workflow
       uses: snakemake/snakemake-github-action@v1.24.0
@@ -45,8 +42,8 @@ jobs:
         directory: .
         stagein: |
           mamba install -n snakemake -c conda-forge biopython -y -q
-          mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-          export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+          mkdir -p snakemake_cache
+          export SNAKEMAKE_OUTPUT_CACHE=snakemake_cache
         snakefile: workflow/Snakefile
         args: "all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml"
 
