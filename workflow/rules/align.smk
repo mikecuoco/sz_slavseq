@@ -8,10 +8,11 @@ rule bwa_index:
             ".ann",
             ".bwt",
             ".pac",
-            ".sa",
+            ".sa"
         ),
     log:
         "resources/{ref}/bwa_index.log",
+    cache: True
     params:
         algorithm="bwtsw",
     wrapper:
@@ -23,7 +24,7 @@ rule bwa_mem:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
         idx=rules.bwa_index.output.idx,
     output:
-        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam"
     log:
         "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
