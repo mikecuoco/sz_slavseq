@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  SNAKEMAKE_OUTPUT_CACHE: snakemake-cache/
+  SNAKEMAKE_OUTPUT_CACHE: ${{ env.GITHUB_ACTION_PATH	}}/snakemake_cache/
 
 jobs:
   Formatting:
