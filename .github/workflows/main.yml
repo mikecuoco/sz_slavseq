@@ -9,26 +9,12 @@ on:
 env:
   SNAKEMAKE_OUTPUT_CACHE: /mnt/snakemake_cache
 
-jobs:
-  Formatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Formatting
-        uses: github/super-linter@v4
-        env:
-          VALIDATE_ALL_CODEBASE: false
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_SNAKEMAKE_SNAKEFMT: true
-          
+jobs:          
   Testing: 
     runs-on: ubuntu-latest
     strategy:
       matrix:
         genome: ["hs37d5", "hs38DH", "chm13v2"]
-    needs:
-      - Formatting
     steps: 
     - uses: actions/checkout@v3
       with:
