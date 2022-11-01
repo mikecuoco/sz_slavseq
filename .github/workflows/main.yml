@@ -31,6 +31,7 @@ jobs:
         directory: .
         stagein: |
           mamba install -n snakemake -c conda-forge biopython -y -q
+          mamba update -n snakemake --all
           mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
           export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         snakefile: workflow/Snakefile
