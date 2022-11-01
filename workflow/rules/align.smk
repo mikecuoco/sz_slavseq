@@ -12,7 +12,6 @@ rule bwa_index:
         ),
     log:
         "resources/{ref}/bwa_index.log",
-    cache: True
     params:
         algorithm="bwtsw",
     wrapper:
