@@ -11,7 +11,7 @@ rule bwa_index:
             ".sa"
         ),
     log:
-        "resources/{ref}/bwa_index.log",
+        "resources/{ref}/bwa_index.log"
     cache: True
     params:
         algorithm="bwtsw",
@@ -26,11 +26,11 @@ rule bwa_mem:
     output:
         "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam"
     log:
-        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
+        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log"
     params:
         extra="-T 19",
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
-        sorting="samtools",
+        sorting="samtools"
     threads: 4
     conda:
         "../envs/env.yml"
