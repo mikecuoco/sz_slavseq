@@ -35,7 +35,7 @@ jobs:
       with:
         lfs: true
     - run: |
-        echo "SNAKEMAKE_OUTPUT_CACHE=/home/runner/work/sz_slavseq/snakemake_cache" >> $GITHUB_ENV
+        echo "SNAKEMAKE_OUTPUT_CACHE=${{ env.GITHUB_WORKSPACE }}/snakemake_cache" >> $GITHUB_ENV
     - name: Snakemake cache
       id: cache-sm
       uses: actions/cache@v3
