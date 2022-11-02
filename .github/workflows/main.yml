@@ -24,6 +24,9 @@ jobs:
           
   Testing: 
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       matrix:
         genome: ["hs37d5", "hs38DH", "chm13v2"]
@@ -48,13 +51,8 @@ jobs:
         python-version: 3.9
         channels: conda-forge,bioconda,nodefaults
         channel-priority: strict
-        environment-file: |
-          dependencies:
-            - python=3.9
-            - snakemake=7.16
-            - biopython
+    - run: mamba install python=3.9 snakemake==7.16 biopython
     - name: Run workflow
-      shell: bash -l {0}
       run: |
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
