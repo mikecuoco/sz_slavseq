@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  SNAKEMAKE_OUTPUT_CACHE: $GITHUB_WORKSPACE/snakemake_cache
 
 jobs:
   Formatting:
@@ -22,23 +24,39 @@ jobs:
           
   Testing: 
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       matrix:
         genome: ["hs37d5", "hs38DH", "chm13v2"]
     needs:
       - Formatting
     steps: 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         lfs: true
-    - name: Run workflow
-      uses: snakemake/snakemake-github-action@v1.24.0
+    - name: Snakemake cache
+      id: cache-sm
+      uses: actions/cache@v3
       with:
-        directory: .
-        stagein: |
-          mamba install -n snakemake -c conda-forge biopython -y -q
-        snakefile: workflow/Snakefile
-        args: "all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml"
+        path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        key: ${{ runner.os }}-${{ matrix.genome }}-sm
+    - name: Install Snakemake via mamba
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniforge-variant: Mambaforge
+        miniforge-version: latest
+        use-mamba: true
+        python-version: 3.9
+        channels: conda-forge,bioconda,nodefaults
+        channel-priority: strict
+    - run: mamba install python=3.9 snakemake==7.16 biopython
+    - name: Run workflow
+      run: |
+        mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0

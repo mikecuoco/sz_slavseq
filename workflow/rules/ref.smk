@@ -86,7 +86,7 @@ rule run_rmsk:
         # empty string is default
         # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
         # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
-        speed="-s",
+        speed="-s" if config["genome"]["region"] == "all" else "-qq",
     cache: True
     threads: 16
     shell:
