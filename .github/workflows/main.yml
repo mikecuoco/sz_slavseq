@@ -39,16 +39,25 @@ jobs:
       with:
         path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         key: ${{ runner.os }}-${{ matrix.genome }}-sm
-    - name: Run workflow
-      uses: snakemake/snakemake-github-action@v1.24.0
+    - name: Install Snakemake via Micromamba
+      uses: mamba-org/provision-with-micromamba@v14
       with:
-        directory: .
-        stagein: |
-          mamba install -n snakemake -c conda-forge biopython -y -q
-          mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-          export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        snakefile: workflow/Snakefile
-        args: "all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml"
+        environment-file: false
+        environment-name: snakemake
+        extra-specs: |
+          python=3.9
+          snakemake==7.16.0
+          pandas
+          biopython
+        channels: |
+          conda-forge
+          bioconda
+          nodefaults
+    - name: Run workflow
+      run: |
+        mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0
