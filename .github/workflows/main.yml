@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  SNAKEMAKE_OUTPUT_CACHE: snakemake_cache
 
 jobs:
   Formatting:
@@ -34,6 +32,8 @@ jobs:
       - Formatting
     steps: 
     - uses: actions/checkout@v3
+      env:
+        SNAKEMAKE_OUTPUT_CACHE: ${{ env.RUNNER_TEMP }}/snakemake_cache
       with:
         lfs: true
     - name: Snakemake cache
