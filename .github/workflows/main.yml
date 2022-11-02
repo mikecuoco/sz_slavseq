@@ -52,6 +52,7 @@ jobs:
         channels: conda-forge,bioconda,nodefaults
     - name: Run workflow
       run: |
+        source activate snakemake
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml
