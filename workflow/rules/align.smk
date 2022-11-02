@@ -12,7 +12,7 @@ rule bwa_index:
         ),
     log:
         "resources/{ref}/bwa_index.log",
-    cache: "omit-software"
+    cache: True
     params:
         algorithm="bwtsw",
     wrapper:
@@ -34,7 +34,7 @@ rule bwa_mem:
     threads: 4
     conda:
         "../envs/env.yml"
-    cache: "omit-software"
+    cache: True
     wrapper:
         "v1.7.0/bio/bwa/mem"
 
