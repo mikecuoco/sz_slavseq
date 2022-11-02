@@ -41,18 +41,18 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.genome }}-sm
     - name: Install Snakemake via mamba
       uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
-          python-version: 3.9
-          channels: conda-forge,bioconda,nodefaults
-          channel-priority: strict
-          environment-file: |
-            dependencies:
-              - python=3.9
-              - snakemake=7.16
-              - biopython
+      with:
+        miniforge-variant: Mambaforge
+        miniforge-version: latest
+        use-mamba: true
+        python-version: 3.9
+        channels: conda-forge,bioconda,nodefaults
+        channel-priority: strict
+        environment-file: |
+          dependencies:
+            - python=3.9
+            - snakemake=7.16
+            - biopython
     - name: Run workflow
       shell: bash -l {0}
       run: |
