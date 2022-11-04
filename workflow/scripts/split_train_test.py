@@ -13,18 +13,20 @@ from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn import metrics
-import pdb
+from src.genome.windows import read_rmsk, make_l1_windows
 
 
 @functools.lru_cache()
 def read_reference_l1():
-    df = pd.read_csv(snakemake.input.ref_l1[0], index_col=[0, 1, 2])
+    df = read_rmsk(snakemake.input.ref_l1)
+    df = make_l1_windows(df, snakemake.input.chromsizes, "reference_l1hs_l1pa2_6")
     return df
 
 
 @functools.lru_cache()
 def read_non_ref_db():
-    df = pd.read_csv(snakemake.input.non_ref_l1[0], index_col=[0, 1, 2])
+    df = pd.read_csv(snakemake.input.non_ref_l1[0], sep = "\t", header = None, names = ["chrom", "start", "end"])
+    df = make_l1_windows(df, snakemake.input.chromsizes, "in_NRdb")
     return df
 
 
