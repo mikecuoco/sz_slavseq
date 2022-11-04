@@ -56,7 +56,7 @@ rule liftover:
     input:
         non_ref_l1_bed,
     output:
-        multiext("resources/{ref}/{ref}_{db}_insertions.bed", "", ".unmap"),  # is unmap file always generated?
+        multiext("resources/{ref}/{ref}_{db}_insertions", ".bed", ".bed.unmap"),  # is unmap file always generated?
     log:
         "resources/{ref}/{ref}_{db}_liftover.log",
     conda:
@@ -70,20 +70,6 @@ rule liftover:
 
         bash workflow/scripts/liftover_bed.sh -s {params.source_build} -t {params.target_build} -i {input} -o {output[0]} 
         """
-
-
-rule get_non_ref_l1_windows:
-    input:
-        non_ref_l1="resources/{ref}/{ref}_{db}_insertions.bed",
-        chromsizes=rules.gen_ref.output[2],
-    output:
-        "resources/{ref}/{ref}_{db}_windows.csv",
-    log:
-        "resources/{ref}/{ref}_{db}_windows.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/get_windows.py"
 
 
 rule run_rmsk:
@@ -100,7 +86,7 @@ rule run_rmsk:
         # empty string is default
         # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
         # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
-        speed="-s",
+        speed="-s" if config["genome"]["region"] == "all" else "-qq",
     cache: True
     threads: 16
     shell:
@@ -115,17 +101,3 @@ rule run_rmsk:
 
         # TODO: convert to bed
         """
-
-
-rule get_rmsk_windows:
-    input:
-        rmsk=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2],
-    output:
-        "resources/{ref}/reference_l1.csv",
-    log:
-        "resources/{ref}/get_rmsk.log",
-    conda:
-        "../envs/env.yml"
-    script:
-        "../scripts/get_rmsk.py"
