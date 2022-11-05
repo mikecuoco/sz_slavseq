@@ -56,7 +56,7 @@ jobs:
       run: |
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr22/${{ matrix.genome }}.yml
+        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr21chr22/${{ matrix.genome }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0

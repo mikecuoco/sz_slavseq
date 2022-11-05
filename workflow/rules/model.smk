@@ -34,14 +34,14 @@ rule split_train_test:
             db=config["non_ref_germline_l1"]["source"],
         ),
         ref_l1=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2]
+        chromsizes=rules.gen_ref.output[2],
     params:
         num_folds=config["model"]["num_folds"],
         min_reads=config["model"]["min_reads"],
         fold_window=config["model"]["fold_window"],
     output:
-        train="results/split_train_test/{ref}/{dna_type}/Training_y_pred.csv",
-        test="results/split_train_test/{ref}/{dna_type}/Testing_y_pred.csv",
+        train="results/split_train_test/{ref}/{dna_type}/Training.csv",
+        test="results/split_train_test/{ref}/{dna_type}/Testing.csv",
     log:
         "results/split_train_test/{ref}/{dna_type}.log",
     conda:
