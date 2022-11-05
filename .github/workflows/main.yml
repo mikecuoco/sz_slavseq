@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  SNAKEMAKE_OUTPUT_CACHE: $GITHUB_WORKSPACE/snakemake_cache
-
 jobs:
   Formatting:
     runs-on: ubuntu-latest
@@ -40,7 +37,7 @@ jobs:
       id: cache-sm
       uses: actions/cache@v3
       with:
-        path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        path: $GITHUB_WORKSPACE/snakemake_cache
         key: ${{ runner.os }}-${{ matrix.genome }}-sm
     - name: Install Snakemake via mamba
       uses: conda-incubator/setup-miniconda@v2
@@ -54,8 +51,9 @@ jobs:
     - run: mamba install python=3.9 snakemake==7.16 biopython
     - name: Run workflow
       run: |
-        mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        export SNAKEMAKE_OUTPUT_CACHE=$GITHUB_WORKSPACE/snakemake_cache
+        mkdir -p $SNAKEMAKE_OUTPUT_CACHE
+        echo "cachedir is $SNAKEMAKE_OUTPUT_CACHE"
         snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --configfile .test/chr21chr22/${{ matrix.genome }}.yml
 
     # - name: Test report
