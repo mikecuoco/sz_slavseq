@@ -1,8 +1,8 @@
-samples: .test/chr22/samples.tsv
+samples: .test/chr21chr22/samples.tsv
 
 genome:
   build: hs37d5 
-  region: '22' 
+  region: ['21', '22']
 
 model:
   num_folds: 2
