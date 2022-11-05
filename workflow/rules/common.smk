@@ -35,7 +35,11 @@ ref = config["genome"]["build"]
 gen_ref_basename = ref
 
 # handle trimming for a region
-region = config["genome"]["region"]
+region = (
+    "".join(config["genome"]["region"])
+    if isinstance(config["genome"]["region"], list)
+    else config["genome"]["region"]
+)
 if region != "all":
     gen_ref_basename = f"{ref}_{region}"
 
