@@ -14,7 +14,7 @@ properties:
       build:
         type: string
       region:
-        type: ["string","array"]
+        type: [integer, string, array]
         default: all
     required:
       - build
@@ -24,10 +24,8 @@ properties:
     properties:
       source:
         type: string
-        default: eul1db
       build:
         type: string
-        default: hg19
 
   adapters:
     type: object
@@ -46,21 +44,18 @@ properties:
   model:
     type: object
     properties:
+      type: 
+        type: [string, array]
       num_folds:
         type: integer
-        default: 4
       min_reads:
         type: integer
-        default: 3
       fold_window:
         type: integer
-        default: 2_000_000
       window_size:
         type: integer
-        default: 750
       prob: 
         type: number
-        default: 0.7
 
 required:
   - samples

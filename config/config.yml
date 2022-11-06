@@ -15,9 +15,9 @@ adapters:
   nested_primer: 'TAACTAACCTGCACAATGTGCAC'
 
 model:
+  type: ["RandomForestClassifier","LogisticRegression","SVC","MLPClassifier"]
   num_folds: 4
   min_reads: 3
-  fold_window: 2_000_000
   window_size: 750
   window_step: 250
   prob: 0.7

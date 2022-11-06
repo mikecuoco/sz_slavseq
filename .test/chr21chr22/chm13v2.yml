@@ -5,6 +5,7 @@ genome:
   region: [chr21, chr22]
 
 model:
+  type: ["RandomForestClassifier","LogisticRegression","SVC","MLPClassifier"]
   num_folds: 2
   min_reads: 1
   fold_window: 1_000_000
