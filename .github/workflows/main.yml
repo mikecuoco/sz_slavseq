@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  SNAKEMAKE_OUTPUT_CACHE: /wrong/path/snakemake_cache
+  SNAKEMAKE_OUTPUT_CACHE: snakemake_cache
 
 jobs:
   Formatting:
@@ -54,9 +54,8 @@ jobs:
     - run: mamba install python=3.9 snakemake==7.16 biopython
     - name: Run workflow
       run: |
-        echo ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        export SNAKEMAKE_OUTPUT_CACHE=${{ env.SNAKEMAKE_OUTPUT_CACHE }}
+        export SNAKEMAKE_OUTPUT_CACHE=$(pwd)/${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}.yml
 
     # - name: Test report
