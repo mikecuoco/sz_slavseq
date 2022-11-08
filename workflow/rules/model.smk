@@ -11,7 +11,7 @@ rule get_features:
     log:
         "results/get_features/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
-        "../envs/env.yml"
+        "../envs/features.yml"
     script:
         "../scripts/get_features.py"
 
@@ -59,7 +59,7 @@ rule folds:
     log:
         "results/folds/{ref}/{dna_type}.log",
     conda:
-        "../envs/env.yml"
+        "../envs/model.yml"
     script:
         "../scripts/folds.py"
 
@@ -95,7 +95,7 @@ rule train_test:
     log:
         "results/train_test/{ref}/{dna_type}/{model_id}.log",
     conda:
-        "../envs/env.yml"
+        "../envs/model.yml"
     script:
         "../scripts/train_test.py"
 
@@ -131,7 +131,7 @@ rule metrics:
     output:
         prcurve="results/metrics/{ref}/{dna_type}/prcurve.svg",
     conda:
-        "../envs/env.yml"
+        "../envs/model.yml"
     log:
         "results/metrics/{ref}/{dna_type}.log",
     script:

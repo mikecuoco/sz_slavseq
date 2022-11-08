@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python>=3.7
+  - pandas
+  - wget>=1.20.3
+  - crossmap
+  - repeatmasker>=4.1.2.p1
+  - samtools>=1.15

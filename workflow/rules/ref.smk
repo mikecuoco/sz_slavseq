@@ -4,7 +4,7 @@ rule gen_ref:
     log:
         "resources/{ref}/gen_ref.log",
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         region=" ".join(config["genome"]["region"])
         if isinstance(config["genome"]["region"], list)
@@ -40,7 +40,7 @@ rule get_eul1db:
     output:
         non_ref_l1_bed,
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         ref=config["genome"]["build"],
     log:
@@ -57,7 +57,7 @@ rule liftover:
     log:
         "resources/{ref}/{ref}_{db}_liftover.log",
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         source_build=config["non_ref_germline_l1"]["build"],
         target_build=config["genome"]["build"],  # this is the same as wildcards.ref
@@ -77,7 +77,7 @@ rule run_rmsk:
     log:
         "resources/{ref}/run_rmsk.log",
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         # -s Slow search; 0-5% more sensitive, 2-3 times slower than default;
         # empty string is default

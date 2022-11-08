@@ -16,7 +16,7 @@ rule bwa_index:
     params:
         algorithm="bwtsw",
     wrapper:
-        "v1.7.1/bio/bwa/index"
+        "v1.18.0/bio/bwa/index"
 
 
 rule bwa_mem:
@@ -32,11 +32,9 @@ rule bwa_mem:
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
         sorting="samtools",
     threads: 4
-    conda:
-        "../envs/env.yml"
     cache: True
     wrapper:
-        "v1.7.0/bio/bwa/mem"
+        "v1.18.0/bio/bwa/mem"
 
 
 rule rmdup:
@@ -47,7 +45,7 @@ rule rmdup:
     log:
         "results/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
-        "../envs/env.yml"
+        "../envs/align.yml"
     script:
         "../scripts/slavseq_rmdup_hts.py"
 
@@ -56,7 +54,7 @@ rule install_gapafim:
     output:
         directory("resources/gapafim"),
     conda:
-        "../envs/env.yml"
+        "../envs/align.yml"
     log:
         "resources/install_gapafim.log",
     shell:
@@ -82,7 +80,7 @@ rule tags:
     log:
         "results/tags/{ref}/{donor}/{dna_type}/{sample}.err",
     conda:
-        "../envs/env.yml"
+        "../envs/align.yml"
     shell:
         """
         touch {log} && exec 2>{log} 
@@ -116,7 +114,7 @@ rule tabix:
     log:
         "results/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
-        "../envs/env.yml"
+        "../envs/align.yml"
     shell:
         """
         samtools view {input} | \
