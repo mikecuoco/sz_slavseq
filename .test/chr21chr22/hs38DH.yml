@@ -4,8 +4,7 @@ genome:
   build: hs38DH 
   region: [chr21, chr22] 
 
-model:
-  type: ["RandomForestClassifier","LogisticRegression","SVC","MLPClassifier"]
-  num_folds: 2
+get_features:
   min_reads: 1
-  fold_window: 1_000_000
+
+num_folds: 2
