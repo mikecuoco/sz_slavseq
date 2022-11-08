@@ -41,25 +41,27 @@ properties:
       - r2_adapter
       - nested_primer
 
-  model:
+  get_features:
+    min_reads: integer
+    window_size: integer
+    window_step: integer
+    min_mapq: integer
+    min_ya: integer
+    max_yg: integer
+    min_secondary_mapq: integer
+    library_3_or_5: integer
+
+  num_folds:
+    type: integer
+
+  models:
     type: object
-    properties:
-      type: 
-        type: [string, array]
-      num_folds:
-        type: integer
-      min_reads:
-        type: integer
-      fold_window:
-        type: integer
-      window_size:
-        type: integer
-      prob: 
-        type: number
 
 required:
   - samples
   - genome
   - adapters
-  - model
+  - num_folds
+  - get_features
+  - models
   
