@@ -4,32 +4,29 @@ rule gen_ref:
     log:
         "resources/{ref}/gen_ref.log",
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
-        region=config["genome"]["region"],
+        region=" ".join(config["genome"]["region"])
+        if isinstance(config["genome"]["region"], list)
+        else config["genome"]["region"],
+    shadow:
+        "shallow"
     cache: True
     shell:
         """
-        # TODO: use shadow directive for this rule?
         # start logging
         touch {log} && exec 2>{log} 
 
-        # create temp dir, and clean up on exit
-        TMP=$(mktemp -d)
-        trap 'rm -rf -- "$TMP"' EXIT
-
-        # run the script in the temp dir
-        cd $TMP
-        set +e # allow errors temporarily to handle broken pipe with hs37d5
-        bash $OLDPWD/workflow/scripts/run-gen-ref.sh {wildcards.ref}
+        # allow errors temporarily to handle broken pipe with hs37d5
+        set +e 
+        bash workflow/scripts/run-gen-ref.sh {wildcards.ref}
         set -e
 
         # filter for the region if specified
-        cd $OLDPWD
-        if [ {params.region} != "all" ]; then
-            samtools faidx $TMP/{wildcards.ref}.fa {params.region} > {output[0]}
+        if [ "{params.region}" != "all" ]; then
+            samtools faidx {wildcards.ref}.fa {params.region} > {output[0]}
         else
-            mv $TMP/{wildcards.ref}.fa {output[0]}
+            mv {wildcards.ref}.fa {output[0]}
         fi
 
         samtools faidx {output[0]}
@@ -43,7 +40,7 @@ rule get_eul1db:
     output:
         non_ref_l1_bed,
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         ref=config["genome"]["build"],
     log:
@@ -60,7 +57,7 @@ rule liftover:
     log:
         "resources/{ref}/{ref}_{db}_liftover.log",
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         source_build=config["non_ref_germline_l1"]["build"],
         target_build=config["genome"]["build"],  # this is the same as wildcards.ref
@@ -80,7 +77,7 @@ rule run_rmsk:
     log:
         "resources/{ref}/run_rmsk.log",
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     params:
         # -s Slow search; 0-5% more sensitive, 2-3 times slower than default;
         # empty string is default
@@ -91,7 +88,6 @@ rule run_rmsk:
     threads: 16
     shell:
         """
-        # TODO: use shadow directive for this rule
         # download dfam
         wget -O- https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz | \
             gzip -dc > $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5 

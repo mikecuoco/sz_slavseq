@@ -1,0 +1,17 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python>=3.7
+  - pip
+  - samtools==1.15
+  - tabix==1.11
+  - pysam>=0.19.1
+  - perl>=5.32
+  - perl-bio-db-hts>=3.01
+  - biopython>=1.79
+  - pyfaidx>=0.7.0
+  - gcc>=12.1.0
+  - gawk
+  - make

@@ -1,95 +1,54 @@
 #!/usr/bin/env python
-__author__ = "Ricardo S Jacomini, Michael Cuoco"
+# Created on: 10/26/22, 1:59 PM
+__author__ = "Michael Cuoco"
 
-import sys, gc, traceback
-import os
+# TODO: make function and object names more concise
 
-os.environ["OPENBLAS_NUM_THREADS"] = str(snakemake.threads)
-
+import sys
 import pandas as pd
-import functools
-import re
 import numpy as np
-from pathlib import Path
-from src.genome.Genome import Genome
-from src.genome.Interval import Interval, is_within
-from src.genome import interval_generator as ig
+import functools
+import pickle
+from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.preprocessing import LabelEncoder
+from imblearn.over_sampling import RandomOverSampler
 from src.genome.windows import read_rmsk, make_l1_windows
-
-
-def interval_hash(iv, window_size):
-    return str(iv.chrom) + "_" + str(iv.start // window_size)
+import pdb
 
 
 @functools.lru_cache()
-def interval_dict(genome, window_size):
-    d = dict()
-    for ii, iv in enumerate(ig.windows_in_genome(genome, window_size, window_size)):
-        d[interval_hash(iv, window_size)] = (ii, iv)
-
-    return d
-
-
-def interval_fold_assignment(d, iv, window_size, num_folds):
-    # Assigns intervals to folds (for cross validation)
-    # Assign None to intervals that cross fold boundaries
-    (interval_index, target_interval) = d[interval_hash(iv, window_size)]
-    if is_within(iv, target_interval):
-        return interval_index % num_folds
-    else:
-        return -1
+def read_reference_l1():
+    df = read_rmsk(snakemake.input.ref_l1)
+    df = make_l1_windows(df, snakemake.input.chromsizes, "reference_l1hs_l1pa2_6")
+    return df
 
 
 @functools.lru_cache()
-def get_reference_l1():
-    rmsk_df = read_rmsk(snakemake.input.ref_l1)
-    l1_df = make_l1_windows(
-        rmsk_df, snakemake.input.chromsizes, "reference_l1hs_l1pa2_6"
+def read_non_ref_db():
+    df = pd.read_csv(
+        snakemake.input.non_ref_l1[0],
+        sep="\t",
+        header=None,
+        names=["chrom", "start", "end"],
     )
-    return l1_df
+    df = make_l1_windows(df, snakemake.input.chromsizes, "in_NRdb")
+    return df
 
 
-@functools.lru_cache()
-def get_non_ref_db():
-    nr_df = pd.read_csv(
-        snakemake.input.non_ref_l1[0], sep="\t", names=["chrom", "start", "end"]
-    )
-    l1_df = make_l1_windows(nr_df, snakemake.input.chromsizes, "in_NRdb")
-    return l1_df
-
-
-# @functools.lru_cache(maxsize=1500)
-def get_cell_features(fn, cell_id):
-    # merge reference and non-reference germline L1s
+def read_cell_features(fn):
+    """read a cell's feature table from pickle file"""
+    # TODO make the non-ref and ref-l1 column names flexible to changes
     df = (
         pd.read_pickle(fn)
-        .merge(get_non_ref_db(), left_index=True, right_index=True, how="left")
-        .merge(get_reference_l1(), left_index=True, right_index=True, how="left")
+        .merge(read_non_ref_db(), left_index=True, right_index=True, how="left")
+        .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
         .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     )
-
-    df["cell_id"] = cell_id
 
     return df
 
 
-def cells_from_sample(sample_files):
-    for fn in sample_files:
-        m = re.search("/([^/]+?)\.pickle\.gz$", fn)
-        yield fn, m.group(1)
-
-
-def my_fold(df, window_size, num_folds):
-    genome = Genome(snakemake.input.chromsizes)
-    d = interval_dict(genome, window_size)
-
-    for x in df.index:
-        # index is ['chrom', 'start', 'end', 'cell_id']
-        iv = Interval(x[0], x[1], x[2])
-        yield interval_fold_assignment(d, iv, window_size, num_folds)
-
-
-def my_label(df):
+def label(df):
     for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
         if x.reference_l1hs_l1pa2_6:
             yield "RL1"
@@ -99,8 +58,22 @@ def my_label(df):
             yield "OTHER"
 
 
-def get_train_and_test_data(df, fold, min_reads):
+def main(files, num_folds, min_reads):
 
+    # read in feature tables for each cell
+    cells = []
+    for fn in files:
+        cells.append(read_cell_features(fn).reset_index())
+
+    # concatenate all cells into a single table, remove windows below min_reads
+    df = (
+        pd.concat(cells)
+        .sort_values(["chrom", "start", "end", "cell_id"])
+        .set_index(["chrom", "start", "end", "cell_id"])
+    )
+    df = df[df["all_reads.count"] >= min_reads]
+
+    # make features
     features = [
         x
         for x in df.columns
@@ -111,6 +84,7 @@ def get_train_and_test_data(df, fold, min_reads):
                 "start",
                 "end",
                 "cell_id",
+                "donor_id",
                 "in_NRdb",
                 "reference_l1hs_l1pa2_6",
                 "fold",
@@ -120,106 +94,56 @@ def get_train_and_test_data(df, fold, min_reads):
             ]
         )
     ]
+    X = df[features].fillna(0)
+    X = np.minimum(X, 4e9)  # take minimum of features and  4e9 to avoid overflow
 
-    train_examples = (
-        (df["all_reads.count"] >= min_reads) & (df["fold"] >= 0) & (df["fold"] != fold)
-    )
-    test_examples = (df["all_reads.count"] >= min_reads) & (df["fold"] == fold)
+    # make labels, using LabelEncoder() to convert strings to integers
+    Y = pd.Series(label(df), index=df.index)
+    le = LabelEncoder()
+    le = le.fit(list(set(Y)))
+    y = le.transform(Y)
 
-    # train features
-    X_train = df[train_examples][features].fillna(0)
-    for field in [
-        "all_reads.median_r1r2_distance",
-        "yayg_reads.median_r1r2_distance",
-        "yg_reads.median_r1r2_distance",
-        "all_reads.secondary.median_distance",
-        "yayg_reads.secondary.median_distance",
-        "yg_reads.secondary.median_distance",
-    ]:
-        X_train[field] = np.minimum(X_train[field], 4e9)
+    # save label encoder
+    with open(snakemake.output.label_encoder, "wb") as f:
+        pickle.dump(le, f)
 
-    # train labels
-    Y_train = pd.Series(my_label(df[train_examples]), index=df[train_examples].index)
+    # get cell_id for group split
+    # TODO: split by donor
+    groups = df.index.get_level_values("cell_id")
 
-    # test features
-    X_test = df[test_examples][features].fillna(0)
-    for field in [
-        "all_reads.median_r1r2_distance",
-        "yayg_reads.median_r1r2_distance",
-        "yg_reads.median_r1r2_distance",
-        "all_reads.secondary.median_distance",
-        "yayg_reads.secondary.median_distance",
-        "yg_reads.secondary.median_distance",
-    ]:
-        X_test[field] = np.minimum(X_test[field], 4e9)
+    # use groupkfold to split by chromosome and train/test
+    sgkf = StratifiedGroupKFold(n_splits=num_folds)
 
-    # test labels
-    Y_test = pd.Series(my_label(df[test_examples]), index=df[test_examples].index)
+    for fold, (train_index, test_index) in enumerate(
+        sgkf.split(X, y, groups=groups.to_list())
+    ):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y[train_index], y[test_index]
 
-    # ensure that training labels have all three classes present
-    assert len(set(Y_train)) == 3
+        # ensure all classes are represented in the splits
+        for d in [y_train, y_test]:
+            assert len(set(d)) == len(set(y)), "not all classes represented in split"
 
-    return X_train, Y_train, X_test, Y_test
-
-
-def folds(sample_files):
-
-    if dna_type == "bulk":
-        x = [(fn, cell_id) for fn, cell_id in cells_from_sample(sample_files)]
-        df = get_cell_features(*x[0])
-    else:
-        df = (
-            pd.concat(
-                [
-                    get_cell_features(fn, cell_id).reset_index()
-                    for fn, cell_id in cells_from_sample(sample_files)
-                ]
-            )
-            .sort_values(["chrom", "start", "end", "cell_id"])
-            .set_index(["chrom", "start", "end", "cell_id"])
+        X_train, y_train = RandomOverSampler(random_state=42).fit_resample(
+            X_train, y_train
         )
+        X_test, y_test = RandomOverSampler(random_state=42).fit_resample(X_test, y_test)
 
-    df["fold"] = list(my_fold(df, fold_window, num_folds))
+        # save train/test splits
+        X_train.to_pickle(snakemake.output.train_features[fold])
+        X_test.to_pickle(snakemake.output.test_features[fold])
 
-    for fold in range(num_folds):
-        # get directory for output files of this fold
-        fold_dir = set(
-            [
-                str(Path(f).parent)
-                for f in snakemake.output
-                if re.search(f"fold_{fold}", f)
-            ]
-        ).pop()
+        with open(snakemake.output.train_labels[fold], "wb") as f:
+            pickle.dump(y_train, f)
 
-        X_train, Y_train, X_test, Y_test = get_train_and_test_data(df, fold, min_reads)
-
-        X_train.to_pickle(fold_dir + "/X_train.pickle.gz", compression="gzip")
-        Y_train.to_pickle(fold_dir + "/Y_train.pickle.gz", compression="gzip")
-        X_test.to_pickle(fold_dir + "/X_test.pickle.gz", compression="gzip")
-        Y_test.to_pickle(fold_dir + "/Y_test.pickle.gz", compression="gzip")
-
-
-def print_err(msg):
-    sys.stderr.write(msg + "\n")
+        with open(snakemake.output.test_labels[fold], "wb") as f:
+            pickle.dump(y_test, f)
 
 
 if __name__ == "__main__":
 
-    global fold_window, num_folds, min_reads, dna_type
-    fold_window = snakemake.params.fold_window
-    num_folds = snakemake.params.num_folds
-    min_reads = snakemake.params.min_reads
-    dna_type = snakemake.wildcards.dna_type
-
-    sample_files = snakemake.input.samples
-
-    # not sure if try/except is necessary
-    try:
-        folds(sample_files)
-    except:  # catch *all* exceptions
-        sys.stderr = open(snakemake.log[0], "w")
-        traceback.print_exc()
-        sys.stderr.close()
-    finally:
-        # cleanup code in here
-        gc.collect()
+    sys.stderr = open(snakemake.log[0], "w")
+    main(
+        snakemake.input.samples, snakemake.params.num_folds, snakemake.params.min_reads
+    )
+    sys.stderr.close()

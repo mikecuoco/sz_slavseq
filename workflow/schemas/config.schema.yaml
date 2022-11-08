@@ -14,7 +14,7 @@ properties:
       build:
         type: string
       region:
-        type: string
+        type: [integer, string, array]
         default: all
     required:
       - build
@@ -24,10 +24,8 @@ properties:
     properties:
       source:
         type: string
-        default: eul1db
       build:
         type: string
-        default: hg19
 
   adapters:
     type: object
@@ -43,28 +41,27 @@ properties:
       - r2_adapter
       - nested_primer
 
-  model:
+  get_features:
+    min_reads: integer
+    window_size: integer
+    window_step: integer
+    min_mapq: integer
+    min_ya: integer
+    max_yg: integer
+    min_secondary_mapq: integer
+    library_3_or_5: integer
+
+  num_folds:
+    type: integer
+
+  models:
     type: object
-    properties:
-      num_folds:
-        type: integer
-        default: 4
-      min_reads:
-        type: integer
-        default: 3
-      fold_window:
-        type: integer
-        default: 2_000_000
-      window_size:
-        type: integer
-        default: 750
-      prob: 
-        type: number
-        default: 0.7
 
 required:
   - samples
   - genome
   - adapters
-  - model
+  - num_folds
+  - get_features
+  - models
   
