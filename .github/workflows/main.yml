@@ -42,7 +42,9 @@ jobs:
       with:
         path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         key: ${{ runner.os }}-${{ matrix.genome }}-sm
-    - name: Install Snakemake via mamba
+    - name: Install gcc, g++, and make
+      run: sudo apt install build-essential -y 
+    - name: Install mamba
       uses: conda-incubator/setup-miniconda@v2
       with:
         miniforge-variant: Mambaforge
@@ -51,7 +53,8 @@ jobs:
         python-version: 3.9
         channels: conda-forge,bioconda,nodefaults
         channel-priority: strict
-    - run: mamba install python=3.9 snakemake==7.16 biopython
+    - name: Install snakemake
+      run: mamba install python=3.9 snakemake==7.16 biopython
     - name: Run workflow
       run: |
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
