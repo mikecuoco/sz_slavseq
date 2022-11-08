@@ -3,17 +3,17 @@
 __author__ = "Michael Cuoco"
 
 # TODO: make function and object names more concise
-# TODO: make splitting deterministic
 
 import sys
 import pandas as pd
 import numpy as np
-import re
 import functools
 import pickle
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
+from imblearn.over_sampling import RandomOverSampler
 from src.genome.windows import read_rmsk, make_l1_windows
+import pdb
 
 
 @functools.lru_cache()
@@ -25,12 +25,17 @@ def read_reference_l1():
 
 @functools.lru_cache()
 def read_non_ref_db():
-    df = pd.read_csv(snakemake.input.non_ref_l1[0], sep = "\t", header = None, names = ["chrom", "start", "end"])
+    df = pd.read_csv(
+        snakemake.input.non_ref_l1[0],
+        sep="\t",
+        header=None,
+        names=["chrom", "start", "end"],
+    )
     df = make_l1_windows(df, snakemake.input.chromsizes, "in_NRdb")
     return df
 
 
-def read_cell_features(fn, cell_id):
+def read_cell_features(fn):
     """read a cell's feature table from pickle file"""
     # TODO make the non-ref and ref-l1 column names flexible to changes
     df = (
@@ -40,16 +45,7 @@ def read_cell_features(fn, cell_id):
         .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     )
 
-    df["cell_id"] = cell_id
-
     return df
-
-
-# TODO: add cell id and donor to table in feature extraction step, then remove this function
-def cells_from_sample(sample_files):
-    for fn in sample_files:
-        m = re.search("/([^/]+?)\.pickle\.gz$", fn)
-        yield fn, m.group(1)
 
 
 def label(df):
@@ -66,8 +62,8 @@ def main(files, num_folds, min_reads):
 
     # read in feature tables for each cell
     cells = []
-    for fn, cell_id in cells_from_sample(files):
-        cells.append(read_cell_features(fn, cell_id).reset_index())
+    for fn in files:
+        cells.append(read_cell_features(fn).reset_index())
 
     # concatenate all cells into a single table, remove windows below min_reads
     df = (
@@ -88,6 +84,7 @@ def main(files, num_folds, min_reads):
                 "start",
                 "end",
                 "cell_id",
+                "donor_id",
                 "in_NRdb",
                 "reference_l1hs_l1pa2_6",
                 "fold",
@@ -104,17 +101,33 @@ def main(files, num_folds, min_reads):
     Y = pd.Series(label(df), index=df.index)
     le = LabelEncoder()
     le = le.fit(list(set(Y)))
-    y = le.fit_transform(Y)
+    y = le.transform(Y)
 
-    # get chromosome names for group split
-    chroms = df.index.get_level_values("chrom").to_list()
+    # save label encoder
+    with open(snakemake.output.label_encoder, "wb") as f:
+        pickle.dump(le, f)
+
+    # get cell_id for group split
+    # TODO: split by donor
+    groups = df.index.get_level_values("cell_id")
 
     # use groupkfold to split by chromosome and train/test
     sgkf = StratifiedGroupKFold(n_splits=num_folds)
 
-    for fold, (train_index, test_index) in enumerate(sgkf.split(X, y, groups=chroms)):
+    for fold, (train_index, test_index) in enumerate(
+        sgkf.split(X, y, groups=groups.to_list())
+    ):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y[train_index], y[test_index]
+
+        # ensure all classes are represented in the splits
+        for d in [y_train, y_test]:
+            assert len(set(d)) == len(set(y)), "not all classes represented in split"
+
+        X_train, y_train = RandomOverSampler(random_state=42).fit_resample(
+            X_train, y_train
+        )
+        X_test, y_test = RandomOverSampler(random_state=42).fit_resample(X_test, y_test)
 
         # save train/test splits
         X_train.to_pickle(snakemake.output.train_features[fold])
@@ -126,9 +139,6 @@ def main(files, num_folds, min_reads):
         with open(snakemake.output.test_labels[fold], "wb") as f:
             pickle.dump(y_test, f)
 
-    # save label encoder
-    with open(snakemake.output.label_encoder, "wb") as f:
-        pickle.dump(le, f)
 
 if __name__ == "__main__":
 

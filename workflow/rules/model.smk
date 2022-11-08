@@ -5,13 +5,7 @@ rule get_features:
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
-        window_size=config["model"]["window_size"],
-        window_step=config["model"]["window_step"],
-        min_mapq=40,
-        min_ya=20,
-        max_yg=15,
-        min_secondary_mapq=20,
-        library_3_or_5=3,
+        **config["get_features"],
     output:
         "results/get_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
     log:
@@ -22,10 +16,16 @@ rule get_features:
         "../scripts/get_features.py"
 
 
+# define variables relevant to these rules
+folds = range(1, config["num_folds"] + 1)
+model_ids = list(config["models"].keys())
+
+
 rule folds:
     input:
         samples=expand(
             "results/get_features/{{ref}}/{donor}/{{dna_type}}/{sample}.pickle.gz",
+            zip,
             donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
             sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
         ),
@@ -36,24 +36,24 @@ rule folds:
         ref_l1=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
-        num_folds=config["model"]["num_folds"],
-        min_reads=config["model"]["min_reads"],
+        num_folds=config["num_folds"],
+        min_reads=config["get_features"]["min_reads"],
     output:
         train_features=expand(
             "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/X_train.pickle.gz",
-            fold=range(1, config["model"]["num_folds"] + 1),
+            fold=folds,
         ),
         test_features=expand(
             "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/X_test.pickle.gz",
-            fold=range(1, config["model"]["num_folds"] + 1),
+            fold=folds,
         ),
         train_labels=expand(
             "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/Y_train.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
+            fold=folds,
         ),
         test_labels=expand(
             "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/Y_test.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
+            fold=folds,
         ),
         label_encoder="results/folds/{ref}/{dna_type}/label_encoder.pickle",
     log:
@@ -71,27 +71,29 @@ rule train_test:
         test_features=rules.folds.output.test_features,
         label_encoder=rules.folds.output.label_encoder,
     params:
-        num_folds=config["model"]["num_folds"],
+        num_folds=config["num_folds"],
+        model_params=lambda wc: config["models"][wc.model_id]["params"],
+        model_name=lambda wc: config["models"][wc.model_id]["name"],
     output:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
-        train_predictions=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model}}/fold_{fold}/train_predictions.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
+        train_pred=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_predictions.pickle",
+            fold=folds,
         ),
-        train_probabilities=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model}}/fold_{fold}/train_probabilities.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
+        train_proba=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_probabilities.pickle",
+            fold=folds,
         ),
-        test_predictions=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model}}/fold_{fold}/test_predictions.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
+        test_pred=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_predictions.pickle",
+            fold=folds,
         ),
-        test_probabilities=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model}}/fold_{fold}/test_probabilities.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
+        test_proba=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_probabilities.pickle",
+            fold=folds,
         ),
     log:
-        "results/train_test/{ref}/{dna_type}/{model}.log",
+        "results/train_test/{ref}/{dna_type}/{model_id}.log",
     conda:
         "../envs/env.yml"
     script:
@@ -100,32 +102,37 @@ rule train_test:
 
 rule metrics:
     input:
-        label_encoder=rules.folds.output.label_encoder,
         train_labels=rules.folds.output.train_labels,
-        train_predictions=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model}/fold_{fold}/train_predictions.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
-            model=config["model"]["type"],
+        train_pred=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/train_predictions.pickle",
+            model_id=model_ids,
+            fold=folds,
         ),
-        train_probabilities=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model}/fold_{fold}/train_probabilities.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
-            model=config["model"]["type"],
+        train_proba=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/train_probabilities.pickle",
+            model_id=model_ids,
+            fold=folds,
         ),
         test_labels=rules.folds.output.test_labels,
-        test_predictions=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model}/fold_{fold}/test_predictions.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
-            model=config["model"]["type"],
+        test_pred=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/test_predictions.pickle",
+            model_id=model_ids,
+            fold=folds,
         ),
-        test_probabilities=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model}/fold_{fold}/test_probabilities.pickle",
-            fold=range(1, config["model"]["num_folds"] + 1),
-            model=config["model"]["type"],
+        test_proba=expand(
+            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/test_probabilities.pickle",
+            model_id=model_ids,
+            fold=folds,
         ),
+        label_encoder=rules.folds.output.label_encoder,
     params:
-        num_folds=config["model"]["num_folds"],
+        num_folds=config["num_folds"],
+        models=model_ids,
     output:
-        prcurve="results/metrics/{ref}/{dna_type}/prcurve.png",
+        prcurve="results/metrics/{ref}/{dna_type}/prcurve.svg",
+    conda:
+        "../envs/env.yml"
+    log:
+        "results/metrics/{ref}/{dna_type}.log",
     script:
         "../scripts/metrics.py"

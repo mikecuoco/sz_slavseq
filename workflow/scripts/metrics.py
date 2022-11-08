@@ -1,49 +1,66 @@
 #!/usr/bin/env python
 # Created on: 10/26/22, 1:59 PM
-__author__ = 'Michael Cuoco'
+__author__ = "Michael Cuoco"
 
+import sys
 import pandas as pd
 import pickle
 from sklearn.metrics import precision_recall_curve
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def get_prc(num_folds, le, models, label_files, proba_files, outimg):
-	# get data and plot in loop
-	df = pd.DataFrame()
-	for fold in range(1,num_folds+1):
-		for stage in ["train", "test"]: 
+sys.stderr = open(snakemake.log[0], "w")
 
-			with open(label_files[stage].format(fold=fold), "rb") as f:
-				y = pickle.load(f)
-			y = le.inverse_transform(y)
-			y[y != "KNRGL"] = "OTHER" # make binary comparison
+# get label encoder
+with open(snakemake.input.label_encoder, "rb") as f:
+    le = pickle.load(f)
 
-			for model in models:
-				_df = pd.DataFrame()
-				
-				with open(proba_files[stage].format(fold=fold, model=model), "rb") as f:
-					y_proba = pickle.load(f)[:,1]
+# get model results in loop
+df = pd.DataFrame()
+for fold in range(0, snakemake.params.num_folds):
+    for stage in ["train", "test"]:
+        file = snakemake.input[f"{stage}_labels"][fold]
+        with open(file, "rb") as f:
+            y = pickle.load(f)
+        y = le.inverse_transform(y)
+        y[y != "KNRGL"] = "OTHER"  # make binary comparison
 
-				_df["precision"], _df["recall"], _ = precision_recall_curve(le.transform(y), y_proba, pos_label=le.transform(["KNRGL"])[0])
+        for model in snakemake.params.models:
+            _df = pd.DataFrame()
 
-				_df["stage"] = stage
-				_df["model"] = model
-				_df["fold"] = fold
-				df = pd.concat([df, _df]).reset_index(drop=True)
+            file = [f for f in snakemake.input[f"{stage}_proba"] if model in f][fold]
 
-	sns.set_style("ticks")
-	fig = sns.relplot(data=df, x="recall", y="precision", hue="model", col="stage", kind="line", markers=True)
-	fig.set(ylim = [0,1], xlim = [0,1])
-	plt.savefig(outimg, dpi=300)
+            with open(file, "rb") as f:
+                y_proba = pickle.load(f)[:, 1]
 
-if __name__ == "__main__":
+            _df["precision"], _df["recall"], _ = precision_recall_curve(
+                le.transform(y), y_proba, pos_label=le.transform(["KNRGL"])[0]
+            )
 
-	# setup inputs
-	with open(snakemake.input.label_encoder, "rb") as f:
-		le = pickle.load(f)
+            _df["stage"] = stage
+            _df["model"] = model
+            _df["fold"] = fold + 1
+            df = pd.concat([df, _df]).reset_index(drop=True)
 
-	label_files = {"train": snakemake.input.train_labels, "test": snakemake.input.test_labels}
-	proba_files = {"train": snakemake.input.train_probabilities, "test": snakemake.input.test_probabilities}
+# Plot PR curves
+sns.set_style("ticks")
+fig = sns.relplot(
+    data=df,
+    x="recall",
+    y="precision",
+    hue="model",
+    col="stage",
+    kind="line",
+    markers=True,
+)
+fig.set(
+    ylim=[0, 1],
+    xlim=[0, 1],
+    title="Precision-Recall Curve: KNRGL vs. RL1, OTHER",
+)
+plt.savefig(snakemake.output.prcurve, format=".svg", dpi=300)
 
-	get_prc(snakemake.params.num_folds, le, label_files, proba_files, snakemake.output.prcurve)
+# TODO: compute confusion matrix
+# TODO: report feature importance
+
+sys.stderr.close()

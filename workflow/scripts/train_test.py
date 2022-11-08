@@ -11,22 +11,32 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-import pdb
+from deepforest import CascadeForestClassifier
 
-def make_pipeline(clf_type):
 
+def make_pipeline(clf_type, params):
+
+    # TODO: add hyperparameter tuning
     if clf_type == "RandomForestClassifier":
-        clf = RandomForestClassifier(n_estimators=100, bootstrap=True, oob_score=True)
+        clf = RandomForestClassifier()
         pipe = Pipeline([(clf_type, clf)])
     elif clf_type == "LogisticRegression":
-        clf = LogisticRegression(solver='saga', penalty='elasticnet', l1_ratio=0.5, max_iter=1e6)
+        clf = LogisticRegression()
         pipe = Pipeline([("scaler", StandardScaler()), (clf_type, clf)])
     elif clf_type == "SVC":
-        clf = SVC(probability=True)
+        clf = SVC()
         pipe = Pipeline([("scaler", StandardScaler()), (clf_type, clf)])
     elif clf_type == "MLPClassifier":
-        clf = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1, max_iter=1e6)
+        clf = MLPClassifier()
         pipe = Pipeline([(clf_type, clf)])
+    elif clf_type == "CascadeForestClassifier":
+        clf = CascadeForestClassifier()
+        pipe = Pipeline([(clf_type, clf)])
+
+    # add user-specified hyperparameters
+    if params != None:
+        params = {f"{clf_type}__{k}": v for k, v in params.items()}
+        pipe.set_params(**params)
 
     return pipe
 
@@ -34,24 +44,31 @@ def make_pipeline(clf_type):
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-    pipe = make_pipeline(snakemake.wildcards.model)
 
     for fold in range(0, snakemake.params.num_folds):
+        pipe = make_pipeline(snakemake.params.model_name, snakemake.params.model_params)
+
         # train
         X_train = pd.read_pickle(snakemake.input.train_features[fold])
         y_train = pd.read_pickle(snakemake.input.train_labels[fold])
         pipe.fit(X_train, y_train)
 
         y_train_pred = pipe.predict(X_train)
-        pickle.dump(y_train_pred, open(snakemake.output.train_predictions[fold], "wb"))
+        with open(snakemake.output.train_pred[fold], "wb") as f:
+            pickle.dump(y_train_pred, f)
         y_train_proba = pipe.predict_proba(X_train)
-        pickle.dump(y_train_proba, open(snakemake.output.train_probabilities[fold], "wb"))
+        with open(snakemake.output.train_proba[fold], "wb") as f:
+            pickle.dump(y_train_proba, f)
 
         # test
         X_test = pd.read_pickle(snakemake.input.test_features[fold])
         y_test_pred = pipe.predict(X_test)
-        pickle.dump(y_test_pred, open(snakemake.output.test_predictions[fold], "wb"))
+        with open(snakemake.output.test_pred[fold], "wb") as f:
+            pickle.dump(y_test_pred, f)
         y_test_proba = pipe.predict_proba(X_test)
-        pickle.dump(y_test_proba, open(snakemake.output.test_probabilities[fold], "wb"))
+        with open(snakemake.output.test_proba[fold], "wb") as f:
+            pickle.dump(y_test_proba, f)
+
+    # TODO: train model on all data and return that model
 
     sys.stderr.close()
