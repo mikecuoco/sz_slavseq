@@ -58,7 +58,7 @@ fig.set(
     xlim=[0, 1],
     title="Precision-Recall Curve: KNRGL vs. RL1, OTHER",
 )
-plt.savefig(snakemake.output.prcurve, format=".svg", dpi=300)
+plt.savefig(snakemake.output.prcurve, format="svg", dpi=300)
 
 # TODO: compute confusion matrix
 # TODO: report feature importance
