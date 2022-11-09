@@ -33,46 +33,26 @@ def get_cutadapt_input(wildcards):
 # handle conditional alterations to reference genome
 ref = config["genome"]["build"]
 
-# handle trimming for a region
-region = config["genome"]["region"]
+# handle specified region
+region = (
+    "".join(config["genome"]["region"])
+    if isinstance(config["genome"]["region"], list)
+    else config["genome"]["region"]
+)
 region_name = f"_{region}" if region != "all" else ""
 
-# handle non-reference L1 conversion to bed
-# TODO: move rule input to variable here, make script amenable to any input
-db = config["non_ref_germline_l1"]["source"]
-
 # make name of bed file for get_eul1db rule
-# TODO: make this flexible to other dbs
-if db == "eul1db":
-    if ref == "hs37d5":
-        non_ref_l1_bed = f"resources/{ref}/{ref}_{db}_insertions.bed"
+def get_liftover_input(wildcards):
+    if wildcards.db == "eul1db":
+        return "resources/hg19/hg19_eul1db_insertions.bed"
+    elif wildcards.db == "dbVar":
+        return "resources/hs38DH/hs38DH_dbVar_insertions.bed"
+
+
+def get_fixnames_input(wildcards):
+    if wildcards.ref == "hs37d5":
+        return f"resources/hg19/hg19_{wildcards.db}_insertions.bed"
     else:
-        non_ref_l1_bed = f"resources/hg19/hg19_{db}_insertions.bed"
-
-# get raw non-reference germline L1s file
-# if not from eul1db, should be a csv file with 3 or 4 columns:
-# chrom, start, end, in_NRdb (optional)
-non_ref_l1_windows = f"resources/{ref}/{db}_windows.csv"
-if db != "eul1db":
-    NR_df = pd.read_csv(non_ref_l1_windows)
-    validate(NR_df, schema="../schemas/non_ref_l1.schema.yaml")
-
-
-# setup input/output for folds rule
-def get_folds_input_samples(wildcards):
-    my_samples = samples.loc[
-        (samples["dna_type"] == wildcards.dna_type)
-        & (samples["donor"] == wildcards.donor)
-    ]["sample"]
-    return expand(
-        "results/get_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
-        ref=wildcards.ref,
-        donor=wildcards.donor,
-        dna_type=wildcards.dna_type,
-        sample=my_samples,
-    )
-
-
-# handle number of folds
-num_folds = config["model"]["num_folds"]
-fold_dirs = [f"fold_{fold}" for fold in range(num_folds)]
+        return (
+            f"resources/{wildcards.ref}/{wildcards.ref}_{wildcards.db}_insertions.bed"
+        )

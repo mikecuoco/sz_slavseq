@@ -99,6 +99,9 @@ if __name__ == "__main__":
         snakemake.params.library_3_or_5,
         ENSearch(genome, snakemake.input.fa, 50, 15),
     )
+    df["cell_id"] = snakemake.wildcards.sample
+    df["donor_id"] = snakemake.wildcards.donor
+    df.set_index(["cell_id", "donor_id"], append=True, inplace=True)
 
     # save
     df.to_pickle(snakemake.output[0])

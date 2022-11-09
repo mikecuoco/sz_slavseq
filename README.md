@@ -6,6 +6,10 @@ Adapted from work by Apua Paquola and Ricardo Jacomini
 
 ## Development tips
 
+If running on OSX, add `clang_osx-64` to `workflow/envs/align.yml` and ensure your `CONDA_BUILD_SYSROOT` environment variable points to a MACOSX sdk. See [conda-build compiler tools](https://docs.conda.io/projects/conda-build/en/latest/resources/compiler-tools.html). This is necessary to install the [gapafim](https://github.com/apuapaquola/gapafim) dependency.
+
+Below is the general development workflow
+
 ```bash
 # format code
 snakefmt .
