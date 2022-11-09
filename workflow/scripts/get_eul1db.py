@@ -39,18 +39,6 @@ def main():
     bed = bed.rename(columns={"chromosome": "chr", "g_start": "start", "g_stop": "end"})
     bed["start"] -= 1
 
-    # fix names if necessary
-    if snakemake.params.ref == "hs37d5":
-        # read in the chromosome map
-        chrom_map = pd.read_csv(
-            "resources/hs37d5_map.tsv", sep="\t", names=["hs37d5", "ann"]
-        )
-
-        for name in chrom_map["ann"].to_list():
-            bed.loc[bed["chr"] == name, "chr"] = chrom_map.loc[
-                chrom_map["ann"] == name, "hs37d5"
-            ].values[0]
-
     # Filter out random chrs (3 instances)?
     # bed[~bed['chr'].str.contains("random")]
     bed.to_csv(snakemake.output[0], sep="\t", header=False, index=False)
