@@ -6,8 +6,8 @@ genome:
   region: all # for chromosome 22: use "22" for hs37d5, use "chr22" for hs38DH and chm13v2
 
 non_ref_germline_l1: # given by eul1db or a BED file (resources/{source}/insertions.bed)
-   source: eul1db
-   build: hg19
+  source: eul1db
+  build: hg19
 
 adapters:
   r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'

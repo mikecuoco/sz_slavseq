@@ -30,9 +30,6 @@ def get_cutadapt_input(wildcards):
         )
 
 
-# handle conditional alterations to reference genome
-ref = config["genome"]["build"]
-
 # handle specified region
 region = (
     "".join(config["genome"]["region"])

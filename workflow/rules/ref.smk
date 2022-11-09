@@ -23,9 +23,9 @@ rule gen_ref:
         set -e
 
         # hs37d5 only accepts strings of digits (e.g. '22')
-        # extract digits from params.region if necessary (e.g. 'chr22' -> '22')
+        # delete letters from params.region if necessary (e.g. 'chr22' -> '22')
         if [ {params.region} != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
-            region=$(echo {params.region} | sed 's/[^0-9]//g')
+            region=$(echo {params.region} | sed 's/[a-z]//gI')
         else
             region={params.region}
         fi
