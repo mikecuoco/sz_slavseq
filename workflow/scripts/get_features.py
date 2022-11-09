@@ -29,12 +29,12 @@ def main(
     genome: Genome,
     window_size: int,
     window_step: int,
-    min_mapq,
-    min_ya,
-    max_yg,
+    min_mapq: int,
+    min_ya: int,
+    max_yg: int,
     min_secondary_mapq,
     library_3_or_5: int,
-    ensearch: ENSearch,
+    ensearch=None,
 ):
     # load the alignment
     tbx = TabixSam(pysam.TabixFile(filename))
@@ -96,8 +96,7 @@ if __name__ == "__main__":
         snakemake.params.min_ya,
         snakemake.params.max_yg,
         snakemake.params.min_secondary_mapq,
-        snakemake.params.library_3_or_5,
-        ENSearch(genome, snakemake.input.fa, 50, 15),
+        snakemake.params.library_3_or_5
     )
     df["cell_id"] = snakemake.wildcards.sample
     df["donor_id"] = snakemake.wildcards.donor
