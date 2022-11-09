@@ -6,7 +6,9 @@ rule gen_ref:
     conda:
         "../envs/ref.yml"
     params:
-        region=region,
+        region=" ".join(config["genome"]["region"])
+        if isinstance(config["genome"]["region"], list)
+        else config["genome"]["region"],
     shadow:
         "shallow"
     cache: True
