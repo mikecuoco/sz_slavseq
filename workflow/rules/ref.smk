@@ -99,7 +99,7 @@ rule get_dbvar:
             grep "INS:ME:LINE1" | \
             uniq -u | \
             sed -e 's/^/chr/' | \
-            awk '{{print $1,$2,$3}}' > {output.bed} 
+            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
         """
 
 
