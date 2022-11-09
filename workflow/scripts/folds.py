@@ -68,8 +68,8 @@ def main(files, num_folds, min_reads):
     # concatenate all cells into a single table, remove windows below min_reads
     df = (
         pd.concat(cells)
-        .sort_values(["chrom", "start", "end", "cell_id"])
-        .set_index(["chrom", "start", "end", "cell_id"])
+        .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
+        .set_index(["chrom", "start", "end", "cell_id","donor_id"])
     )
     df = df[df["all_reads.count"] >= min_reads]
 
