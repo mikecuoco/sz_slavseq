@@ -1,25 +1,16 @@
 #!/usr/bin/env bash
 # Author: Mike Cuoco
-# Liftover input bed file from one genome build to another using CrossMap.py
-# Usage: bash liftover_bed -s <source_build> -t <target_build> -i <input_bed> -o <output_bed>
-
-# TODO: make this into snakemake wrapper
+# Liftover input bed file from one genome build to another using CrossMap.py in snakemake
 
 # exit if any non-zero, exit if undefined var
 set -euo pipefail
 
-# set input vars
-while getopts s:t:i:o: flag
-do
-    case "${flag}" in
-        s) source=${OPTARG};;
-        t) target=${OPTARG};;
-        i) input=${OPTARG};;
-        o) output=${OPTARG};;
-    esac
-done
-
-final_input=$input
+# set input vars and logging
+touch ${snakemake_log} && exec 2>${snakemake_log} 
+source=${snakemake_params[source]}
+target=${snakemake_params[target]}
+input=${snakemake_input[0]}
+output=${snakemake_output[0]}
 
 # select chain file based off input source and target
 # TODO: look for CUP Files for other liftovers
@@ -58,11 +49,12 @@ else
 fi
 
 # download Conversion Unstable Positions (CUPs) to exclude from liftover input
+final_input=$input
 if [[ -v CUP_URL ]]; then
 	wget -O resources/${source}To${target}_mask.bed -q --no-config $CUP_URL
 
 	final_input=$(mktemp)
-	grep -v -f resources/${source}To${target}_mask.bed $input > $final_input
+	bedtools intersect -v -wa -a $input -b resources/${source}To${target}_mask.bed > $final_input
 fi
 
 # download chain file
@@ -71,6 +63,6 @@ mkdir -p $(dirname $CHAINFILE) # make dir if doesn't exist
 wget -O $CHAINFILE -q --no-config $URL
 
 # run liftOver using CrossMap wrapper
-CrossMap.py bed $CHAINFILE $input $output
+CrossMap.py bed $CHAINFILE $final_input $output
 
 exit 0

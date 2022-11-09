@@ -30,6 +30,7 @@ def read_non_ref_db():
         sep="\t",
         header=None,
         names=["chrom", "start", "end"],
+        dtype={'chrom': str, 'start': int, 'end': int},
     )
     df = make_l1_windows(df, snakemake.input.chromsizes, "in_NRdb")
     return df
