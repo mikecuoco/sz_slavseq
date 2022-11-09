@@ -50,12 +50,12 @@ fi
 
 # download Conversion Unstable Positions (CUPs) to exclude from liftover input
 final_input=$input
-# if [[ -v CUP_URL ]]; then
-# 	wget -O resources/${source}To${target}_mask.bed -q --no-config $CUP_URL
+if [[ -v CUP_URL ]]; then
+	wget -O resources/${source}To${target}_mask.bed -q --no-config $CUP_URL
 
-# 	final_input=$(mktemp)
-# 	grep -v -f resources/${source}To${target}_mask.bed $input > $final_input
-# fi
+	final_input=$(mktemp)
+	bedtools intersect -v -wa -a $input -b resources/${source}To${target}_mask.bed > $final_input
+fi
 
 # download chain file
 CHAINFILE="resources/$(basename $URL)"

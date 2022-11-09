@@ -10,3 +10,4 @@ dependencies:
   - repeatmasker>=4.1.2.p1
   - samtools>=1.15
   - bcftools>=1.15
+  - bedtools>=2.30
