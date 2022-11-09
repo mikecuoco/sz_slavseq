@@ -3,7 +3,7 @@ rule bwa_index:
         rules.gen_ref.output[0],
     output:
         idx=multiext(
-            f"resources/{{ref}}/{gen_ref_basename}",
+            f"resources/{{ref}}/{{ref}}{region_name}",
             ".amb",
             ".ann",
             ".bwt",

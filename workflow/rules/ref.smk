@@ -1,6 +1,6 @@
 rule gen_ref:
     output:
-        multiext(f"resources/{{ref}}/{gen_ref_basename}", ".fa", ".fa.fai", ".genome"),
+        multiext(f"resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
     log:
         "resources/{ref}/gen_ref.log",
     conda:
@@ -24,10 +24,19 @@ rule gen_ref:
         bash $OLDPWD/workflow/scripts/run-gen-ref.sh {wildcards.ref}
         set -e
 
+        # hs37d5 only accepts strings of digits (e.g. '22')
+        # extract digits from params.region if necessary (e.g. 'chr22' -> '22')
+        if [ {params.region} != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
+            region=$(echo {params.region} | sed 's/[^0-9]//g')
+        else
+            region={params.region}
+        fi
+
         # filter for the region if specified
         cd $OLDPWD
         if [ {params.region} != "all" ]; then
-            samtools faidx $TMP/{wildcards.ref}.fa {params.region} > {output[0]}
+            echo "$region"
+            samtools faidx $TMP/{wildcards.ref}.fa "$region" > {output[0]}
         else
             mv $TMP/{wildcards.ref}.fa {output[0]}
         fi
@@ -76,7 +85,7 @@ rule run_rmsk:
     input:
         rules.gen_ref.output[0],
     output:
-        multiext(f"resources/{{ref}}/{gen_ref_basename}.fa", ".out", ".masked"),
+        multiext(f"resources/{{ref}}/{{ref}}{region_name}.fa", ".out", ".masked"),
     log:
         "resources/{ref}/run_rmsk.log",
     conda:

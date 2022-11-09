@@ -32,12 +32,10 @@ def get_cutadapt_input(wildcards):
 
 # handle conditional alterations to reference genome
 ref = config["genome"]["build"]
-gen_ref_basename = ref
 
 # handle trimming for a region
 region = config["genome"]["region"]
-if region != "all":
-    gen_ref_basename = f"{ref}_{region}"
+region_name = f"_{region}" if region != "all" else ""
 
 # handle non-reference L1 conversion to bed
 # TODO: move rule input to variable here, make script amenable to any input

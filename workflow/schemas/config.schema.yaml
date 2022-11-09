@@ -12,7 +12,7 @@ properties:
     type: object
     properties:
       build:
-        type: string
+        type: [ string, array ]
       region:
         type: string
         default: all
