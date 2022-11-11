@@ -27,9 +27,6 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    strategy:
-      matrix:
-        genome: ["hs37d5", "hs38DH", "chm13v2"]
     needs:
       - Formatting
     steps: 
