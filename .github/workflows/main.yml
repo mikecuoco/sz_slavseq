@@ -27,6 +27,9 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
+    strategy:
+      matrix:
+        non_ref_germline_l1: ["eul1db", "dbVar"]
     needs:
       - Formatting
     steps: 
@@ -54,7 +57,7 @@ jobs:
       run: |
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         export SNAKEMAKE_OUTPUT_CACHE=$(pwd)/${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/config.yml
+        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.non_ref_germline_l1 }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0
