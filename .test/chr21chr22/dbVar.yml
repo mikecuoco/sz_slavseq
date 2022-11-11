@@ -6,7 +6,7 @@ genome:
 
 non_ref_germline_l1: 
   source: dbVar
-  build: hg38DH
+  build: hs38DH
 
 get_features:
   min_reads: 1
