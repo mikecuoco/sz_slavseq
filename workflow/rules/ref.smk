@@ -24,16 +24,15 @@ rule gen_ref:
 
         # hs37d5 only accepts strings of digits (e.g. '22')
         # delete letters from params.region if necessary (e.g. 'chr22' -> '22')
-        if [ {params.region} != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
-            region=$(echo {params.region} | sed 's/[a-z]//gI')
+        if [ "{params.region}" != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
+            region=$(echo "{params.region}" | sed 's/[a-z]//gI')
         else
-            region={params.region}
+            region="{params.region}"
         fi
 
         # filter for the region if specified
-        cd $OLDPWD
-        if [ {params.region} != "all" ]; then
-            samtools faidx $TMP/{wildcards.ref}.fa "$region" > {output[0]}
+        if [ "{params.region}" != "all" ]; then
+            samtools faidx {wildcards.ref}.fa $region > {output[0]}
         else
             mv {wildcards.ref}.fa {output[0]}
         fi
@@ -121,7 +120,7 @@ rule liftover:
     input:
         get_liftover_input,
     output:
-        expand("resources/{target}/{target}_{{db}}_insertions.bed", target=target_build),
+        expand("resources/{source}/{target}_{{db}}_insertions.bed", target=target_build, source=config["non_ref_germline_l1"]["build"]),
     log:
         "resources/{db}_liftover.log",
     conda:
