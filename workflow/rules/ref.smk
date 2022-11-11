@@ -1,3 +1,11 @@
+# handle specified region
+region = (
+    "".join(config["genome"]["region"])
+    if isinstance(config["genome"]["region"], list)
+    else config["genome"]["region"]
+)
+region_name = f"_{region}" if region != "all" else ""
+
 rule gen_ref:
     output:
         multiext(f"resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
@@ -110,17 +118,21 @@ rule get_dbvar:
             awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
         """
 
+def get_liftover_input(wildcards):
+    if wildcards.db == "eul1db":
+        return "resources/hg19/hg19_eul1db_insertions.bed"
+    elif wildcards.db == "dbVar":
+        return "resources/hs38DH/hs38DH_dbVar_insertions.bed"
 
 rule liftover:
     input:
         get_liftover_input,
     output:
         expand(
-            "resources/{source}/{target}_{{db}}_insertions.bed",
+            "resources/{target}/{target}_{{db}}_insertions.bed",
         target="hg19"
             if config["genome"]["build"] == "hs37d5"
             else config["genome"]["build"],
-            source=config["non_ref_germline_l1"]["build"],
         ),
     log:
         "resources/{db}_liftover.log",
@@ -134,6 +146,14 @@ rule liftover:
     script:
         "../scripts/liftover_bed.sh"
 
+
+def get_fixnames_input(wildcards):
+    if wildcards.ref == "hs37d5":
+        return f"resources/hg19/hg19_{wildcards.db}_insertions.bed"
+    else:
+        return (
+            f"resources/{wildcards.ref}/{wildcards.ref}_{wildcards.db}_insertions.bed"
+        )
 
 rule fix_names:
     input:
