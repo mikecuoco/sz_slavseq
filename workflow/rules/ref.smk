@@ -6,6 +6,7 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 
+
 rule gen_ref:
     output:
         multiext(f"resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
@@ -118,11 +119,13 @@ rule get_dbvar:
             awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
         """
 
+
 def get_liftover_input(wildcards):
     if wildcards.db == "eul1db":
         return "resources/hg19/hg19_eul1db_insertions.bed"
     elif wildcards.db == "dbVar":
         return "resources/hs38DH/hs38DH_dbVar_insertions.bed"
+
 
 rule liftover:
     input:
@@ -154,6 +157,7 @@ def get_fixnames_input(wildcards):
         return (
             f"resources/{wildcards.ref}/{wildcards.ref}_{wildcards.db}_insertions.bed"
         )
+
 
 rule fix_names:
     input:
