@@ -111,23 +111,26 @@ rule get_dbvar:
         """
 
 
-target_build = (
-    "hg19" if config["genome"]["build"] == "hs37d5" else config["genome"]["build"]
-)
-
-
 rule liftover:
     input:
         get_liftover_input,
     output:
-        expand("resources/{source}/{target}_{{db}}_insertions.bed", target=target_build, source=config["non_ref_germline_l1"]["build"]),
+        expand(
+            "resources/{source}/{target}_{{db}}_insertions.bed",
+        target="hg19"
+            if config["genome"]["build"] == "hs37d5"
+            else config["genome"]["build"],
+            source=config["non_ref_germline_l1"]["build"],
+        ),
     log:
         "resources/{db}_liftover.log",
     conda:
         "../envs/ref.yml"
     params:
         source=config["non_ref_germline_l1"]["build"],
-        target=target_build,
+        target="hg19"
+        if config["genome"]["build"] == "hs37d5"
+        else config["genome"]["build"],
     script:
         "../scripts/liftover_bed.sh"
 
