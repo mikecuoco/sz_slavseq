@@ -7,7 +7,7 @@ set -euo pipefail
 
 # set input vars and logging
 touch ${snakemake_log} && exec 2>${snakemake_log} 
-source=${snakemake_param[source]}
+source=${snakemake_params[source]}
 target=${snakemake_wildcards[target]}
 input=${snakemake_input[0]}
 output=${snakemake_output[0]}
