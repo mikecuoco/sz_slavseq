@@ -87,24 +87,24 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/{ref}/eul1db/hg19_insertions.bed",
+        "resources/eul1db/hg19_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "resources/{ref}/get_eul1db.log",
+        "resources/get_eul1db.log",
     script:
         "../scripts/get_eul1db.py"
 
 
 rule get_dbvar:
     output:
-        vcf="resources/{ref}/dbVar/hs38DH_variant_call.all.vcf.gz",
-        tbi="resources/{ref}/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
-        bed="resources/{ref}/dbVar/hs38DH_insertions.bed",
+        vcf="resources/dbVar/hs38DH_variant_call.all.vcf.gz",
+        tbi="resources/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
+        bed="resources/dbVar/hs38DH_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "resources/{ref}/get_dbvar.log",
+        "resources/get_dbvar.log",
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -123,13 +123,13 @@ rule get_dbvar:
 rule liftover:
     input:
         expand(
-            "resources/{{ref}}/{{db}}/{source}_insertions.bed",
+            "resources/{{db}}/{source}_insertions.bed",
             source=config["non_ref_germline_l1"]["build"],
         ),
     output:
-        "resources/{ref}/{db}/{target}_lifted_insertions.bed",
+        "resources/{db}/{target}_lifted_insertions.bed",
     log:
-        "resources/{ref}/{db}/{target}_liftover.log",
+        "resources/{db}/{target}_liftover.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -141,9 +141,9 @@ rule liftover:
 def get_fixnames_input(wildcards):
     db_build = config["non_ref_germline_l1"]["build"]
     if wildcards.ref == "hs37d5" and db_build == "hg19":
-        return f"resources/{wildcards.ref}/{wildcards.db}/hg19_insertions.bed"
+        return f"resources/{wildcards.db}/hg19_insertions.bed"
     elif wildcards.ref == "hs37d5" and db_build != "hg19":
-        return f"resources/{wildcards.ref}/{wildcards.db}/hg19_lifted_insertions.bed"
+        return f"resources/{wildcards.db}/hg19_lifted_insertions.bed"
 
 
 rule fix_names:
@@ -151,9 +151,9 @@ rule fix_names:
         bed=get_fixnames_input,
         chrom_map="resources/hs37d5_map.tsv",
     output:
-        "resources/{ref}/{db}/{ref}_fixnames_insertions.bed",
+        "resources/{db}/{ref}_fixnames_insertions.bed",
     log:
-        "resources/{ref}/{db}/{ref}_fixnames.log",
+        "resources/{db}/{ref}_fixnames.log",
     run:
         # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])

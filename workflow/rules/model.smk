@@ -26,11 +26,11 @@ def get_non_ref_l1(wildcards):
     db_build = config["non_ref_germline_l1"]["build"]
     db = config["non_ref_germline_l1"]["source"]
     if wildcards.ref == "hs37d5":
-        return f"resources/{wildcards.ref}/{db}/{wildcards.ref}_fixnames_insertions.bed"
+        return f"resources/{db}/{wildcards.ref}_fixnames_insertions.bed"
     elif wildcards.ref != db_build:
-        return f"resources/{wildcards.ref}/{db}/{wildcards.ref}_lifted_insertions.bed"
+        return f"resources/{db}/{wildcards.ref}_lifted_insertions.bed"
     else:
-        return f"resources/{wildcards.ref}/{db}/{wildcards.ref}_insertions.bed"
+        return f"resources/{db}/{wildcards.ref}_insertions.bed"
 
 
 rule folds:
