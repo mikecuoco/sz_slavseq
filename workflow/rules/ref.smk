@@ -87,24 +87,24 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/hg19/hg19_eul1db_insertions.bed",
+        "resources/{ref}/eul1db/hg19_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "resources/get_eul1db.log",
+        "resources/{ref}/get_eul1db.log",
     script:
         "../scripts/get_eul1db.py"
 
 
 rule get_dbvar:
     output:
-        vcf="resources/hs38DH/dbVar.variant_call.all.vcf.gz",
-        tbi="resources/hs38DH/dbVar.variant_call.all.vcf.gz.tbi",
-        bed="resources/hs38DH/hs38DH_dbVar_insertions.bed",
+        vcf="resources/{ref}/dbVar/hs38DH_variant_call.all.vcf.gz",
+        tbi="resources/{ref}/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
+        bed="resources/{ref}/dbVar/hs38DH_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "resources/get_dbvar.log",
+        "resources/{ref}/get_dbvar.log",
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -120,43 +120,30 @@ rule get_dbvar:
         """
 
 
-def get_liftover_input(wildcards):
-    if wildcards.db == "eul1db":
-        return "resources/hg19/hg19_eul1db_insertions.bed"
-    elif wildcards.db == "dbVar":
-        return "resources/hs38DH/hs38DH_dbVar_insertions.bed"
-
-
 rule liftover:
     input:
-        get_liftover_input,
-    output:
         expand(
-            "resources/{target}/{target}_{{db}}_insertions.bed",
-        target="hg19"
-            if config["genome"]["build"] == "hs37d5"
-            else config["genome"]["build"],
+            "resources/{{ref}}/{{db}}/{source}_insertions.bed",
+            source=config["non_ref_germline_l1"]["build"],
         ),
+    output:
+        "resources/{ref}/{db}/{target}_lifted_insertions.bed",
     log:
-        "resources/{db}_liftover.log",
+        "resources/{ref}/{db}/{target}_liftover.log",
     conda:
         "../envs/ref.yml"
     params:
         source=config["non_ref_germline_l1"]["build"],
-        target="hg19"
-        if config["genome"]["build"] == "hs37d5"
-        else config["genome"]["build"],
     script:
         "../scripts/liftover_bed.sh"
 
 
 def get_fixnames_input(wildcards):
-    if wildcards.ref == "hs37d5":
-        return f"resources/hg19/hg19_{wildcards.db}_insertions.bed"
-    else:
-        return (
-            f"resources/{wildcards.ref}/{wildcards.ref}_{wildcards.db}_insertions.bed"
-        )
+    db_build = config["non_ref_germline_l1"]["build"]
+    if wildcards.ref == "hs37d5" and db_build == "hg19":
+        return f"resources/{wildcards.ref}/{wildcards.db}/hg19_insertions.bed"
+    elif wildcards.ref == "hs37d5" and db_build != "hg19":
+        return f"resources/{wildcards.ref}/{wildcards.db}/hg19_lifted_insertions.bed"
 
 
 rule fix_names:
@@ -164,9 +151,9 @@ rule fix_names:
         bed=get_fixnames_input,
         chrom_map="resources/hs37d5_map.tsv",
     output:
-        "resources/{ref}/{ref}_{db}_insertions.bed",
+        "resources/{ref}/{db}/{ref}_fixnames_insertions.bed",
     log:
-        "resources/{ref}/{ref}_{db}_fixnames.log",
+        "resources/{ref}/{db}/{ref}_fixnames.log",
     run:
         # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])
