@@ -1,5 +1,0 @@
-samples: .test/allchrs/samples.tsv
-
-genome:
-  build: hs37d5 
-  region: all 
