@@ -1,7 +1,7 @@
 samples: .test/chr21chr22/samples.tsv
 
 genome:
-  build: [hs37d5, hs38DH, chm13v2]
+  build: hs37d5
   region: [chr21, chr22]
 
 non_ref_germline_l1: 
