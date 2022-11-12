@@ -26,7 +26,7 @@ def read_reference_l1():
 @functools.lru_cache()
 def read_non_ref_db():
     df = pd.read_csv(
-        snakemake.input.non_ref_l1[0],
+        snakemake.input.non_ref_l1,
         sep="\t",
         header=None,
         names=["chrom", "start", "end"],

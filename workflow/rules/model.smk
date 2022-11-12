@@ -22,18 +22,25 @@ folds = range(1, config["num_folds"] + 1)
 model_ids = list(config["models"].keys())
 
 
+def get_non_ref_l1(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    if wildcards.ref == "hs37d5":
+        return f"resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
+    elif wildcards.ref != KNRGL_build:
+        return f"resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
+    else:
+        return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
+
+
 rule folds:
     input:
-        samples=expand(
+        samples=lambda wildcards: expand(
             "results/get_features/{{ref}}/{donor}/{{dna_type}}/{sample}.pickle.gz",
             zip,
-            donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
-            sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
+            donor=samples.loc[(samples["dna_type"] == wildcards.dna_type)]["donor"],
+            sample=samples.loc[(samples["dna_type"] == wildcards.dna_type)]["sample"],
         ),
-        non_ref_l1=expand(
-            "resources/{{ref}}/{{ref}}_{db}_insertions.bed",
-            db=config["non_ref_germline_l1"]["source"],
-        ),
+        non_ref_l1=get_non_ref_l1,
         ref_l1=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
@@ -41,24 +48,24 @@ rule folds:
         min_reads=config["get_features"]["min_reads"],
     output:
         train_features=expand(
-            "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/X_train.pickle.gz",
+            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/X_train.pickle.gz",
             fold=folds,
         ),
         test_features=expand(
-            "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/X_test.pickle.gz",
+            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/X_test.pickle.gz",
             fold=folds,
         ),
         train_labels=expand(
-            "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/Y_train.pickle",
+            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/Y_train.pickle",
             fold=folds,
         ),
         test_labels=expand(
-            "results/folds/{{ref}}/{{dna_type}}/fold_{fold}/Y_test.pickle",
+            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/Y_test.pickle",
             fold=folds,
         ),
-        label_encoder="results/folds/{ref}/{dna_type}/label_encoder.pickle",
+        label_encoder="results/folds/{ref}_{db}/{dna_type}/label_encoder.pickle",
     log:
-        "results/folds/{ref}/{dna_type}.log",
+        "results/folds/{ref}_{db}/{dna_type}.log",
     conda:
         "../envs/model.yml"
     script:
@@ -78,23 +85,23 @@ rule train_test:
     output:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
         train_pred=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_predictions.pickle",
             fold=folds,
         ),
         train_proba=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_probabilities.pickle",
             fold=folds,
         ),
         test_pred=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_predictions.pickle",
             fold=folds,
         ),
         test_proba=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_probabilities.pickle",
             fold=folds,
         ),
     log:
-        "results/train_test/{ref}/{dna_type}/{model_id}.log",
+        "results/train_test/{ref}_{db}/{dna_type}/{model_id}.log",
     conda:
         "../envs/model.yml"
     script:
@@ -105,23 +112,23 @@ rule metrics:
     input:
         train_labels=rules.folds.output.train_labels,
         train_pred=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/train_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/train_predictions.pickle",
             model_id=model_ids,
             fold=folds,
         ),
         train_proba=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/train_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/train_probabilities.pickle",
             model_id=model_ids,
             fold=folds,
         ),
         test_labels=rules.folds.output.test_labels,
         test_pred=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/test_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/test_predictions.pickle",
             model_id=model_ids,
             fold=folds,
         ),
         test_proba=expand(
-            "results/train_test/{{ref}}/{{dna_type}}/{model_id}/fold_{fold}/test_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/test_probabilities.pickle",
             model_id=model_ids,
             fold=folds,
         ),
@@ -130,10 +137,10 @@ rule metrics:
         num_folds=config["num_folds"],
         models=model_ids,
     output:
-        prcurve="results/metrics/{ref}/{dna_type}/prcurve.svg",
+        prcurve="results/metrics/{ref}_{db}/{dna_type}/prcurve.svg",
     conda:
         "../envs/model.yml"
     log:
-        "results/metrics/{ref}/{dna_type}.log",
+        "results/metrics/{ref}_{db}/{dna_type}.log",
     script:
         "../scripts/metrics.py"

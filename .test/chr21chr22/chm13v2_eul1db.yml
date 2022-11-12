@@ -1,0 +1,14 @@
+samples: .test/chr21chr22/samples.tsv
+
+genome:
+  build: chm13v2
+  region: [chr21, chr22]
+
+KNRGL: 
+  eul1db:
+    build: hg19
+
+get_features:
+  min_reads: 1
+
+num_folds: 2

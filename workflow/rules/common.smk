@@ -28,33 +28,3 @@ def get_cutadapt_input(wildcards):
             accession=accession,
             read=[1, 2],
         )
-
-
-# handle conditional alterations to reference genome
-ref = config["genome"]["build"]
-gen_ref_basename = ref
-
-# handle specified region
-region = (
-    "".join(config["genome"]["region"])
-    if isinstance(config["genome"]["region"], list)
-    else config["genome"]["region"]
-)
-if region != "all":
-    gen_ref_basename = f"{ref}_{region}"
-
-# make name of bed file for get_eul1db rule
-def get_liftover_input(wildcards):
-    if wildcards.db == "eul1db":
-        return "resources/hg19/hg19_eul1db_insertions.bed"
-    elif wildcards.db == "dbVar":
-        return "resources/hs38DH/hs38DH_dbVar_insertions.bed"
-
-
-def get_fixnames_input(wildcards):
-    if wildcards.ref == "hs37d5":
-        return f"resources/hg19/hg19_{wildcards.db}_insertions.bed"
-    else:
-        return (
-            f"resources/{wildcards.ref}/{wildcards.ref}_{wildcards.db}_insertions.bed"
-        )

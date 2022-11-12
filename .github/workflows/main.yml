@@ -29,7 +29,8 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        genome: ["hs37d5", "hs38DH", "chm13v2"]
+        genome: ["hs37d5","hs38DH","chm13v2"]
+        KNRGL: ["eul1db","dbVar"]
     needs:
       - Formatting
     steps: 
@@ -41,7 +42,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        key: ${{ runner.os }}-${{ matrix.genome }}-sm
+        key: ${{ matrix.genome }}-${{ matrix.KNRGL }}-sm
     - name: Install mamba
       uses: conda-incubator/setup-miniconda@v2
       with:
@@ -57,7 +58,7 @@ jobs:
       run: |
         mkdir -p ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
         export SNAKEMAKE_OUTPUT_CACHE=$(pwd)/${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}.yml
+        snakemake all --use-conda --cache --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}_${{ matrix.KNRGL }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0
