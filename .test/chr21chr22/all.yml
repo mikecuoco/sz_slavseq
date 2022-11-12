@@ -1,0 +1,12 @@
+samples: .test/chr21chr22/samples.tsv
+outdir: .test
+
+genome:
+  build: [hs37d5, hs38DH, chm13v2] 
+  region: all 
+
+KNRGL:
+  dbVar:
+    build: hs38DH
+  eul1db:
+    build: hg19
