@@ -3,7 +3,7 @@ rule bwa_index:
         rules.gen_ref.output[0],
     output:
         idx=multiext(
-            f"resources/{{ref}}/{{ref}}{region_name}",
+            f"{outdir}/resources/{{ref}}/{{ref}}{region_name}",
             ".amb",
             ".ann",
             ".bwt",
@@ -11,7 +11,7 @@ rule bwa_index:
             ".sa",
         ),
     log:
-        "resources/{ref}/bwa_index.log",
+       f"{outdir}/resources/{{ref}}/bwa_index.log",
     cache: True
     params:
         algorithm="bwtsw",
@@ -24,9 +24,9 @@ rule bwa_mem:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
         idx=rules.bwa_index.output.idx,
     output:
-        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
+        f"{outdir}/results/bwa_mem/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.bam",
     log:
-        "results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
+        f"{outdir}/results/bwa_mem/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.log",
     params:
         extra="-T 19",
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
@@ -41,9 +41,9 @@ rule rmdup:
     input:
         rules.bwa_mem.output,
     output:
-        "results/rmdup/{ref}/{donor}/{dna_type}/{sample}.bam",
+        f"{outdir}/results/rmdup/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.bam",
     log:
-        "results/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
+        f"{outdir}/results/rmdup/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.log",
     conda:
         "../envs/align.yml"
     script:
@@ -52,11 +52,11 @@ rule rmdup:
 
 rule install_gapafim:
     output:
-        directory("resources/gapafim"),
+        directory(f"{outdir}/resources/gapafim"),
     conda:
         "../envs/align.yml"
     log:
-        "resources/install_gapafim.log",
+        f"{outdir}/resources/install_gapafim.log",
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -76,9 +76,9 @@ rule tags:
         fa=rules.gen_ref.output[0],
         gapafim=rules.install_gapafim.output,
     output:
-        "results/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
+        f"{outdir}/results/tags/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.bam",
     log:
-        "results/tags/{ref}/{donor}/{dna_type}/{sample}.err",
+        f"{outdir}/results/tags/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.err",
     conda:
         "../envs/align.yml"
     shell:
@@ -109,10 +109,10 @@ rule tabix:
     input:
         rules.tags.output,
     output:
-        bgz="results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
-        tbi="results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
+        bgz=f"{outdir}/results/tabix/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.bgz",
+        tbi=f"{outdir}/results/tabix/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.bgz.tbi",
     log:
-        "results/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
+        f"{outdir}/results/tabix/{{ref}}/{{donor}}/{{dna_type}}/{{sample}}.log",
     conda:
         "../envs/align.yml"
     shell:
