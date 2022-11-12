@@ -22,6 +22,17 @@ folds = range(1, config["num_folds"] + 1)
 model_ids = list(config["models"].keys())
 
 
+def get_non_ref_l1(wildcards):
+    db_build = config["non_ref_germline_l1"]["build"]
+    db = config["non_ref_germline_l1"]["source"]
+    if wildcards.ref == "hs37d5":
+        return f"resources/{wildcards.ref}/{db}/{wildcards.ref}_fixnames_insertions.bed"
+    elif wildcards.ref != db_build:
+        return f"resources/{wildcards.ref}/{db}/{wildcards.ref}_lifted_insertions.bed"
+    else:
+        return f"resources/{wildcards.ref}/{db}/{wildcards.ref}_insertions.bed"
+
+
 rule folds:
     input:
         samples=expand(
@@ -30,10 +41,7 @@ rule folds:
             donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
             sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
         ),
-        non_ref_l1=expand(
-            "resources/{{ref}}/{{ref}}_{db}_insertions.bed",
-            db=config["non_ref_germline_l1"]["source"],
-        ),
+        non_ref_l1=get_non_ref_l1,
         ref_l1=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
