@@ -9,9 +9,9 @@ region_name = f"_{region}" if region != "all" else ""
 
 rule gen_ref:
     output:
-        multiext(f"{outdir}/resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
+        multiext(f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
     log:
-        f"{outdir}/resources/{{ref}}/gen_ref.log",
+        "{outdir}/resources/{ref}/gen_ref.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -55,9 +55,9 @@ rule run_rmsk:
     input:
         rules.gen_ref.output[0],
     output:
-        multiext(f"{outdir}/resources/{{ref}}/{{ref}}{region_name}.fa", ".out", ".masked"),
+        multiext(f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}.fa", ".out", ".masked"),
     log:
-        f"{outdir}/resources/{{ref}}/run_rmsk.log",
+        "{outdir}/resources/{ref}/run_rmsk.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -87,24 +87,24 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-       f"{outdir}/resources/eul1db/hg19_insertions.bed",
+       "{outdir}/resources/eul1db/hg19_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        f"{outdir}/resources/get_eul1db.log",
+        "{outdir}/resources/get_eul1db.log",
     script:
         "../scripts/get_eul1db.py"
 
 
 rule get_dbvar:
     output:
-        vcf=f"{outdir}/resources/dbVar/hs38DH_variant_call.all.vcf.gz",
-        tbi=f"{outdir}/resources/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
-        bed=f"{outdir}/resources/dbVar/hs38DH_insertions.bed",
+        vcf="{outdir}/resources/dbVar/hs38DH_variant_call.all.vcf.gz",
+        tbi="{outdir}/resources/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
+        bed="{outdir}/resources/dbVar/hs38DH_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        f"{outdir}/resources/get_dbvar.log",
+        "{outdir}/resources/get_dbvar.log",
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -126,16 +126,16 @@ def get_KNRGL_build(wildcards):
 
 def get_liftover_input(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
-    return f"{outdir}/resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
+    return f"{wildcards.outdir}/resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
 
 
 rule liftover:
     input:
         get_liftover_input,
     output:
-        f"{outdir}/resources/{{db}}/{{target}}_lifted_insertions.bed",
+        "{outdir}/resources/{db}/{target}_lifted_insertions.bed",
     log:
-        f"{outdir}/resources/{{db}}/{{target}}_liftover.log",
+        "{outdir}/resources/{db}/{target}_liftover.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -147,9 +147,9 @@ rule liftover:
 def get_fixnames_input(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
     if wildcards.ref == "hs37d5" and KNRGL_build == "hg19":
-        return f"{outdir}/resources/{wildcards.db}/hg19_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hg19_insertions.bed"
     elif wildcards.ref == "hs37d5" and KNRGL_build != "hg19":
-        return f"{outdir}/resources/{wildcards.db}/hg19_lifted_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hg19_lifted_insertions.bed"
 
 
 rule fix_names:
@@ -157,9 +157,9 @@ rule fix_names:
         bed=get_fixnames_input,
         chrom_map="resources/hs37d5_map.tsv",
     output:
-        f"{outdir}/resources/{{db}}/{{ref}}_fixnames_insertions.bed",
+        "{outdir}/resources/{db}/{ref}_fixnames_insertions.bed",
     log:
-        f"{outdir}/resources/{{db}}/{{ref}}_fixnames.log",
+        "{outdir}/resources/{db}/{ref}_fixnames.log",
     run:
         # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])

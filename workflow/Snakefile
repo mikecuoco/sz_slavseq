@@ -22,6 +22,7 @@ rule all:
             db=list(config["KNRGL"].keys()),
             ref=config["genome"]["build"],
             dna_type=samples["dna_type"],
+            outdir=config["outdir"],
         ),
     wildcard_constraints:
         dna_type="\w+",

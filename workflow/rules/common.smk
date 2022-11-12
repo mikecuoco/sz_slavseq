@@ -3,7 +3,6 @@ from Bio.Seq import Seq
 from pathlib import Path
 from snakemake.utils import validate
 
-outdir = config["outdir"]
 validate(config, schema="../schemas/config.schema.yaml")
 
 # read sample sheet
