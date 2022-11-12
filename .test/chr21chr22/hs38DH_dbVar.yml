@@ -4,9 +4,9 @@ genome:
   build: hs38DH
   region: [chr21, chr22]
 
-non_ref_germline_l1: 
-  source: dbVar
-  build: hs38DH
+KNRGL: 
+  dbVar:
+    build: hs38DH
 
 get_features:
   min_reads: 1

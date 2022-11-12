@@ -4,9 +4,9 @@ genome:
   build: hs37d5
   region: [chr21, chr22]
 
-non_ref_germline_l1: 
-  source: eul1db
-  build: hg19
+KNRGL: 
+  eul1db:
+    build: hg19
 
 get_features:
   min_reads: 1

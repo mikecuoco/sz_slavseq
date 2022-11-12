@@ -120,12 +120,18 @@ rule get_dbvar:
         """
 
 
+def get_KNRGL_build(wildcards):
+    return config["KNRGL"][wildcards.db]["build"]
+
+
+def get_liftover_input(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    return f"resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
+
+
 rule liftover:
     input:
-        expand(
-            "resources/{{db}}/{source}_insertions.bed",
-            source=config["non_ref_germline_l1"]["build"],
-        ),
+        get_liftover_input,
     output:
         "resources/{db}/{target}_lifted_insertions.bed",
     log:
@@ -133,16 +139,16 @@ rule liftover:
     conda:
         "../envs/ref.yml"
     params:
-        source=config["non_ref_germline_l1"]["build"],
+        source=get_KNRGL_build,
     script:
         "../scripts/liftover_bed.sh"
 
 
 def get_fixnames_input(wildcards):
-    db_build = config["non_ref_germline_l1"]["build"]
-    if wildcards.ref == "hs37d5" and db_build == "hg19":
+    KNRGL_build = get_KNRGL_build(wildcards)
+    if wildcards.ref == "hs37d5" and KNRGL_build == "hg19":
         return f"resources/{wildcards.db}/hg19_insertions.bed"
-    elif wildcards.ref == "hs37d5" and db_build != "hg19":
+    elif wildcards.ref == "hs37d5" and KNRGL_build != "hg19":
         return f"resources/{wildcards.db}/hg19_lifted_insertions.bed"
 
 

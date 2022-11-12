@@ -19,14 +19,8 @@ properties:
     required:
       - build
 
-  non_ref_germline_l1:
+  KNRGL:
     type: object
-    properties:
-      source:
-        type: string
-        enum: [eul1db, dbVar]
-      build:
-        type: string
 
   adapters:
     type: object
