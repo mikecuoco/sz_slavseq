@@ -141,6 +141,6 @@ rule metrics:
     conda:
         "../envs/model.yml"
     log:
-       "{outdir}/results/metrics/{ref}_{db}/{dna_type}.log",
+        "{outdir}/results/metrics/{ref}_{db}/{dna_type}.log",
     script:
         "../scripts/metrics.py"

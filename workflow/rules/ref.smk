@@ -9,7 +9,12 @@ region_name = f"_{region}" if region != "all" else ""
 
 rule gen_ref:
     output:
-        multiext(f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
+        multiext(
+            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}",
+            ".fa",
+            ".fa.fai",
+            ".genome",
+        ),
     log:
         "{outdir}/resources/{ref}/gen_ref.log",
     conda:
@@ -55,7 +60,9 @@ rule run_rmsk:
     input:
         rules.gen_ref.output[0],
     output:
-        multiext(f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}.fa", ".out", ".masked"),
+        multiext(
+            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}.fa", ".out", ".masked"
+        ),
     log:
         "{outdir}/resources/{ref}/run_rmsk.log",
     conda:
@@ -87,7 +94,7 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-       "{outdir}/resources/eul1db/hg19_insertions.bed",
+        "{outdir}/resources/eul1db/hg19_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
