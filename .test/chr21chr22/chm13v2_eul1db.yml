@@ -5,8 +5,8 @@ genome:
   region: [chr21, chr22]
 
 non_ref_germline_l1: 
-  source: dbVar
-  build: hs38DH
+  source: eul1db
+  build: hg19
 
 get_features:
   min_reads: 1
