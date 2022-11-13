@@ -61,7 +61,7 @@ rule install_gapafim:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        mkdir -p resources && cd resources
+        mkdir -p $(dirname {output}) && cd $(dirname {output})
         git clone https://github.com/apuapaquola/gapafim.git
         cd gapafim/Gapafim
         perl Makefile.PL
