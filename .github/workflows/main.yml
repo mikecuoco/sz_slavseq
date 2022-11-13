@@ -42,7 +42,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.SNAKEMAKE_OUTPUT_CACHE }}
-        key: ${{ matrix.genome }}-${{ matrix.KNRGL }}-sm
+        key: ${{ runner.os }}-${{ matrix.genome }}-${{ matrix.KNRGL }}
     - name: Install mamba
       uses: conda-incubator/setup-miniconda@v2
       with:
