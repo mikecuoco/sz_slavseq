@@ -7,9 +7,6 @@ from joblib import Parallel, delayed
 import gzip
 import subprocess
 import re
-import itertools
-import collections
-import pdb
 
 # define funtions for file processing
 def my_files(dirname):
