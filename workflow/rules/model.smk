@@ -3,6 +3,12 @@ rule get_features:
         bgz=rules.tabix.output.bgz,
         tbi=rules.tabix.output.tbi,
         fa=rules.gen_ref.output[0],
+        non_ref_l1=expand(
+            rules.bulk_labeling.output,
+            sample=samples["sample"],
+            allow_missing=True,
+        ),
+        ref_l1=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
         **config["get_features"],
@@ -31,16 +37,7 @@ rule folds:
             donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
             sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
             dna_type="mda",
-        ),
-        non_ref_l1=expand(
-            rules.bulk_labeling.output,
-            zip,
-            donor=samples["donor"],
-            sample=samples["sample"],
-            allow_missing=True,
-        ),
-        ref_l1=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2],
+        )
     params:
         num_folds=config["num_folds"],
         min_reads=config["get_features"]["min_reads"],
