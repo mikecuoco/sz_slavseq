@@ -21,7 +21,7 @@ rule all:
             rules.metrics.output.prcurve,
             db=list(config["KNRGL"].keys()),
             ref=config["genome"]["build"],
-            dna_type=samples["dna_type"],
+            dna_type=["mda", "bulk"]
         ),
     wildcard_constraints:
         dna_type="\w+",

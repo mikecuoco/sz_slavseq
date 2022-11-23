@@ -49,6 +49,28 @@ rule rmdup:
     script:
         "../scripts/slavseq_rmdup_hts.py"
 
+def get_non_ref_l1(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    if wildcards.ref == "hs37d5":
+        return f"resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
+    elif wildcards.ref != KNRGL_build:
+        return f"resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
+    else:
+        return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
+
+rule bulk_labeling:
+    input:
+        bed=get_non_ref_l1,
+        bam=expand(rules.rmdup.output, dna_type="bulk", allow_missing=True),
+    output:
+        "resources/{ref}/{donor}/{sample}_{db}_insertions_labeled.bed",
+    log:
+        "resources/{ref}/{donor}/{sample}_{db}_bulk_labeling.log",
+    conda:
+        "../envs/align.yml"
+    script:
+        "../scripts/bulk_labeling.py"
+
 
 rule install_gapafim:
     output:

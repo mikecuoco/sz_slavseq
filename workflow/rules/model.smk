@@ -22,25 +22,23 @@ folds = range(1, config["num_folds"] + 1)
 model_ids = list(config["models"].keys())
 
 
-def get_non_ref_l1(wildcards):
-    KNRGL_build = get_KNRGL_build(wildcards)
-    if wildcards.ref == "hs37d5":
-        return f"resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
-    elif wildcards.ref != KNRGL_build:
-        return f"resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
-    else:
-        return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
-
-
+# TODO: adjust code in folds or get_features to account for multiple non_ref_l1 inputs
 rule folds:
     input:
-        samples=lambda wildcards: expand(
-            "results/get_features/{{ref}}/{donor}/{{dna_type}}/{sample}.pickle.gz",
+        samples=expand(
+            "results/get_features/{{ref}}/{donor}/{dna_type}/{sample}.pickle.gz",
             zip,
-            donor=samples.loc[(samples["dna_type"] == wildcards.dna_type)]["donor"],
-            sample=samples.loc[(samples["dna_type"] == wildcards.dna_type)]["sample"],
+            donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
+            sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
+            dna_type="mda",
         ),
-        non_ref_l1=get_non_ref_l1,
+        non_ref_l1=expand(
+            rules.bulk_labeling.output,
+            zip,
+            donor=samples["donor"],
+            sample=samples["sample"],
+            allow_missing=True,
+        ),
         ref_l1=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
