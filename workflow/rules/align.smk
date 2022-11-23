@@ -49,6 +49,7 @@ rule rmdup:
     script:
         "../scripts/slavseq_rmdup_hts.py"
 
+
 def get_non_ref_l1(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
     if wildcards.ref == "hs37d5":
@@ -57,6 +58,7 @@ def get_non_ref_l1(wildcards):
         return f"resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
     else:
         return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
+
 
 rule bulk_labeling:
     input:
