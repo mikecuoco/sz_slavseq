@@ -1,3 +1,12 @@
+# handle specified region
+region = (
+    "".join(config["genome"]["region"])
+    if isinstance(config["genome"]["region"], list)
+    else config["genome"]["region"]
+)
+region_name = f"_{region}" if region != "all" else ""
+
+
 rule gen_ref:
     output:
         multiext(f"resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
@@ -24,16 +33,15 @@ rule gen_ref:
 
         # hs37d5 only accepts strings of digits (e.g. '22')
         # delete letters from params.region if necessary (e.g. 'chr22' -> '22')
-        if [ {params.region} != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
-            region=$(echo {params.region} | sed 's/[a-z]//gI')
+        if [ "{params.region}" != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
+            region=$(echo "{params.region}" | sed 's/[a-z]//gI')
         else
-            region={params.region}
+            region="{params.region}"
         fi
 
         # filter for the region if specified
-        cd $OLDPWD
-        if [ {params.region} != "all" ]; then
-            samtools faidx $TMP/{wildcards.ref}.fa "$region" > {output[0]}
+        if [ "{params.region}" != "all" ]; then
+            samtools faidx {wildcards.ref}.fa $region > {output[0]}
         else
             mv {wildcards.ref}.fa {output[0]}
         fi
@@ -79,7 +87,7 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/hg19/hg19_eul1db_insertions.bed",
+        "resources/eul1db/hg19_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
@@ -90,9 +98,9 @@ rule get_eul1db:
 
 rule get_dbvar:
     output:
-        vcf="resources/hs38DH/dbVar.variant_call.all.vcf.gz",
-        tbi="resources/hs38DH/dbVar.variant_call.all.vcf.gz.tbi",
-        bed="resources/hs38DH/hs38DH_dbVar_insertions.bed",
+        vcf="resources/dbVar/hs38DH_variant_call.all.vcf.gz",
+        tbi="resources/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
+        bed="resources/dbVar/hs38DH_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
@@ -112,25 +120,36 @@ rule get_dbvar:
         """
 
 
-target_build = (
-    "hg19" if config["genome"]["build"] == "hs37d5" else config["genome"]["build"]
-)
+def get_KNRGL_build(wildcards):
+    return config["KNRGL"][wildcards.db]["build"]
+
+
+def get_liftover_input(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    return f"resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
 
 
 rule liftover:
     input:
         get_liftover_input,
     output:
-        expand("resources/{target}/{target}_{{db}}_insertions.bed", target=target_build),
+        "resources/{db}/{target}_lifted_insertions.bed",
     log:
-        "resources/{db}_liftover.log",
+        "resources/{db}/{target}_liftover.log",
     conda:
         "../envs/ref.yml"
     params:
-        source=config["non_ref_germline_l1"]["build"],
-        target=target_build,
+        source=get_KNRGL_build,
     script:
         "../scripts/liftover_bed.sh"
+
+
+def get_fixnames_input(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    if wildcards.ref == "hs37d5" and KNRGL_build == "hg19":
+        return f"resources/{wildcards.db}/hg19_insertions.bed"
+    elif wildcards.ref == "hs37d5" and KNRGL_build != "hg19":
+        return f"resources/{wildcards.db}/hg19_lifted_insertions.bed"
 
 
 rule fix_names:
@@ -138,9 +157,9 @@ rule fix_names:
         bed=get_fixnames_input,
         chrom_map="resources/hs37d5_map.tsv",
     output:
-        "resources/{ref}/{ref}_{db}_insertions.bed",
+        "resources/{db}/{ref}_fixnames_insertions.bed",
     log:
-        "resources/{ref}/{ref}_{db}_fixnames.log",
+        "resources/{db}/{ref}_fixnames.log",
     run:
         # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])

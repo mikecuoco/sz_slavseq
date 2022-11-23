@@ -1,0 +1,14 @@
+samples: .test/chr21chr22/samples.tsv
+
+genome:
+  build: hs38DH
+  region: [chr21, chr22]
+
+KNRGL: 
+  dbVar:
+    build: hs38DH
+
+get_features:
+  min_reads: 1
+
+num_folds: 2
