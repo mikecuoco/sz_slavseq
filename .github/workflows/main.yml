@@ -40,7 +40,7 @@ jobs:
       with:
         path: |
           .test/results
-          .test/resources
+          .test/resources/${{ matrix.genome }}
         key: ${{ runner.os }}-${{ matrix.genome }}-${{ matrix.KNRGL }}
     - name: Install mamba
       uses: conda-incubator/setup-miniconda@v2
