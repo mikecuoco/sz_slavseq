@@ -10,7 +10,6 @@ rule get_features:
         "{outdir}/results/get_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
     log:
         "{outdir}/results/get_features/{ref}/{donor}/{dna_type}/{sample}.log",
-    cache: True
     conda:
         "../envs/features.yml"
     script:
