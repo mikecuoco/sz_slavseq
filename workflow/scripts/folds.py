@@ -7,46 +7,10 @@ __author__ = "Michael Cuoco"
 import sys
 import pandas as pd
 import numpy as np
-import functools
 import pickle
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
 from imblearn.over_sampling import RandomOverSampler
-from src.genome.windows import read_rmsk, make_l1_windows
-import pdb
-
-
-@functools.lru_cache()
-def read_reference_l1():
-    df = read_rmsk(snakemake.input.ref_l1)
-    df = make_l1_windows(df, snakemake.input.chromsizes, "reference_l1hs_l1pa2_6")
-    return df
-
-
-@functools.lru_cache()
-def read_non_ref_db():
-    df = pd.read_csv(
-        snakemake.input.non_ref_l1,
-        sep="\t",
-        header=None,
-        names=["chrom", "start", "end"],
-        dtype={'chrom': str, 'start': int, 'end': int},
-    )
-    df = make_l1_windows(df, snakemake.input.chromsizes, "in_NRdb")
-    return df
-
-
-def read_cell_features(fn):
-    """read a cell's feature table from pickle file"""
-    # TODO make the non-ref and ref-l1 column names flexible to changes
-    df = (
-        pd.read_pickle(fn)
-        .merge(read_non_ref_db(), left_index=True, right_index=True, how="left")
-        .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
-        .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
-    )
-
-    return df
 
 
 def label(df):
@@ -64,13 +28,13 @@ def main(files, num_folds, min_reads):
     # read in feature tables for each cell
     cells = []
     for fn in files:
-        cells.append(read_cell_features(fn).reset_index())
+        cells.append(pd.read_pickle(fn).reset_index())
 
     # concatenate all cells into a single table, remove windows below min_reads
     df = (
         pd.concat(cells)
-        .sort_values(["chrom", "start", "end", "cell_id"])
-        .set_index(["chrom", "start", "end", "cell_id"])
+        .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
+        .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
     )
     df = df[df["all_reads.count"] >= min_reads]
 
@@ -96,7 +60,7 @@ def main(files, num_folds, min_reads):
         )
     ]
     X = df[features].fillna(0)
-    X = np.minimum(X, 4e9)  # take minimum of features and  4e9 to avoid overflow
+    X = np.minimum(X, 4e9)  # take minimum of features and 4e9 to avoid overflow error
 
     # make labels, using LabelEncoder() to convert strings to integers
     Y = pd.Series(label(df), index=df.index)

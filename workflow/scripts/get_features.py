@@ -7,7 +7,6 @@ import pandas as pd
 import sys
 from src.genome.Genome import Genome
 from src.features.TabixSam import TabixSam
-from src.features.ttaaaa import ENSearch
 from src.features.WindowFeatures import WindowFeatures
 from src.features.occupied_windows import occupied_windows_in_genome
 
@@ -34,7 +33,7 @@ def main(
     max_yg,
     min_secondary_mapq,
     library_3_or_5: int,
-    ensearch: ENSearch,
+    ensearch,
 ):
     # load the alignment
     tbx = TabixSam(pysam.TabixFile(filename))
@@ -43,9 +42,9 @@ def main(
     windows = occupied_windows_in_genome(genome, window_size, window_step, filename)
 
     # first pass through the genome to get features for each window
-    df = pd.DataFrame()
+    w_list = []
     for w in windows:
-        wf = wf = WindowFeatures(
+        wf = WindowFeatures(
             tbx,
             w.chrom,
             w.start,
@@ -61,8 +60,9 @@ def main(
         f["chrom"] = str(w.chrom)
         f["start"] = w.start
         f["end"] = w.end
-
-        df = df.append(f, ignore_index=True)
+        w_list.append(f)
+    
+    df = pd.DataFrame(w_list)
 
     # set index
     df["start"] = df["start"].astype(int)
@@ -79,17 +79,21 @@ def main(
             .max()
             .fillna(0)
         )
-
+    df = df.merge(
+        pd.read_pickle(snakemake.input.germline),
+        left_index=True,
+        right_index=True,
+        how="left",
+    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     return df
 
 
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-    genome = Genome(snakemake.input.chromsizes)
     df = main(
         snakemake.input.bgz,
-        genome,
+        Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
         snakemake.params.window_step,
         snakemake.params.min_mapq,
@@ -97,11 +101,10 @@ if __name__ == "__main__":
         snakemake.params.max_yg,
         snakemake.params.min_secondary_mapq,
         snakemake.params.library_3_or_5,
-        ENSearch(genome, snakemake.input.fa, 50, 15),
+        None,
     )
     df["cell_id"] = snakemake.wildcards.sample
     df["donor_id"] = snakemake.wildcards.donor
     df.set_index(["cell_id", "donor_id"], append=True, inplace=True)
-
     # save
     df.to_pickle(snakemake.output[0])

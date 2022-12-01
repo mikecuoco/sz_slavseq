@@ -14,7 +14,7 @@
 export LC_ALL=C
 
 if [[ $# -lt 4 ]]; then 
-    echo "Usage: ./create_test_data.sh <bam> <fastq_R1> <fastq_R2> <out_prefix> <region>." \
+    echo "Usage: ./create_test_data.sh <bam> <fastq_R1> <fastq_R2> <out_prefix> <region1> [<region2> ...]." \
         "First four arguments necessary!"
     exit 1
 fi
