@@ -38,6 +38,7 @@ def main(
 ):
 
     # create the windows
+    # TODO use min-reads here
     windows = occupied_windows_in_genome(genome, window_size, window_step, filename)
     df = pd.DataFrame.from_records(
         [w.as_tuple() for w in windows],
@@ -50,11 +51,8 @@ def main(
         .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
         .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     )
-    # TODO check if ref and nonref are both true, and set nonref to false
-    # df.loc[
-    #     [df["in_NRdb"] == True and df["reference_l1hs_l1pa2_6"] == True], "in_NRdb"
-    # ] = False
     df = df.loc[df["in_NRdb"] | df["reference_l1hs_l1pa2_6"]]
+    df.loc[df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]] = False # if ref and nonref l1 are present at the same site, set nonref to false 
     return df
 
 
