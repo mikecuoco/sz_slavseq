@@ -7,6 +7,7 @@ def get_non_ref_l1(wildcards):
     else:
         return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
 
+
 rule get_germline_l1:
     input:
         bgz=expand(
@@ -21,13 +22,14 @@ rule get_germline_l1:
     params:
         **config["get_features"],
     output:
-        "results/get_germline_l1/{ref}_{db}/{donor}.pickle.gz"
+        "results/get_germline_l1/{ref}_{db}/{donor}.pickle.gz",
     log:
         "results/get_germline_l1/{ref}_{db}/{donor}.log",
     conda:
         "../envs/features.yml"
     script:
         "../scripts/get_germline_l1.py"
+
 
 rule get_features:
     input:
