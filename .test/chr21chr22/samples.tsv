@@ -1,3 +1,4 @@
 donor	sample	dna_type	R1	R2
-test	A	test	.test/data/USD07_F1_S92_chr21chr22_R1.fastq.gz	.test/data/USD07_F1_S92_chr21chr22_R2.fastq.gz
-test	B	test	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
+test	A	mda	.test/data/USD07_F1_S92_chr21chr22_R1.fastq.gz	.test/data/USD07_F1_S92_chr21chr22_R2.fastq.gz
+test	B	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
+test	C	bulk	.test/data/gDNA_usd7_R1.fastq.gz	.test/data/gDNA_usd7_R2.fastq.gz
