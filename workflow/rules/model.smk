@@ -28,7 +28,6 @@ folds = range(1, config["num_folds"] + 1)
 model_ids = list(config["models"].keys())
 
 
-# TODO: adjust code in folds or get_features to account for multiple non_ref_l1 inputs
 rule folds:
     input:
         samples=expand(
