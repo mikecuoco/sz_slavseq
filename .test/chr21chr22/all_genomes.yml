@@ -1,0 +1,10 @@
+samples: .test/chr21chr22/samples.tsv
+
+genome:
+  build: [hs37d5, hs38DH, chm13v2]
+  region: [chr21, chr22]
+
+get_features:
+  min_reads: 1
+
+num_folds: 2

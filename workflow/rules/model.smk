@@ -1,15 +1,48 @@
+def get_non_ref_l1(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    if wildcards.ref == "hs37d5":
+        return f"resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
+    elif wildcards.ref != KNRGL_build:
+        return f"resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
+    else:
+        return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
+
+
+rule get_germline_l1:
+    input:
+        bgz=expand(
+            rules.tabix.output.bgz,
+            sample=samples[samples["dna_type"] == "bulk"]["sample"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        non_ref_l1=get_non_ref_l1,
+        ref_l1=rules.run_rmsk.output[0],
+        chromsizes=rules.gen_ref.output[2],
+    params:
+        **config["get_features"],
+    output:
+        "results/get_germline_l1/{ref}_{db}/{donor}.pickle.gz",
+    log:
+        "results/get_germline_l1/{ref}_{db}/{donor}.log",
+    conda:
+        "../envs/features.yml"
+    script:
+        "../scripts/get_germline_l1.py"
+
+
 rule get_features:
     input:
         bgz=rules.tabix.output.bgz,
-        tbi=rules.tabix.output.tbi,
+        germline=rules.get_germline_l1.output[0],
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
         **config["get_features"],
     output:
-        "results/get_features/{ref}/{donor}/{dna_type}/{sample}.pickle.gz",
+        "results/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pickle.gz",
     log:
-        "results/get_features/{ref}/{donor}/{dna_type}/{sample}.log",
+        "results/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.log",
     cache: True
     conda:
         "../envs/features.yml"
@@ -22,52 +55,42 @@ folds = range(1, config["num_folds"] + 1)
 model_ids = list(config["models"].keys())
 
 
-def get_non_ref_l1(wildcards):
-    KNRGL_build = get_KNRGL_build(wildcards)
-    if wildcards.ref == "hs37d5":
-        return f"resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
-    elif wildcards.ref != KNRGL_build:
-        return f"resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
-    else:
-        return f"resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
-
-
 rule folds:
     input:
-        samples=lambda wildcards: expand(
-            "results/get_features/{{ref}}/{donor}/{{dna_type}}/{sample}.pickle.gz",
+        samples=expand(
+            "results/get_features/{{ref}}_{{db}}/{donor}/{dna_type}/{sample}.pickle.gz",
             zip,
-            donor=samples.loc[(samples["dna_type"] == wildcards.dna_type)]["donor"],
-            sample=samples.loc[(samples["dna_type"] == wildcards.dna_type)]["sample"],
+            donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
+            sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
+            dna_type=samples.loc[(samples["dna_type"] == "mda")]["dna_type"],
         ),
-        non_ref_l1=get_non_ref_l1,
-        ref_l1=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2],
     params:
         num_folds=config["num_folds"],
         min_reads=config["get_features"]["min_reads"],
     output:
         train_features=expand(
-            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/X_train.pickle.gz",
+            "results/folds/{{ref}}_{{db}}/fold_{fold}/X_train.pickle.gz",
             fold=folds,
         ),
         test_features=expand(
-            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/X_test.pickle.gz",
+            "results/folds/{{ref}}_{{db}}/fold_{fold}/X_test.pickle.gz",
             fold=folds,
         ),
         train_labels=expand(
-            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/Y_train.pickle",
+            "results/folds/{{ref}}_{{db}}/fold_{fold}/Y_train.pickle",
             fold=folds,
         ),
         test_labels=expand(
-            "results/folds/{{ref}}_{{db}}/{{dna_type}}/fold_{fold}/Y_test.pickle",
+            "results/folds/{{ref}}_{{db}}/fold_{fold}/Y_test.pickle",
             fold=folds,
         ),
-        label_encoder="results/folds/{ref}_{db}/{dna_type}/label_encoder.pickle",
+        label_encoder="results/folds/{ref}_{db}/label_encoder.pickle",
     log:
-        "results/folds/{ref}_{db}/{dna_type}.log",
+        "results/folds/{ref}_{db}.log",
     conda:
         "../envs/model.yml"
+    wildcard_constraints:
+        dna_type="\w+",
     script:
         "../scripts/folds.py"
 
@@ -85,23 +108,23 @@ rule train_test:
     output:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
         train_pred=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/train_predictions.pickle",
             fold=folds,
         ),
         train_proba=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/train_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/train_probabilities.pickle",
             fold=folds,
         ),
         test_pred=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/test_predictions.pickle",
             fold=folds,
         ),
         test_proba=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{{model_id}}/fold_{fold}/test_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/test_probabilities.pickle",
             fold=folds,
         ),
     log:
-        "results/train_test/{ref}_{db}/{dna_type}/{model_id}.log",
+        "results/train_test/{ref}_{db}/{model_id}.log",
     conda:
         "../envs/model.yml"
     script:
@@ -112,23 +135,23 @@ rule metrics:
     input:
         train_labels=rules.folds.output.train_labels,
         train_pred=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/train_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/train_predictions.pickle",
             model_id=model_ids,
             fold=folds,
         ),
         train_proba=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/train_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/train_probabilities.pickle",
             model_id=model_ids,
             fold=folds,
         ),
         test_labels=rules.folds.output.test_labels,
         test_pred=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/test_predictions.pickle",
+            "results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/test_predictions.pickle",
             model_id=model_ids,
             fold=folds,
         ),
         test_proba=expand(
-            "results/train_test/{{ref}}_{{db}}/{{dna_type}}/{model_id}/fold_{fold}/test_probabilities.pickle",
+            "results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/test_probabilities.pickle",
             model_id=model_ids,
             fold=folds,
         ),
@@ -137,10 +160,10 @@ rule metrics:
         num_folds=config["num_folds"],
         models=model_ids,
     output:
-        prcurve="results/metrics/{ref}_{db}/{dna_type}/prcurve.svg",
+        prcurve="results/metrics/{ref}_{db}/prcurve.svg",
     conda:
         "../envs/model.yml"
     log:
-        "results/metrics/{ref}_{db}/{dna_type}.log",
+        "results/metrics/{ref}_{db}/.log",
     script:
         "../scripts/metrics.py"
