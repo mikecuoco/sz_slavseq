@@ -5,7 +5,7 @@ rule get_features:
         fa=rules.gen_ref.output[0],
         non_ref_l1=expand(
             rules.bulk_labeling.output,
-            sample=samples["sample"],
+            sample=samples[samples["dna_type"] == "bulk"]["sample"],
             allow_missing=True,
         ),
         ref_l1=rules.run_rmsk.output[0],
