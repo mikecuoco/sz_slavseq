@@ -25,20 +25,27 @@ def get_non_ref_l1(wildcards):
         return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
 
 
-rule get_labels:
-    input:
-        bgz=expand(
+def get_labels_input(wildcards):
+    donor_samples = samples[samples["donor"] == wildcards.donor]
+    return {
+        "bgz": expand(
             rules.tabix.output.bgz,
-            sample=samples[samples["dna_type"] == "bulk"]["sample"],
+            sample=donor_samples[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,
         ),
-        features=expand(
+        "features": expand(
             rules.get_features.output,
-            sample=samples[samples["dna_type"] == "mda"]["sample"],
+            sample=donor_samples[samples["dna_type"] == "mda"]["sample"],
             dna_type="mda",
             allow_missing=True,
         ),
+    }
+
+
+rule get_labels:
+    input:
+        unpack(get_labels_input),
         non_ref_l1=get_non_ref_l1,
         ref_l1=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
