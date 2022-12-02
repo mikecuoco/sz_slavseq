@@ -29,7 +29,7 @@ for fold in range(0, snakemake.params.num_folds):
             file = [f for f in snakemake.input[f"{stage}_proba"] if model in f][fold]
 
             with open(file, "rb") as f:
-                y_proba = pickle.load(f)[:, le.transform(['KNRGL'])[0]]
+                y_proba = pickle.load(f)[:, le.transform(["KNRGL"])[0]]
 
             _df["precision"], _df["recall"], _ = precision_recall_curve(
                 y, y_proba, pos_label=le.transform(["KNRGL"])[0]

@@ -29,7 +29,7 @@ def main():
                     "Beck2010",
                     "Brouha2002",
                     "Iskow2010",
-            ]
+                ]
             )
         )
         & (df0["g_start"] == df0["g_stop"])
