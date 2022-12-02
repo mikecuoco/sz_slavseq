@@ -1,40 +1,6 @@
-def get_non_ref_l1(wildcards):
-    KNRGL_build = get_KNRGL_build(wildcards)
-    if wildcards.ref == "hs37d5":
-        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
-    elif wildcards.ref != KNRGL_build:
-        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
-    else:
-        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
-
-
-rule get_germline_l1:
-    input:
-        bgz=expand(
-            rules.tabix.output.bgz,
-            sample=samples[samples["dna_type"] == "bulk"]["sample"],
-            dna_type="bulk",
-            allow_missing=True,
-        ),
-        non_ref_l1=get_non_ref_l1,
-        ref_l1=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2],
-    params:
-        **config["get_features"],
-    output:
-        "{outdir}/results/get_germline_l1/{ref}_{db}/{donor}.pickle.gz",
-    log:
-        "{outdir}/results/get_germline_l1/{ref}_{db}/{donor}.log",
-    conda:
-        "../envs/features.yml"
-    script:
-        "../scripts/get_germline_l1.py"
-
-
 rule get_features:
     input:
         bgz=rules.tabix.output.bgz,
-        germline=rules.get_germline_l1.output[0],
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
@@ -49,6 +15,45 @@ rule get_features:
         "../scripts/get_features.py"
 
 
+def get_non_ref_l1(wildcards):
+    KNRGL_build = get_KNRGL_build(wildcards)
+    if wildcards.ref == "hs37d5":
+        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
+    elif wildcards.ref != KNRGL_build:
+        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
+    else:
+        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
+
+
+rule get_labels:
+    input:
+        bgz=expand(
+            rules.tabix.output.bgz,
+            sample=samples[samples["dna_type"] == "bulk"]["sample"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        features=expand(
+            rules.get_features.output,
+            sample=samples[samples["dna_type"] == "mda"]["sample"],
+            dna_type="mda",
+            allow_missing=True,
+        ),
+        non_ref_l1=get_non_ref_l1,
+        ref_l1=rules.run_rmsk.output[0],
+        chromsizes=rules.gen_ref.output[2],
+    params:
+        **config["get_features"],
+    output:
+        "{outdir}/results/get_labels/{ref}_{db}/{donor}.pickle.gz",
+    log:
+        "{outdir}/results/get_labels/{ref}_{db}/{donor}.log",
+    conda:
+        "../envs/features.yml"
+    script:
+        "../scripts/get_labels.py"
+
+
 # define variables relevant to these rules
 folds = range(1, config["num_folds"] + 1)
 model_ids = list(config["models"].keys())
@@ -57,11 +62,8 @@ model_ids = list(config["models"].keys())
 rule folds:
     input:
         samples=expand(
-            "{{outdir}}/results/get_features/{{ref}}_{{db}}/{donor}/{dna_type}/{sample}.pickle.gz",
-            zip,
+            "{{outdir}}/results/get_labels/{{ref}}_{{db}}/{donor}.pickle.gz",
             donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
-            sample=samples.loc[(samples["dna_type"] == "mda")]["sample"],
-            dna_type=samples.loc[(samples["dna_type"] == "mda")]["dna_type"],
         ),
     params:
         num_folds=config["num_folds"],

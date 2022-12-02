@@ -30,21 +30,30 @@ def read_non_ref_db():
     return df
 
 
-def main(
+def get_germline_l1(
     filename: str,
     genome: Genome,
     window_size: int,
     window_step: int,
+    min_reads: int,
 ):
+    # load the alignment
+    tbx = pysam.TabixFile(filename)
 
     # create the windows
-    # TODO use min-reads here
     windows = occupied_windows_in_genome(genome, window_size, window_step, filename)
-    df = pd.DataFrame.from_records(
-        [w.as_tuple() for w in windows],
-        columns=["chrom", "start", "end"],
-    )
-    df.chrom = df.chrom.astype(str)
+
+    # keep only the windows with enough reads
+    w_list = []
+    for w in windows:
+        reads = len([r for r in tbx.fetch(w.chrom, w.start, w.end)])
+        if reads >= min_reads:
+            w_list.append(w.as_tuple())
+    df = pd.DataFrame(w_list, columns=["chrom", "start", "end"])
+
+    # set index
+    df["start"] = df["start"].astype(int)
+    df["end"] = df["end"].astype(int)
     df.set_index(["chrom", "start", "end"], inplace=True)
     df = (
         df.merge(read_non_ref_db(), left_index=True, right_index=True, how="left")
@@ -52,19 +61,31 @@ def main(
         .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     )
     df = df.loc[df["in_NRdb"] | df["reference_l1hs_l1pa2_6"]]
-    df.loc[df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]] = False # if ref and nonref l1 are present at the same site, set nonref to false 
+    df.loc[
+        df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]
+    ] = False  # if ref and nonref l1 are present at the same site, set nonref to false
     return df
 
 
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-    genome = Genome(snakemake.input.chromsizes)
-    df = main(
+
+    # get germline L1 from bulk data
+    germline_df = get_germline_l1(
         snakemake.input.bgz[0],
-        genome,
+        Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
         snakemake.params.window_step,
+        snakemake.params.min_reads,
     )
+
+    # get features from single cell data
+    features_df = pd.concat([pd.read_pickle(f) for f in snakemake.input.features])
+
+    # merge and return
+    df = features_df.merge(
+        germline_df, left_index=True, right_index=True, how="left"
+    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     df.to_pickle(snakemake.output[0])
     sys.stderr.close()
