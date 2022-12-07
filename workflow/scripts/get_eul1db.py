@@ -8,7 +8,7 @@ import sys, gc, traceback
 
 def main():
     """
-    Convert eul1db_SRIPs.txt to a bed file, convert chr names to hs37d5 if necessary
+    Convert eul1db_SRIPs.txt to a bed file
     """
 
     # load the eul1db file

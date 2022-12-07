@@ -10,3 +10,7 @@ workflow/envs/src/**
 !resources/hs37d5_map.tsv
 !resources/slavseq_metadata.tsv
 **__pycache__
+prep_genomes/
+workflow/notebooks/
+.test/results
+.test/resources

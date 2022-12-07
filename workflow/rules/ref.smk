@@ -6,12 +6,21 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 
+from snakemake.remote import FTP
+
+FTP = FTP.RemoteProvider()
+
 
 rule gen_ref:
     output:
-        multiext(f"resources/{{ref}}/{{ref}}{region_name}", ".fa", ".fa.fai", ".genome"),
+        multiext(
+            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}",
+            ".fa",
+            ".fa.fai",
+            ".genome",
+        ),
     log:
-        "resources/{ref}/gen_ref.log",
+        "{outdir}/resources/{ref}/gen_ref.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -51,13 +60,45 @@ rule gen_ref:
         """
 
 
+rule make_dfam_lib:
+    output:
+        "{outdir}/resources/LINE1_lib.fa",
+    log:
+        "{outdir}/resources/rmsk_lib.log",
+    conda:
+        "../envs/ref.yml"
+    params:
+        accessions=[
+            "DF0000225",
+            "DF0000339",
+            "DF0000340",
+            "DF0000341",
+            "DF0000342",
+            "DF0000343",
+        ],
+    shell:
+        """
+        touch {log} && exec 1>{log} 2>&1
+        touch {output}
+        for a in {params.accessions}; do
+            curl -s https://dfam.org/api/families/$a | jq -r '.name' | awk '{{print ">"$1}}'  >> {output}
+            curl -s https://dfam.org/api/families/$a | jq -r '.consensus_sequence' >> {output}
+        done
+        """
+
+
 rule run_rmsk:
     input:
-        rules.gen_ref.output[0],
+        fa=rules.gen_ref.output[0],
+        lib=rules.make_dfam_lib.output,
     output:
-        multiext(f"resources/{{ref}}/{{ref}}{region_name}.fa", ".out", ".masked"),
+        multiext(
+            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}.fa",
+            ".out",
+            ".masked",
+        ),
     log:
-        "resources/{ref}/run_rmsk.log",
+        "{outdir}/resources/{ref}/run_rmsk.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -67,19 +108,12 @@ rule run_rmsk:
         # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
         speed="-s" if config["genome"]["region"] == "all" else "-qq",
     cache: True
-    threads: 16
+    shadow:
+        "shallow"
+    threads: 24
     shell:
         """
-        touch {log} && exec 1>{log} 2>&1
-
-        # download dfam
-        wget -O- https://www.dfam.org/releases/Dfam_3.6/families/Dfam-p1_curatedonly.h5.gz | \
-            gzip -dc > $CONDA_PREFIX/share/RepeatMasker/Libraries/Dfam.h5 
-
-        # run RepeatMasker
-        RepeatMasker -pa {threads} {params.speed} -species human -dir $(dirname {input}) {input} > {log} 2>&1
-
-        # TODO: convert to bed
+        RepeatMasker -pa {threads} {params.speed} -lib {input.lib} -no_is -dir $(dirname {input.fa}) {input.fa} > {log} 2>&1
         """
 
 
@@ -87,36 +121,39 @@ rule get_eul1db:
     input:
         "resources/eul1db_SRIP.txt",
     output:
-        "resources/eul1db/hg19_insertions.bed",
+        "{outdir}/resources/eul1db/hg19_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "resources/get_eul1db.log",
+        "{outdir}/resources/get_eul1db.log",
     script:
         "../scripts/get_eul1db.py"
 
 
 rule get_dbvar:
+    input:
+        FTP.remote(
+            [
+                "ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz",
+                "ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz.tbi",
+            ],
+            static=True,
+        ),
     output:
-        vcf="resources/dbVar/hs38DH_variant_call.all.vcf.gz",
-        tbi="resources/dbVar/hs38DH_variant_call.all.vcf.gz.tbi",
-        bed="resources/dbVar/hs38DH_insertions.bed",
+        "{outdir}/resources/dbVar/hs38DH_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "resources/get_dbvar.log",
+        "{outdir}/resources/get_dbvar.log",
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
 
-        URL=https://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz
-        wget -O- $URL > {output.vcf}
-        wget -O- $URL.tbi > {output.tbi}
-        bcftools query -f "%CHROM\t%POS\t%END\t%ALT\n" {output.vcf} | \
+        bcftools query -f "%CHROM\t%POS\t%END\t%ALT\n" {input[0]} | \
             grep "INS:ME:LINE1" | \
             uniq -u | \
             sed -e 's/^/chr/' | \
-            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
+            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output} 
         """
 
 
@@ -126,16 +163,16 @@ def get_KNRGL_build(wildcards):
 
 def get_liftover_input(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
-    return f"resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
+    return f"{wildcards.outdir}/resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
 
 
 rule liftover:
     input:
         get_liftover_input,
     output:
-        "resources/{db}/{target}_lifted_insertions.bed",
+        "{outdir}/resources/{db}/{target}_lifted_insertions.bed",
     log:
-        "resources/{db}/{target}_liftover.log",
+        "{outdir}/resources/{db}/{target}_liftover.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -147,9 +184,9 @@ rule liftover:
 def get_fixnames_input(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
     if wildcards.ref == "hs37d5" and KNRGL_build == "hg19":
-        return f"resources/{wildcards.db}/hg19_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hg19_insertions.bed"
     elif wildcards.ref == "hs37d5" and KNRGL_build != "hg19":
-        return f"resources/{wildcards.db}/hg19_lifted_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hg19_lifted_insertions.bed"
 
 
 rule fix_names:
@@ -157,9 +194,9 @@ rule fix_names:
         bed=get_fixnames_input,
         chrom_map="resources/hs37d5_map.tsv",
     output:
-        "resources/{db}/{ref}_fixnames_insertions.bed",
+        "{outdir}/resources/{db}/{ref}_fixnames_insertions.bed",
     log:
-        "resources/{db}/{ref}_fixnames.log",
+        "{outdir}/resources/{db}/{ref}_fixnames.log",
     run:
         # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])

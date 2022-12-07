@@ -11,19 +11,7 @@ from src.features.WindowFeatures import WindowFeatures
 from src.features.occupied_windows import occupied_windows_in_genome
 
 
-def flank_features(df):
-    for i in range(1, 8):
-        flank_size = 2**i
-        field_name = "flank_" + str(flank_size) + "_max_reads"
-        df[field_name] = (
-            df["all_reads.count"]
-            .rolling(window=2 * flank_size + 1, center=True, min_periods=1)
-            .max()
-            .fillna(0)
-        )
-
-
-def main(
+def get_features(
     filename: str,
     genome: Genome,
     window_size: int,
@@ -41,7 +29,7 @@ def main(
     # create the windows
     windows = occupied_windows_in_genome(genome, window_size, window_step, filename)
 
-    # first pass through the genome to get features for each window
+    # iterate over the windows to compute the features
     w_list = []
     for w in windows:
         wf = WindowFeatures(
@@ -61,7 +49,7 @@ def main(
         f["start"] = w.start
         f["end"] = w.end
         w_list.append(f)
-    
+
     df = pd.DataFrame(w_list)
 
     # set index
@@ -69,7 +57,13 @@ def main(
     df["end"] = df["end"].astype(int)
     df.set_index(["chrom", "start", "end"], inplace=True)
 
-    # second pass through the genome to get collect flanking features
+    return df
+
+
+def get_flank_features(df):
+
+    df.sort_index(inplace=True)
+
     for i in range(1, 8):
         flank_size = 2**i
         field_name = "flank_" + str(flank_size) + "_max_reads"
@@ -79,19 +73,16 @@ def main(
             .max()
             .fillna(0)
         )
-    df = df.merge(
-        pd.read_pickle(snakemake.input.germline),
-        left_index=True,
-        right_index=True,
-        how="left",
-    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
+
     return df
 
 
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-    df = main(
+
+    # first pass through the genome to get features for each window
+    df = get_features(
         snakemake.input.bgz,
         Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
@@ -103,8 +94,14 @@ if __name__ == "__main__":
         snakemake.params.library_3_or_5,
         None,
     )
+
+    # second pass through the genome to get collect flanking features
+    df = get_flank_features(df)
+
+    # write the features to a file
     df["cell_id"] = snakemake.wildcards.sample
     df["donor_id"] = snakemake.wildcards.donor
     df.set_index(["cell_id", "donor_id"], append=True, inplace=True)
-    # save
     df.to_pickle(snakemake.output[0])
+
+    sys.stderr.close()

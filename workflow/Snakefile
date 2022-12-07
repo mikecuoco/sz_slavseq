@@ -21,4 +21,5 @@ rule all:
             rules.metrics.output.prcurve,
             db=list(config["KNRGL"].keys()),
             ref=config["genome"]["build"],
+            outdir=config["outdir"],
         ),
