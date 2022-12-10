@@ -77,7 +77,7 @@ rule folds:
     input:
         samples=expand(
             "{{outdir}}/results/get_labels/{{ref}}_{{db}}/{donor}.pickle.gz",
-            donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
+            donor=set(samples["donor"]),
         ),
     params:
         num_folds=config["num_folds"],
