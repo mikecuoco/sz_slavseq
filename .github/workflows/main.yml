@@ -38,9 +38,7 @@ jobs:
       id: cache-sm
       uses: actions/cache@v3
       with:
-        path: |
-          .test/results
-          .test/resources/${{ matrix.genome }}
+        path: .test/resources/${{ matrix.genome }}
         key: ${{ runner.os }}-${{ matrix.genome }}-${{ matrix.KNRGL }}
     - name: Install mamba
       uses: conda-incubator/setup-miniconda@v2
