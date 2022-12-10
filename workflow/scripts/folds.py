@@ -23,18 +23,17 @@ def label(df):
             yield "OTHER"
 
 
-def main(files, num_folds, min_reads):
+def main(files, num_folds):
 
     # read in feature tables for each cell
     cells = [pd.read_pickle(fn).reset_index() for fn in files]
 
-    # concatenate all cells into a single table, remove windows below min_reads
+    # concatenate all cells into a single table
     df = (
         pd.concat(cells)
         .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
         .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
     )
-    df = df[df["count"] >= min_reads]
 
     # make features
     features = [
@@ -50,10 +49,6 @@ def main(files, num_folds, min_reads):
                 "donor_id",
                 "in_NRdb",
                 "reference_l1hs_l1pa2_6",
-                "fold",
-                "_peak_position",
-                "_en_motif",
-                "_te_strand",
             ]
         )
     ]
@@ -71,7 +66,6 @@ def main(files, num_folds, min_reads):
         pickle.dump(le, f)
 
     # get cell_id for group split
-    # TODO: change to 32-bit floats
     groups = df.index.get_level_values("donor_id")
 
     # use groupkfold to split by chromosome and train/test
@@ -106,7 +100,5 @@ def main(files, num_folds, min_reads):
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-    main(
-        snakemake.input.samples, snakemake.params.num_folds, snakemake.params.min_reads
-    )
+    main(snakemake.input.samples, snakemake.params.num_folds)
     sys.stderr.close()

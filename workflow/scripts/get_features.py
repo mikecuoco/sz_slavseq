@@ -2,12 +2,13 @@
 # Created on: 10/26/22, 1:59 PM
 __author__ = "Michael Cuoco"
 
-import pysam
+import pysam, sys
 import pandas as pd
-import sys
+import numpy as np
 from statistics import mean
 from src.genome.Genome import Genome
 from src.genome import interval_generator as ig
+import pdb
 
 def mean_frag_len(reads):
     l = [r.template_length for r in reads if r.is_paired and r.is_read1]
@@ -43,6 +44,7 @@ def cell_features(
     # create the windows
     windows = ig.windows_in_genome(genome, window_size, window_step)
     bam = pysam.AlignmentFile(bam_fn, "rb")
+    totalreads = pysam.view("-c", bam_fn).replace("\n","")
 
     # iterate over the windows to compute the features
     w_list = []
@@ -51,12 +53,11 @@ def cell_features(
         reads = [r for r in bam.fetch(w.chrom, w.start, w.end)]
         if len(reads) < min_reads:
             continue
+        # initialize dict
         f = {}
-        f["chrom"] = str(w.chrom)
-        f["start"] = w.start
-        f["end"] = w.end
-        f["count"] = len(reads)
-
+        f = {"chrom": w.chrom, "start": w.start, "end": w.end}
+        # collect features
+        f['rpm'] = (len(reads) / int(totalreads)) * 1e6
         f["mean_frag_len"] = mean_frag_len(reads)
         f["n_r1_uniq_starts"] = n_r1_uniq_starts(reads)
         f["n_r2_uniq_starts"] = n_r2_uniq_starts(reads)
@@ -66,9 +67,19 @@ def cell_features(
         w_list.append(f)
 
     df = pd.DataFrame(w_list)
-    # set index
+
+    # set types
+    df["chrom"] = df["chrom"].astype(str)
     df["start"] = df["start"].astype(int)
     df["end"] = df["end"].astype(int)
+    df["rpm"] = df["rpm"].astype(np.float16)
+    df["mean_frag_len"] = df["mean_frag_len"].astype(int)
+    df["n_r1_uniq_starts"] = df["n_r1_uniq_starts"].astype(int)
+    df["n_r2_uniq_starts"] = df["n_r2_uniq_starts"].astype(int)
+    df["mean_r2_l1_score"] = df["mean_r2_l1_score"].astype(np.float16)
+    df["mean_r2_ref_score"] = df["mean_r2_ref_score"].astype(np.float16)
+
+    # set index
     df.set_index(["chrom", "start", "end"], inplace=True)
 
     return df
@@ -82,7 +93,7 @@ def cell_flank_features(df):
         flank_size = 2**i
         field_name = "flank_" + str(flank_size) + "_max_reads"
         df[field_name] = (
-            df["count"]
+            df["rpm"]
             .rolling(window=2 * flank_size + 1, center=True, min_periods=1)
             .max()
             .fillna(0)
