@@ -104,8 +104,6 @@ rule folds:
         "{outdir}/results/folds/{ref}_{db}/folds.log",
     conda:
         "../envs/model.yml"
-    resources:
-        mem_mb=10000,
     wildcard_constraints:
         dna_type="\w+",
     script:
@@ -144,8 +142,6 @@ rule train_test:
         "{outdir}/results/train_test/{ref}_{db}/{model_id}.log",
     conda:
         "../envs/model.yml"
-    resources:
-        mem_mb=10000,
     script:
         "../scripts/train_test.py"
 
@@ -184,7 +180,5 @@ rule metrics:
         "../envs/model.yml"
     log:
         "{outdir}/results/metrics/{ref}_{db}.log",
-    resources:
-        mem_mb=10000,
     script:
         "../scripts/metrics.py"
