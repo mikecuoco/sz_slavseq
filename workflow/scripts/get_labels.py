@@ -48,7 +48,7 @@ def get_germline_l1(
     window_step: int,
     min_reads: int,
 ):
-      # create the windows
+    # create the windows
     windows = ig.windows_in_genome(genome, window_size, window_step)
     bam = pysam.AlignmentFile(bam_fn, "rb")
 

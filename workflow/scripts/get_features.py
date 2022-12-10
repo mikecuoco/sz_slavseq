@@ -10,6 +10,7 @@ from src.genome.Genome import Genome
 from src.genome import interval_generator as ig
 import pdb
 
+
 def mean_frag_len(reads):
     l = [r.template_length for r in reads if r.is_paired and r.is_read1]
     return 0 if len(l) == 0 else abs(mean(l))
@@ -44,7 +45,7 @@ def cell_features(
     # create the windows
     windows = ig.windows_in_genome(genome, window_size, window_step)
     bam = pysam.AlignmentFile(bam_fn, "rb")
-    totalreads = pysam.view("-c", bam_fn).replace("\n","")
+    totalreads = pysam.view("-c", bam_fn).replace("\n", "")
 
     # iterate over the windows to compute the features
     w_list = []
@@ -57,7 +58,7 @@ def cell_features(
         f = {}
         f = {"chrom": w.chrom, "start": w.start, "end": w.end}
         # collect features
-        f['rpm'] = (len(reads) / int(totalreads)) * 1e6
+        f["rpm"] = (len(reads) / int(totalreads)) * 1e6
         f["mean_frag_len"] = mean_frag_len(reads)
         f["n_r1_uniq_starts"] = n_r1_uniq_starts(reads)
         f["n_r2_uniq_starts"] = n_r2_uniq_starts(reads)
