@@ -125,24 +125,3 @@ rule index:
         "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.log",
     wrapper:
         "v1.19.2/bio/samtools/index"
-
-
-rule tabix:
-    input:
-        rules.tags.output,
-    output:
-        bgz="{outdir}/results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
-        tbi="{outdir}/results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
-    log:
-        "{outdir}/results/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/align.yml"
-    shell:
-        """
-        samtools view {input} | \
-            workflow/scripts/sam_to_tabix.py | \
-            sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
-            bgzip -c > {output.bgz} 2> {log} 
-
-        tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
-        """
