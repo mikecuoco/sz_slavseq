@@ -12,7 +12,7 @@ rule cutadapt1:
         "{outdir}/results/cutadapt1/{donor}/{dna_type}/{sample}.log",
     threads: 2
     wrapper:
-        "v1.18.0/bio/cutadapt/pe"
+        "v1.19.2/bio/cutadapt/pe"
 
 
 rule cutadapt2:
@@ -29,4 +29,4 @@ rule cutadapt2:
         "{outdir}/results/cutadapt2/{donor}/{dna_type}/{sample}.log",
     threads: 2
     wrapper:
-        "v1.18.0/bio/cutadapt/pe"
+        "v1.19.2/bio/cutadapt/pe"

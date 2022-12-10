@@ -34,7 +34,7 @@ rule bwa_mem:
     threads: 4
     cache: True
     wrapper:
-        "v1.18.0/bio/bwa/mem"
+        "v1.19.2/bio/bwa/mem"
 
 
 rule rmdup:
