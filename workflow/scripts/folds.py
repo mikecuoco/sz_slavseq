@@ -11,7 +11,7 @@ import pickle
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
 from imblearn.over_sampling import RandomOverSampler
-
+import pdb
 
 def label(df):
     for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
@@ -26,9 +26,7 @@ def label(df):
 def main(files, num_folds, min_reads):
 
     # read in feature tables for each cell
-    cells = []
-    for fn in files:
-        cells.append(pd.read_pickle(fn).reset_index())
+    cells = [pd.read_pickle(fn).reset_index() for fn in files]
 
     # concatenate all cells into a single table, remove windows below min_reads
     df = (
@@ -36,7 +34,7 @@ def main(files, num_folds, min_reads):
         .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
         .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
     )
-    df = df[df["all_reads.count"] >= min_reads]
+    df = df[df["count"] >= min_reads]
 
     # make features
     features = [
@@ -73,8 +71,8 @@ def main(files, num_folds, min_reads):
         pickle.dump(le, f)
 
     # get cell_id for group split
-    # TODO: split by donor
-    groups = df.index.get_level_values("cell_id")
+    # TODO: change to 32-bit floats
+    groups = df.index.get_level_values("donor_id")
 
     # use groupkfold to split by chromosome and train/test
     sgkf = StratifiedGroupKFold(n_splits=num_folds)

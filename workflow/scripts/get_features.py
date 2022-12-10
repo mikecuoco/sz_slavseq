@@ -5,53 +5,67 @@ __author__ = "Michael Cuoco"
 import pysam
 import pandas as pd
 import sys
+from statistics import mean
 from src.genome.Genome import Genome
-from src.features.TabixSam import TabixSam
-from src.features.WindowFeatures import WindowFeatures
-from src.features.occupied_windows import occupied_windows_in_genome
+from src.genome import interval_generator as ig
+
+def mean_frag_len(reads):
+    l = [r.template_length for r in reads if r.is_paired and r.is_read1]
+    return 0 if len(l) == 0 else abs(mean(l))
 
 
-def get_features(
-    filename: str,
+def mean_r2_l1_score(reads):
+    l = [r.get_tag("YA") for r in reads if r.is_read2 and r.has_tag("YA")]
+    return 0 if len(l) == 0 else mean(l)
+
+
+def mean_r2_ref_score(reads):
+    l = [r.get_tag("YG") for r in reads if r.is_read2 and r.has_tag("YG")]
+    return 0 if len(l) == 0 else mean(l)
+
+
+def n_r2_uniq_starts(reads):
+    return len(set([r.reference_start for r in reads if r.is_read2]))
+
+
+def n_r1_uniq_starts(reads):
+    return len(set([r.reference_start for r in reads if r.is_read1]))
+
+
+def cell_features(
+    bam_fn: str,
     genome: Genome,
     window_size: int,
     window_step: int,
-    min_mapq,
-    min_ya,
-    max_yg,
-    min_secondary_mapq,
-    library_3_or_5: int,
-    ensearch,
+    min_reads: int,
 ):
-    # load the alignment
-    tbx = TabixSam(pysam.TabixFile(filename))
 
     # create the windows
-    windows = occupied_windows_in_genome(genome, window_size, window_step, filename)
+    windows = ig.windows_in_genome(genome, window_size, window_step)
+    bam = pysam.AlignmentFile(bam_fn, "rb")
 
     # iterate over the windows to compute the features
     w_list = []
     for w in windows:
-        wf = WindowFeatures(
-            tbx,
-            w.chrom,
-            w.start,
-            w.end,
-            min_mapq,
-            min_ya,
-            max_yg,
-            min_secondary_mapq,
-            library_3_or_5,
-            ensearch,
-        )
-        f = wf.features()
+        # get reads in window
+        reads = [r for r in bam.fetch(w.chrom, w.start, w.end)]
+        if len(reads) < min_reads:
+            continue
+        f = {}
         f["chrom"] = str(w.chrom)
         f["start"] = w.start
         f["end"] = w.end
+        f["count"] = len(reads)
+
+        f["mean_frag_len"] = mean_frag_len(reads)
+        f["n_r1_uniq_starts"] = n_r1_uniq_starts(reads)
+        f["n_r2_uniq_starts"] = n_r2_uniq_starts(reads)
+        f["mean_r2_l1_score"] = mean_r2_l1_score(reads)
+        f["mean_r2_ref_score"] = mean_r2_ref_score(reads)
+
         w_list.append(f)
 
     df = pd.DataFrame(w_list)
-
     # set index
     df["start"] = df["start"].astype(int)
     df["end"] = df["end"].astype(int)
@@ -60,7 +74,7 @@ def get_features(
     return df
 
 
-def get_flank_features(df):
+def cell_flank_features(df):
 
     df.sort_index(inplace=True)
 
@@ -68,7 +82,7 @@ def get_flank_features(df):
         flank_size = 2**i
         field_name = "flank_" + str(flank_size) + "_max_reads"
         df[field_name] = (
-            df["all_reads.count"]
+            df["count"]
             .rolling(window=2 * flank_size + 1, center=True, min_periods=1)
             .max()
             .fillna(0)
@@ -82,21 +96,16 @@ if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
 
     # first pass through the genome to get features for each window
-    df = get_features(
-        snakemake.input.bgz,
+    df = cell_features(
+        snakemake.input.bam,
         Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
         snakemake.params.window_step,
-        snakemake.params.min_mapq,
-        snakemake.params.min_ya,
-        snakemake.params.max_yg,
-        snakemake.params.min_secondary_mapq,
-        snakemake.params.library_3_or_5,
-        None,
+        snakemake.params.min_reads,
     )
 
     # second pass through the genome to get collect flanking features
-    df = get_flank_features(df)
+    df = cell_flank_features(df)
 
     # write the features to a file
     df["cell_id"] = snakemake.wildcards.sample

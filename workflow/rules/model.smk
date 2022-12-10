@@ -1,6 +1,7 @@
 rule get_features:
     input:
-        bgz=rules.tabix.output.bgz,
+        bam=rules.sort.output[0],
+        bai=rules.index.output[0],
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
@@ -28,8 +29,14 @@ def get_non_ref_l1(wildcards):
 def get_labels_input(wildcards):
     donor_samples = samples[samples["donor"] == wildcards.donor]
     return {
-        "bgz": expand(
-            rules.tabix.output.bgz,
+        "bam": expand(
+            rules.sort.output,
+            sample=donor_samples[samples["dna_type"] == "bulk"]["sample"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        "bai": expand(
+            rules.index.output,
             sample=donor_samples[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,
@@ -97,6 +104,8 @@ rule folds:
         "{outdir}/results/folds/{ref}_{db}/folds.log",
     conda:
         "../envs/model.yml"
+    resources:
+        mem_mb=10000,
     wildcard_constraints:
         dna_type="\w+",
     script:
@@ -135,6 +144,8 @@ rule train_test:
         "{outdir}/results/train_test/{ref}_{db}/{model_id}.log",
     conda:
         "../envs/model.yml"
+    resources:
+        mem_mb=10000,
     script:
         "../scripts/train_test.py"
 
@@ -173,5 +184,7 @@ rule metrics:
         "../envs/model.yml"
     log:
         "{outdir}/results/metrics/{ref}_{db}.log",
+    resources:
+        mem_mb=10000,
     script:
         "../scripts/metrics.py"
