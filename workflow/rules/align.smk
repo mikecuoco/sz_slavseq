@@ -104,6 +104,7 @@ rule tags:
                 samtools view -S -b - > {output}) 
         """
 
+
 rule sort:
     input:
         rules.tags.output,
@@ -114,6 +115,7 @@ rule sort:
     wrapper:
         "v1.19.2/bio/samtools/sort"
 
+
 rule index:
     input:
         rules.sort.output,
@@ -123,6 +125,7 @@ rule index:
         "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.log",
     wrapper:
         "v1.19.2/bio/samtools/index"
+
 
 rule tabix:
     input:
