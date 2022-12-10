@@ -28,7 +28,7 @@ rule bwa_mem:
     log:
         "{outdir}/results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
-        extra="-T 19",  # TODO: explain this flag
+        extra="-T 19",  # Don’t output alignment with score lower than 19.
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
         sorting="samtools",
     threads: 4
