@@ -8,8 +8,6 @@ import numpy as np
 from statistics import mean
 from src.genome.Genome import Genome
 from src.genome import interval_generator as ig
-import pdb
-
 
 def mean_frag_len(reads):
     l = [r.template_length for r in reads if r.is_paired and r.is_read1]
