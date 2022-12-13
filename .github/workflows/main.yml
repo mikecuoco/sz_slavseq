@@ -38,9 +38,7 @@ jobs:
       id: cache-sm
       uses: actions/cache@v3
       with:
-        path: |
-          .test/results
-          .test/resources/${{ matrix.genome }}
+        path: .test/resources/${{ matrix.genome }}
         key: ${{ runner.os }}-${{ matrix.genome }}-${{ matrix.KNRGL }}
     - name: Install mamba
       uses: conda-incubator/setup-miniconda@v2
@@ -54,8 +52,7 @@ jobs:
     - name: Install snakemake
       run: mamba install python=3.9 snakemake==7.16 biopython
     - name: Run workflow
-      run: |
-        snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}_${{ matrix.KNRGL }}.yml
+      run: snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}_${{ matrix.KNRGL }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0

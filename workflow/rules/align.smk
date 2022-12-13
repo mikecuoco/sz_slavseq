@@ -28,13 +28,13 @@ rule bwa_mem:
     log:
         "{outdir}/results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
-        extra="-T 19",  # TODO: explain this flag
+        extra="-T 19",  # Don’t output alignment with score lower than 19.
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
         sorting="samtools",
     threads: 4
     cache: True
     wrapper:
-        "v1.18.0/bio/bwa/mem"
+        "v1.19.2/bio/bwa/mem"
 
 
 rule rmdup:
@@ -105,22 +105,23 @@ rule tags:
         """
 
 
-rule tabix:
+rule sort:
     input:
         rules.tags.output,
     output:
-        bgz="{outdir}/results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
-        tbi="{outdir}/results/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
+        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/align.yml"
-    shell:
-        """
-        samtools view {input} | \
-            workflow/scripts/sam_to_tabix.py | \
-            sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
-            bgzip -c > {output.bgz} 2> {log} 
+        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.log",
+    wrapper:
+        "v1.19.2/bio/samtools/sort"
 
-        tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
-        """
+
+rule index:
+    input:
+        rules.sort.output,
+    output:
+        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.bam.bai",
+    log:
+        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.log",
+    wrapper:
+        "v1.19.2/bio/samtools/index"

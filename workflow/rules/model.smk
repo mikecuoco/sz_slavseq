@@ -1,6 +1,7 @@
 rule get_features:
     input:
-        bgz=rules.tabix.output.bgz,
+        bam=rules.sort.output[0],
+        bai=rules.index.output[0],
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
@@ -26,17 +27,23 @@ def get_non_ref_l1(wildcards):
 
 
 def get_labels_input(wildcards):
-    donor_samples = samples[samples["donor"] == wildcards.donor]
+    donor_samples = samples.loc[samples["donor"] == wildcards.donor]
     return {
-        "bgz": expand(
-            rules.tabix.output.bgz,
-            sample=donor_samples[samples["dna_type"] == "bulk"]["sample"],
+        "bam": expand(
+            rules.sort.output,
+            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        "bai": expand(
+            rules.index.output,
+            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,
         ),
         "features": expand(
             rules.get_features.output,
-            sample=donor_samples[samples["dna_type"] == "mda"]["sample"],
+            sample=donor_samples.loc[samples["dna_type"] == "mda"]["sample"],
             dna_type="mda",
             allow_missing=True,
         ),
@@ -70,7 +77,7 @@ rule folds:
     input:
         samples=expand(
             "{{outdir}}/results/get_labels/{{ref}}_{{db}}/{donor}.pickle.gz",
-            donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
+            donor=set(samples["donor"]),
         ),
     params:
         num_folds=config["num_folds"],
