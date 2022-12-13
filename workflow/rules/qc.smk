@@ -12,8 +12,8 @@ rule fastqc:
     input:
         get_fastqc_input,
     output:
-        html="{outdir}/results/fastqc/{trim}/{donor}/{dna_type}/{sample}_{read}.html",
-        zip="{outdir}/results/fastqc/{trim}/{donor}/{dna_type}/{sample}_{read}_fastqc.zip",
+        html="{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.html",
+        zip="{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}_fastqc.zip",
     log:
         "{outdir}/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.log",
     wrapper:
@@ -22,13 +22,27 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.bam"
+        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.bam",
     output:
-        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat"
+        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat",
     log:
-        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat.log"
+        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
+
+# WIP
+# rule feature_label_metrics:
+#     input:
+#         expand(rules.get_labels.output, donor=set(samples["donor"])),
+#     output:
+#         res="{outdir}/results/model/class_abundance.tsv",
+#         plot="{outdir}/results/model/class_abundance.pdf",
+#     log:
+#         "{outdir}/results/class_abundance.log",
+#     conda:
+#         "../envs/model.yml"
+#     script:
+#         "../scripts/feature_label_metrics.py"
 
 
 rule multiqc:
@@ -65,8 +79,7 @@ rule multiqc:
         expand(
             expand(
                 rules.flagstat.output,
-                stage=["bwa_mem", "rmdup", "tags"],
-                ref=config["genome"]["build"],
+                stage=["bwa_mem", "rmdup"],
                 allow_missing=True,
             ),
             zip,
@@ -76,8 +89,10 @@ rule multiqc:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/multiqc.html",
+        "{outdir}/results/{ref}_multiqc.html",
     log:
-        "{outdir}/results/multiqc.log",
+        "{outdir}/results/{ref}_multiqc.log",
+    params:
+        extra=lambda wildcards: f"--config config/multiqc_config.yml --title \"SLAV-seq  {wildcards.ref}\" --no-data-dir"
     wrapper:
         "v1.21.0/bio/multiqc"
