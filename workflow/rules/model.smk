@@ -77,7 +77,7 @@ rule folds:
         samples=expand(
             "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.pickle.gz",
             donor=set(samples["donor"]),
-            allow_missing=True
+            allow_missing=True,
         ),
     params:
         num_folds=config["num_folds"],
