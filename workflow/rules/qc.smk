@@ -15,7 +15,7 @@ rule fastqc:
         html="{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.html",
         zip="{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}_fastqc.zip",
     log:
-        "{outdir}/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.log",
+        "{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.log",
     wrapper:
         "v1.21.0/bio/fastqc"
 
