@@ -185,7 +185,7 @@ rule metrics:
     params:
         num_folds=config["num_folds"],
     output:
-        prcurve="{outdir}/results/model/metrics/{model_id}/{ref}_{db}/prcurve.png",
+        prcurve="{outdir}/results/model/metrics/{ref}_{db}/{model_id}/prcurve.png",
     conda:
         "../envs/model.yml"
     log:

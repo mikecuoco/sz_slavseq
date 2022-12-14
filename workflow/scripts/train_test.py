@@ -17,6 +17,10 @@ from deepforest import CascadeForestClassifier
 def make_pipeline(clf_type, params):
 
     # TODO: add hyperparameter tuning
+    # TODO: add DecisionTreeClassifier
+    # TODO: add XGBoost
+    # TODO: add LightGBM
+    # TODO: add GradientBoostingClassifier
     if clf_type == "RandomForestClassifier":
         clf = RandomForestClassifier()
         pipe = Pipeline([(clf_type, clf)])

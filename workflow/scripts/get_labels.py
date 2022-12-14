@@ -7,7 +7,6 @@ import pysam
 from src.genome.Genome import Genome
 from src.genome import interval_generator as ig
 from src.genome.Interval import Interval
-from src.genome.windows import read_rmsk, make_l1_windows
 
 
 def read_rmsk(rmsk_outfile):
@@ -56,9 +55,7 @@ def make_l1_windows(df, chromsizes, field, window_size, window_step):
 
     genome = Genome(chromsizes)
     xx = list(
-        ig.windows_overlapping_intervals(
-            genome, l1_pos, window_size, window_step
-        )
+        ig.windows_overlapping_intervals(genome, l1_pos, window_size, window_step)
     )
 
     l1_df = pd.DataFrame.from_records(
@@ -67,6 +64,7 @@ def make_l1_windows(df, chromsizes, field, window_size, window_step):
     l1_df[field] = True
 
     return l1_df
+
 
 @functools.lru_cache()
 def read_reference_l1():
@@ -100,6 +98,16 @@ def read_non_ref_db():
     return df
 
 
+def label(df):
+    for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
+        if x.reference_l1hs_l1pa2_6:
+            yield "RL1"
+        elif x.in_NRdb:
+            yield "KNRGL"
+        else:
+            yield "OTHER"
+
+
 def get_germline_l1(
     bam_fn: str,
     genome: Genome,
@@ -128,10 +136,12 @@ def get_germline_l1(
         .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
         .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     )
+
     df = df.loc[df["in_NRdb"] | df["reference_l1hs_l1pa2_6"]]
     df.loc[
         df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]
     ] = False  # if ref and nonref l1 are present at the same site, set nonref to false
+
     return df
 
 
@@ -150,10 +160,18 @@ if __name__ == "__main__":
 
     # get features from single cell data
     features_df = pd.concat([pd.read_pickle(f) for f in snakemake.input.features])
-
+    
     # merge and return
     df = features_df.merge(
         germline_df, left_index=True, right_index=True, how="left"
     ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
+
+    # collapse to single column
+    df["label"] = pd.Series(label(df), index=df.index)
+    df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1, inplace=True)
+
+    # error check
+    assert len(set(df["label"])) == 3, "Not all labels are present"
+
     df.to_pickle(snakemake.output[0])
     sys.stderr.close()

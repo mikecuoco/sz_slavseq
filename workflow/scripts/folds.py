@@ -10,18 +10,7 @@ import numpy as np
 import pickle
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
-from imblearn.over_sampling import RandomOverSampler
-import pdb
-
-
-def label(df):
-    for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
-        if x.reference_l1hs_l1pa2_6:
-            yield "RL1"
-        elif x.in_NRdb:
-            yield "KNRGL"
-        else:
-            yield "OTHER"
+from imblearn.under_sampling import RandomUnderSampler
 
 
 def main(files, num_folds):
@@ -48,8 +37,7 @@ def main(files, num_folds):
                 "end",
                 "cell_id",
                 "donor_id",
-                "in_NRdb",
-                "reference_l1hs_l1pa2_6",
+                "label",
             ]
         )
     ]
@@ -57,7 +45,7 @@ def main(files, num_folds):
     X = np.minimum(X, 4e9)  # take minimum of features and 4e9 to avoid overflow error
 
     # make labels, using LabelEncoder() to convert strings to integers
-    Y = pd.Series(label(df), index=df.index)
+    Y = df["label"]
     le = LabelEncoder()
     le = le.fit(list(set(Y)))
     y = le.transform(Y)
@@ -82,10 +70,9 @@ def main(files, num_folds):
         for d in [y_train, y_test]:
             assert len(set(d)) == len(set(y)), "not all classes represented in split"
 
-        X_train, y_train = RandomOverSampler(random_state=42).fit_resample(
+        X_train, y_train = RandomUnderSampler(random_state=42).fit_resample(
             X_train, y_train
         )
-        X_test, y_test = RandomOverSampler(random_state=42).fit_resample(X_test, y_test)
 
         # save train/test splits
         X_train.to_pickle(snakemake.output.train_features[fold])
