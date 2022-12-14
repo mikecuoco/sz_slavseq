@@ -21,10 +21,18 @@ rule all:
         expand(
             rules.metrics.output.prcurve,
             db=list(config["KNRGL"].keys()),
+            model_id=list(config["models"].keys()),
             ref=config["genome"]["build"],
             outdir=config["outdir"],
         ),
         expand(
             rules.multiqc.output,
+            ref=config["genome"]["build"],
+            outdir=config["outdir"],
+        ),
+        expand(
+            rules.class_feature_metrics.output,
+            ref=config["genome"]["build"],
+            db=list(config["KNRGL"].keys()),
             outdir=config["outdir"],
         ),

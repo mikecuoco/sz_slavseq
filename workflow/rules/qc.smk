@@ -30,19 +30,20 @@ rule flagstat:
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
-# WIP
-# rule feature_label_metrics:
-#     input:
-#         expand(rules.get_labels.output, donor=set(samples["donor"])),
-#     output:
-#         res="{outdir}/results/model/class_abundance.tsv",
-#         plot="{outdir}/results/model/class_abundance.pdf",
-#     log:
-#         "{outdir}/results/class_abundance.log",
-#     conda:
-#         "../envs/model.yml"
-#     script:
-#         "../scripts/feature_label_metrics.py"
+
+rule class_feature_metrics:
+    input:
+        expand(rules.get_labels.output, donor=set(samples["donor"]), allow_missing=True),
+    output:
+        classes_per_cell="{outdir}/results/model/metrics/{ref}_{db}/classes_per_cell.png",
+        classes_per_donor="{outdir}/results/model/metrics/{ref}_{db}/classes_per_donor.png",
+        features_per_class="{outdir}/results/model/metrics/{ref}_{db}/features_per_class.png",
+    log:
+        "{outdir}/results/model/modmetrics/{ref}_{db}/feature_label_metrics.log",
+    conda:
+        "../envs/model.yml"
+    script:
+        "../scripts/class_feature_metrics.py"
 
 
 rule multiqc:
@@ -93,6 +94,6 @@ rule multiqc:
     log:
         "{outdir}/results/{ref}_multiqc.log",
     params:
-        extra=lambda wildcards: f"--config config/multiqc_config.yml --title \"SLAV-seq  {wildcards.ref}\" --no-data-dir"
+        extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq  {wildcards.ref}" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"
