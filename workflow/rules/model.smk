@@ -68,10 +68,6 @@ rule get_labels:
         "../scripts/get_labels.py"
 
 
-# define variables relevant to these rules
-folds = range(1, config["num_folds"] + 1)
-
-
 rule folds:
     input:
         samples=expand(
@@ -83,27 +79,13 @@ rule folds:
         num_folds=config["num_folds"],
         min_reads=config["get_features"]["min_reads"],
     output:
-        train_features=expand(
-            "{outdir}/results/model/folds/{ref}_{db}/fold_{fold}/X_train.pickle.gz",
-            fold=folds,
-            allow_missing=True,
-        ),
-        test_features=expand(
-            "{outdir}/results/model/folds/{ref}_{db}/fold_{fold}/X_test.pickle.gz",
-            fold=folds,
-            allow_missing=True,
-        ),
-        train_labels=expand(
-            "{outdir}/results/model/folds/{ref}_{db}/fold_{fold}/Y_train.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        test_labels=expand(
-            "{outdir}/results/model/folds/{ref}_{db}/fold_{fold}/Y_test.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
+        features="{outdir}/results/model/folds/{ref}_{db}/features.pickle",
+        labels="{outdir}/results/model/folds/{ref}_{db}/labels.pickle",
         label_encoder="{outdir}/results/model/folds/{ref}_{db}/label_encoder.pickle",
+        classes_per_cell="{outdir}/results/model/folds/{ref}_{db}/classes_per_cell.png",
+        classes_per_donor="{outdir}/results/model/folds/{ref}_{db}/classes_per_donor.png",
+        features_per_class="{outdir}/results/model/folds/{ref}_{db}/features_per_class.png",
+        classes_per_donor_per_fold="{outdir}/results/model/folds/{ref}_{db}/classes_per_donor_per_fold.png",
     log:
         "{outdir}/results/model/folds/{ref}_{db}/folds.log",
     conda:
@@ -116,36 +98,15 @@ rule folds:
 
 rule train_test:
     input:
-        train_features=rules.folds.output.train_features,
-        train_labels=rules.folds.output.train_labels,
-        test_features=rules.folds.output.test_features,
-        label_encoder=rules.folds.output.label_encoder,
+        features=rules.folds.output.features,
+        labels=rules.folds.output.labels,
     params:
-        num_folds=config["num_folds"],
         model_params=lambda wc: config["models"][wc.model_id]["params"],
         model_name=lambda wc: config["models"][wc.model_id]["name"],
     output:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
-        train_pred=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/train_predictions.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        train_proba=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/train_probabilities.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        test_pred=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/test_predictions.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        test_proba=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/test_probabilities.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
+        pred="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/pred.pickle",
+        proba="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/proba.pickle",
     log:
         "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.log",
     threads: 8
@@ -157,38 +118,17 @@ rule train_test:
         "../scripts/train_test.py"
 
 
-rule metrics:
+rule prcurve:
     input:
-        train_labels=rules.folds.output.train_labels,
-        train_pred=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/train_predictions.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        train_proba=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/train_probabilities.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        test_labels=rules.folds.output.test_labels,
-        test_pred=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/test_predictions.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
-        test_proba=expand(
-            "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/fold_{fold}/test_probabilities.pickle",
-            fold=folds,
-            allow_missing=True,
-        ),
+        labels=rules.folds.output.labels,
+        proba=rules.train_test.output.proba,
         label_encoder=rules.folds.output.label_encoder,
-    params:
-        num_folds=config["num_folds"],
     output:
-        prcurve="{outdir}/results/model/metrics/{ref}_{db}/{model_id}/prcurve.png",
+        prcurve="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.pickle",
+        plot="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.png",
     conda:
         "../envs/model.yml"
     log:
-        "{outdir}/results/model/metrics/{model_id}/{ref}_{db}.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.log",
     script:
-        "../scripts/metrics.py"
+        "../scripts/prcurve.py"
