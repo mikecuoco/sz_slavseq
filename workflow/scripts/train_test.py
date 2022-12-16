@@ -42,11 +42,7 @@ def make_pipeline(clf_type, params):
         pipe.set_params(**params)
 
     return pipe
-
-def predict(pipe, X_train, X_test):
-
-        return {"train_pred": train_pred, "train_proba": train_proba, "test_pred": test_pred, "test_proba": test_proba}
-
+    
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
