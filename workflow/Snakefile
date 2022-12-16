@@ -19,20 +19,18 @@ include: "rules/qc.smk"
 rule all:
     input:
         expand(
-            rules.metrics.output.prcurve,
+            rules.prcurve.output.prcurve,
             db=list(config["KNRGL"].keys()),
             model_id=list(config["models"].keys()),
             ref=config["genome"]["build"],
             outdir=config["outdir"],
         ),
         expand(
-            rules.multiqc.output,
-            ref=config["genome"]["build"],
+            rules.reads_multiqc.output,
             outdir=config["outdir"],
         ),
         expand(
-            rules.class_feature_metrics.output,
+            rules.aln_multiqc.output,
             ref=config["genome"]["build"],
-            db=list(config["KNRGL"].keys()),
             outdir=config["outdir"],
         ),

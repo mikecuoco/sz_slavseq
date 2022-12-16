@@ -31,22 +31,7 @@ rule flagstat:
         "v1.21.0/bio/samtools/flagstat"
 
 
-rule class_feature_metrics:
-    input:
-        expand(rules.get_labels.output, donor=set(samples["donor"]), allow_missing=True),
-    output:
-        classes_per_cell="{outdir}/results/model/metrics/{ref}_{db}/classes_per_cell.png",
-        classes_per_donor="{outdir}/results/model/metrics/{ref}_{db}/classes_per_donor.png",
-        features_per_class="{outdir}/results/model/metrics/{ref}_{db}/features_per_class.png",
-    log:
-        "{outdir}/results/model/modmetrics/{ref}_{db}/feature_label_metrics.log",
-    conda:
-        "../envs/model.yml"
-    script:
-        "../scripts/class_feature_metrics.py"
-
-
-rule multiqc:
+rule reads_multiqc:
     input:
         expand(
             expand(
@@ -77,6 +62,18 @@ rule multiqc:
             dna_type=samples["dna_type"],
             allow_missing=True,
         ),
+    output:
+        "{outdir}/results/reads_multiqc.html",
+    log:
+        "{outdir}/results/reads_multiqc.log",
+    params:
+        extra='--config config/multiqc_config.yml --title "SLAV-seq reads" --no-data-dir',
+    wrapper:
+        "v1.21.0/bio/multiqc"
+
+
+rule aln_multiqc:
+    input:
         expand(
             expand(
                 rules.flagstat.output,
@@ -93,7 +90,9 @@ rule multiqc:
         "{outdir}/results/{ref}_multiqc.html",
     log:
         "{outdir}/results/{ref}_multiqc.log",
+    wildcard_constraints:
+        ref="^" + "|".join(config["genome"]["build"]) + "$",
     params:
-        extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq  {wildcards.ref}" --no-data-dir',
+        extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq {wildcards.ref}" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"
