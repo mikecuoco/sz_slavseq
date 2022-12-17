@@ -16,7 +16,7 @@ sys.stderr = open(snakemake.log[0], "w")
 with open(snakemake.input.label_encoder, "rb") as f:
     le = pickle.load(f)
 
-# get model results 
+# get model results
 with open(snakemake.input.proba, "rb") as f:
     proba = pickle.load(f)
 
@@ -27,13 +27,15 @@ with open(snakemake.input.labels, "rb") as f:
 # get PR curves in a loop
 df_list = []
 for fold in proba.keys():
-    for stage in ["train","test"]:
-        for label in ["KNRGL","RL1","OTHER"]:
+    for stage in ["train", "test"]:
+        for label in ["KNRGL", "RL1", "OTHER"]:
 
             # TODO: figure out how to return thresholds
             _df = pd.DataFrame()
             _df["precision"], _df["recall"], _ = precision_recall_curve(
-                y[fold][stage], proba[fold][stage][:, le.transform([label])[0]].round(2), pos_label=le.transform([label])[0]
+                y[fold][stage],
+                proba[fold][stage][:, le.transform([label])[0]].round(2),
+                pos_label=le.transform([label])[0],
             )
             _df["stage"], _df["label"], _df["fold"] = stage, label, fold + 1
             df_list.append(_df)
@@ -41,12 +43,18 @@ for fold in proba.keys():
             if stage == "test":
                 _df = pd.DataFrame()
                 _df["precision"], _df["recall"], _ = precision_recall_curve(
-                    shuffle(y[fold][stage]), proba[fold][stage][:, le.transform([label])[0]].round(2), pos_label=le.transform([label])[0]
+                    shuffle(y[fold][stage]),
+                    proba[fold][stage][:, le.transform([label])[0]].round(2),
+                    pos_label=le.transform([label])[0],
                 )
-                _df["stage"], _df["label"], _df["fold"] = "test_shuffled", label, fold + 1
+                _df["stage"], _df["label"], _df["fold"] = (
+                    "test_shuffled",
+                    label,
+                    fold + 1,
+                )
                 df_list.append(_df)
 
-        
+
 df = pd.concat(df_list).reset_index(drop=True)
 df.to_pickle(snakemake.output.prcurve)
 
@@ -62,10 +70,7 @@ fig = sns.relplot(
     kind="line",
     markers=True,
 )
-fig.set(
-    ylim=[0, 1],
-    xlim=[0, 1]
-)
+fig.set(ylim=[0, 1], xlim=[0, 1])
 plt.savefig(snakemake.output.plot, format="png", dpi=200)
 plt.clf()
 

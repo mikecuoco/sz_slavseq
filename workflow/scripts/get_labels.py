@@ -145,7 +145,7 @@ def get_germline_l1(
     ] = False  # if ref and nonref l1 are present at the same site, set nonref to false
 
     # add database source
-    df['db'] = df['in_NRdb'].apply(lambda x: db if x == True else 'rmsk')
+    df["db"] = df["in_NRdb"].apply(lambda x: db if x == True else "rmsk")
 
     return df
 
@@ -166,20 +166,18 @@ if __name__ == "__main__":
 
     # get features from single cell data
     features_df = pd.concat([pd.read_pickle(f) for f in snakemake.input.features])
-    
+
     # merge and return
-    df = (
-        features_df.merge(
-        germline_df, left_index=True, right_index=True, how="left")
-        .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False, "db": False})
-    )
+    df = features_df.merge(
+        germline_df, left_index=True, right_index=True, how="left"
+    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False, "db": False})
 
     # collapse to single column
     df["label"] = pd.Series(label(df), index=df.index)
     df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1, inplace=True)
 
     df["build"] = snakemake.wildcards.ref
-    
+
     # error check
     assert len(set(df["label"])) == 3, "Not all labels are present"
 

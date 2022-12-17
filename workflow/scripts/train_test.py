@@ -42,22 +42,25 @@ def make_pipeline(clf_type, params):
         pipe.set_params(**params)
 
     return pipe
-    
+
+
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-    
+
     with open(snakemake.input.features, "rb") as f:
         features = pickle.load(f)
     with open(snakemake.input.labels, "rb") as f:
         labels = pickle.load(f)
 
-    assert set(labels.keys()) == set(features.keys()), "features and labels must have the same number of folds"
+    assert set(labels.keys()) == set(
+        features.keys()
+    ), "features and labels must have the same number of folds"
 
-    pred,proba = {},{}
+    pred, proba = {}, {}
 
     for fold in features.keys():
-        pred[fold],proba[fold] = {},{}
+        pred[fold], proba[fold] = {}, {}
 
         # train/test
         pipe = make_pipeline(snakemake.params.model_name, snakemake.params.model_params)

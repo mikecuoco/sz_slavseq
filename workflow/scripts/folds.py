@@ -15,41 +15,67 @@ from sklearn.preprocessing import LabelEncoder
 from imblearn.under_sampling import RandomUnderSampler
 import pdb
 
+
 def classes_per_cell(df, outfile):
-    plot_df = df.value_counts(["label","donor_id","cell_id"]).to_frame('count').reset_index()
+    plot_df = (
+        df.value_counts(["label", "donor_id", "cell_id"])
+        .to_frame("count")
+        .reset_index()
+    )
     fig = sns.boxplot(plot_df, x="count", y="donor_id", hue="label")
     fig.set_xscale("log")
     sns.move_legend(fig, "upper left", bbox_to_anchor=(1, 1))
-    plt.savefig(outfile, format="png", dpi=300, bbox_inches='tight')
+    plt.savefig(outfile, format="png", dpi=300, bbox_inches="tight")
     plt.clf()
 
+
 def classes_per_donor(df, outfile):
-    plot_df = df.value_counts(["label","donor_id"]).to_frame('count').reset_index()
+    plot_df = df.value_counts(["label", "donor_id"]).to_frame("count").reset_index()
     fig = sns.barplot(plot_df, x="count", y="donor_id", hue="label")
     fig.set_xscale("log")
     sns.move_legend(fig, "upper left", bbox_to_anchor=(1, 1))
-    plt.savefig(outfile, format="png", dpi=300, bbox_inches='tight')
+    plt.savefig(outfile, format="png", dpi=300, bbox_inches="tight")
     plt.clf()
 
+
 def features_per_class(df, outfile):
-    plot_df = df.reset_index().melt(id_vars=["chrom","start","end","donor_id","cell_id","label","build","db"], var_name="feature")
+    plot_df = df.reset_index().melt(
+        id_vars=[
+            "chrom",
+            "start",
+            "end",
+            "donor_id",
+            "cell_id",
+            "label",
+            "build",
+            "db",
+        ],
+        var_name="feature",
+    )
     fig = sns.FacetGrid(plot_df, col="feature", col_wrap=3, sharex=False)
     fig.map_dataframe(sns.boxplot, x="value", y="label", hue="label", fliersize=0)
     plt.savefig(outfile, format="png", dpi=300)
     plt.clf()
+
 
 def logplot(**kwargs):
     data = kwargs.pop("data")
     ax = sns.barplot(data, **kwargs)
     ax.set_xscale("log")
 
+
 def classes_per_donor_per_fold(df, outfile):
-    plot_df = df.value_counts(["label","donor_id","fold","stage"]).to_frame('count').reset_index()
+    plot_df = (
+        df.value_counts(["label", "donor_id", "fold", "stage"])
+        .to_frame("count")
+        .reset_index()
+    )
     fig = sns.FacetGrid(plot_df, col="fold", row="stage", sharey=False)
     fig.map_dataframe(logplot, x="count", y="donor_id", hue="label")
     fig.add_legend()
     plt.savefig(outfile, format="png", dpi=300)
     plt.clf()
+
 
 if __name__ == "__main__":
 
@@ -83,12 +109,14 @@ if __name__ == "__main__":
                 "donor_id",
                 "label",
                 "build",
-                "db"
+                "db",
             ]
         )
     ]
     X = df.fillna(0).reset_index()
-    X[features] = np.minimum(X[features], 4e9)  # take minimum of features and 4e9 to avoid overflow error
+    X[features] = np.minimum(
+        X[features], 4e9
+    )  # take minimum of features and 4e9 to avoid overflow error
 
     # make labels, using LabelEncoder() to convert strings to integers
     Y = df["label"]
@@ -105,9 +133,10 @@ if __name__ == "__main__":
 
     # use StratifiedGroupKFold to preserve class balance and group balance
     sgkf = StratifiedGroupKFold(n_splits=snakemake.params.num_folds)
-    
+
     # store labels of each fold to plot class balance
-    features_dict = {}; labels_dict = {}
+    features_dict = {}
+    labels_dict = {}
     folds_metrics = []
 
     for fold, (train_index, test_index) in enumerate(
@@ -128,20 +157,22 @@ if __name__ == "__main__":
         labels_dict[fold] = {"train": y_train, "test": y_test}
 
         # append to metrics
-        X_train[["fold"]] = fold+1
+        X_train[["fold"]] = fold + 1
         X_train[["stage"]] = "train"
         folds_metrics.append(X_train)
-        X_test[["fold"]] = fold+1
+        X_test[["fold"]] = fold + 1
         X_test[["stage"]] = "test"
         folds_metrics.append(X_test)
 
     # save folds
     with open(snakemake.output.features, "wb") as f:
         pickle.dump(features_dict, f)
-    
+
     with open(snakemake.output.labels, "wb") as f:
         pickle.dump(labels_dict, f)
 
-    classes_per_donor_per_fold(pd.concat(folds_metrics), snakemake.output.classes_per_donor_per_fold)
+    classes_per_donor_per_fold(
+        pd.concat(folds_metrics), snakemake.output.classes_per_donor_per_fold
+    )
 
     sys.stderr.close()
