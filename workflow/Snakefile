@@ -37,4 +37,4 @@ rule all:
         expand(
             rules.classes_db_ref.output,
             outdir=config["outdir"],
-        )
+        ),

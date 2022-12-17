@@ -133,6 +133,7 @@ rule prcurve:
     script:
         "../scripts/prcurve.py"
 
+
 rule classes_db_ref:
     input:
         expand(
@@ -140,8 +141,8 @@ rule classes_db_ref:
             donor=set(samples["donor"]),
             ref=config["genome"]["build"],
             db=list(config["KNRGL"].keys()),
-            allow_missing=True
-        )
+            allow_missing=True,
+        ),
     output:
         "{outdir}/results/model/folds/classes_db_ref.png",
     conda:
