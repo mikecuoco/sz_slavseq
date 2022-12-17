@@ -6,7 +6,64 @@ import pandas as pd
 import pysam
 from src.genome.Genome import Genome
 from src.genome import interval_generator as ig
-from src.genome.windows import read_rmsk, make_l1_windows
+from src.genome.Interval import Interval
+
+
+def read_rmsk(rmsk_outfile):
+    """
+    Read the repeatmasker output table and return locations of L1HS and L1PA2-6
+    """
+    # read the rmsk file
+    df0 = pd.read_csv(
+        rmsk_outfile,
+        skiprows=3,
+        delim_whitespace=True,
+        names=["chrom", "start", "end", "strand", "repeat"],
+        usecols=[4, 5, 6, 8, 9],
+    )
+
+    # filter for rep_names
+    rep_names = [
+        "L1HS_3end",
+        "L1PA2_3end",
+        "L1PA3_3end",
+        "L1PA4_3end",
+        "L1PA5_3end",
+        "L1PA6_3end",
+    ]
+    # logging.info(f"Filtering for rep_names: {rep_names}")
+    df0 = df0[df0["repeat"].isin(rep_names)]
+
+    # save to new dataframe
+    df1 = pd.DataFrame()
+    df1["chrom"] = df0["chrom"].astype(str)
+    # set start positions depending on strand
+    df1["start"] = df0.apply(
+        lambda x: x["end"] if x["strand"] != "+" else x["start"], axis=1
+    )
+    df1["end"] = df1["start"]
+    df1["start"] -= 1  # make zero-based
+
+    return df1
+
+
+def make_l1_windows(df, chromsizes, field, window_size, window_step):
+    l1_pos = set()
+
+    for (_, chrom, start, end) in df[["chrom", "start", "end"]].itertuples():
+        l1_pos.update([Interval(chrom, start, end)])
+
+    genome = Genome(chromsizes)
+    xx = list(
+        ig.windows_overlapping_intervals(genome, l1_pos, window_size, window_step)
+    )
+
+    l1_df = pd.DataFrame.from_records(
+        (x.as_tuple() for x in xx), columns=["chrom", "start", "end"]
+    ).set_index(["chrom", "start", "end"])
+    l1_df[field] = True
+
+    return l1_df
 
 
 @functools.lru_cache()
@@ -41,18 +98,28 @@ def read_non_ref_db():
     return df
 
 
+def label(df):
+    for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
+        if x.reference_l1hs_l1pa2_6:
+            yield "RL1"
+        elif x.in_NRdb:
+            yield "KNRGL"
+        else:
+            yield "OTHER"
+
+
 def get_germline_l1(
     bam_fn: str,
     genome: Genome,
     window_size: int,
     window_step: int,
     min_reads: int,
+    db: str,
 ):
     # create the windows
     windows = ig.windows_in_genome(genome, window_size, window_step)
     bam = pysam.AlignmentFile(bam_fn, "rb")
 
-    # iterate over the windows to compute the features
     w_list = []
     for w in windows:
         reads = len([r for r in bam.fetch(w.chrom, w.start, w.end)])
@@ -64,15 +131,22 @@ def get_germline_l1(
     df["start"] = df["start"].astype(int)
     df["end"] = df["end"].astype(int)
     df.set_index(["chrom", "start", "end"], inplace=True)
+
+    # merge ref and nonref l1
     df = (
         df.merge(read_non_ref_db(), left_index=True, right_index=True, how="left")
         .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
         .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
     )
+
     df = df.loc[df["in_NRdb"] | df["reference_l1hs_l1pa2_6"]]
     df.loc[
         df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]
     ] = False  # if ref and nonref l1 are present at the same site, set nonref to false
+
+    # add database source
+    df["db"] = df["in_NRdb"].apply(lambda x: db if x == True else "rmsk")
+
     return df
 
 
@@ -87,6 +161,7 @@ if __name__ == "__main__":
         snakemake.params.window_size,
         snakemake.params.window_step,
         snakemake.params.min_reads,
+        snakemake.wildcards.db,
     )
 
     # get features from single cell data
@@ -95,6 +170,17 @@ if __name__ == "__main__":
     # merge and return
     df = features_df.merge(
         germline_df, left_index=True, right_index=True, how="left"
-    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
+    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False, "db": False})
+
+    # collapse to single column
+    df["label"] = pd.Series(label(df), index=df.index)
+    df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1, inplace=True)
+
+    df["build"] = snakemake.wildcards.ref
+
+    # error check
+    assert len(set(df["label"])) == 3, "Not all labels are present"
+
+    # save
     df.to_pickle(snakemake.output[0])
     sys.stderr.close()

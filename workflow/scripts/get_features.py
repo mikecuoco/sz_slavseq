@@ -8,7 +8,6 @@ import numpy as np
 from statistics import mean
 from src.genome.Genome import Genome
 from src.genome import interval_generator as ig
-import pdb
 
 
 def mean_frag_len(reads):
@@ -92,7 +91,7 @@ def cell_flank_features(df):
 
     for i in range(1, 8):
         flank_size = 2**i
-        field_name = "flank_" + str(flank_size) + "_max_reads"
+        field_name = "flank_" + str(flank_size) + "_rpm"
         df[field_name] = (
             df["rpm"]
             .rolling(window=2 * flank_size + 1, center=True, min_periods=1)

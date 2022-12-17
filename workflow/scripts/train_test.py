@@ -4,7 +4,6 @@ __author__ = "Michael Cuoco"
 
 import sys
 import pickle
-import pandas as pd
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -17,6 +16,10 @@ from deepforest import CascadeForestClassifier
 def make_pipeline(clf_type, params):
 
     # TODO: add hyperparameter tuning
+    # TODO: add DecisionTreeClassifier
+    # TODO: add XGBoost
+    # TODO: add LightGBM
+    # TODO: add GradientBoostingClassifier
     if clf_type == "RandomForestClassifier":
         clf = RandomForestClassifier()
         pipe = Pipeline([(clf_type, clf)])
@@ -45,30 +48,32 @@ if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
 
-    for fold in range(0, snakemake.params.num_folds):
+    with open(snakemake.input.features, "rb") as f:
+        features = pickle.load(f)
+    with open(snakemake.input.labels, "rb") as f:
+        labels = pickle.load(f)
+
+    assert set(labels.keys()) == set(
+        features.keys()
+    ), "features and labels must have the same number of folds"
+
+    pred, proba = {}, {}
+
+    for fold in features.keys():
+        pred[fold], proba[fold] = {}, {}
+
+        # train/test
         pipe = make_pipeline(snakemake.params.model_name, snakemake.params.model_params)
+        pipe.fit(features[fold]["train"], labels[fold]["train"])
+        pred[fold]["train"] = pipe.predict(features[fold]["train"])
+        pred[fold]["test"] = pipe.predict(features[fold]["test"])
+        proba[fold]["train"] = pipe.predict_proba(features[fold]["train"])
+        proba[fold]["test"] = pipe.predict_proba(features[fold]["test"])
 
-        # train
-        X_train = pd.read_pickle(snakemake.input.train_features[fold])
-        y_train = pd.read_pickle(snakemake.input.train_labels[fold])
-        pipe.fit(X_train, y_train)
-
-        y_train_pred = pipe.predict(X_train)
-        with open(snakemake.output.train_pred[fold], "wb") as f:
-            pickle.dump(y_train_pred, f)
-        y_train_proba = pipe.predict_proba(X_train)
-        with open(snakemake.output.train_proba[fold], "wb") as f:
-            pickle.dump(y_train_proba, f)
-
-        # test
-        X_test = pd.read_pickle(snakemake.input.test_features[fold])
-        y_test_pred = pipe.predict(X_test)
-        with open(snakemake.output.test_pred[fold], "wb") as f:
-            pickle.dump(y_test_pred, f)
-        y_test_proba = pipe.predict_proba(X_test)
-        with open(snakemake.output.test_proba[fold], "wb") as f:
-            pickle.dump(y_test_proba, f)
-
-    # TODO: train model on all data and return that model
+    # save predictions
+    with open(snakemake.output.proba, "wb") as f:
+        pickle.dump(proba, f)
+    with open(snakemake.output.pred, "wb") as f:
+        pickle.dump(pred, f)
 
     sys.stderr.close()

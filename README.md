@@ -14,14 +14,12 @@ Below is the general development workflow
 # format code
 snakefmt .
 
-# run lint checks
-snakemake --lint
-
-# Testing with hs37d5 reference (can also use configs for hs38dH and chm13v2)
+# testing with specified reference genome and database
 GENOME="hs37d5" # can be hs37d5, hs38dH or chm13v2
+DB="eul1db" # can be eul1db or eul2db
 snakemake \
    all \
-   --configfile .test/chr22/${GENOME}.yml \
+   --configfile .test/chr21chr22/${GENOME}_${DB}.yml \
    --cores 2 \
    --use-conda \
    --show-failed-logs \
