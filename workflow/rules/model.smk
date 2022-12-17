@@ -71,7 +71,7 @@ rule get_labels:
 rule folds:
     input:
         samples=expand(
-            "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.pickle.gz",
+            rules.get_labels.output,
             donor=set(samples["donor"]),
             allow_missing=True,
         ),
@@ -108,10 +108,10 @@ rule train_test:
         pred="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/pred.pickle",
         proba="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/proba.pickle",
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/train_test.log",
     threads: 8
     benchmark:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.benchmark.txt"
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/train_test.benchmark.txt"
     conda:
         "../envs/model.yml"
     script:
@@ -132,3 +132,21 @@ rule prcurve:
         "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.log",
     script:
         "../scripts/prcurve.py"
+
+rule classes_db_ref:
+    input:
+        expand(
+            rules.get_labels.output,
+            donor=set(samples["donor"]),
+            ref=config["genome"]["build"],
+            db=list(config["KNRGL"].keys()),
+            allow_missing=True
+        )
+    output:
+        "{outdir}/results/model/folds/classes_db_ref.png",
+    conda:
+        "../envs/model.yml"
+    log:
+        "{outdir}/results/model/folds/classes_db_ref.log",
+    script:
+        "../scripts/classes_db_ref.py"

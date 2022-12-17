@@ -114,12 +114,12 @@ def get_germline_l1(
     window_size: int,
     window_step: int,
     min_reads: int,
+    db: str,
 ):
     # create the windows
     windows = ig.windows_in_genome(genome, window_size, window_step)
     bam = pysam.AlignmentFile(bam_fn, "rb")
 
-    # iterate over the windows to compute the features
     w_list = []
     for w in windows:
         reads = len([r for r in bam.fetch(w.chrom, w.start, w.end)])
@@ -131,6 +131,8 @@ def get_germline_l1(
     df["start"] = df["start"].astype(int)
     df["end"] = df["end"].astype(int)
     df.set_index(["chrom", "start", "end"], inplace=True)
+
+    # merge ref and nonref l1
     df = (
         df.merge(read_non_ref_db(), left_index=True, right_index=True, how="left")
         .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
@@ -141,6 +143,9 @@ def get_germline_l1(
     df.loc[
         df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]
     ] = False  # if ref and nonref l1 are present at the same site, set nonref to false
+
+    # add database source
+    df['db'] = df['in_NRdb'].apply(lambda x: db if x == True else 'rmsk')
 
     return df
 
@@ -156,22 +161,28 @@ if __name__ == "__main__":
         snakemake.params.window_size,
         snakemake.params.window_step,
         snakemake.params.min_reads,
+        snakemake.wildcards.db,
     )
 
     # get features from single cell data
     features_df = pd.concat([pd.read_pickle(f) for f in snakemake.input.features])
     
     # merge and return
-    df = features_df.merge(
-        germline_df, left_index=True, right_index=True, how="left"
-    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
+    df = (
+        features_df.merge(
+        germline_df, left_index=True, right_index=True, how="left")
+        .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False, "db": False})
+    )
 
     # collapse to single column
     df["label"] = pd.Series(label(df), index=df.index)
     df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1, inplace=True)
 
+    df["build"] = snakemake.wildcards.ref
+    
     # error check
     assert len(set(df["label"])) == 3, "Not all labels are present"
 
+    # save
     df.to_pickle(snakemake.output[0])
     sys.stderr.close()

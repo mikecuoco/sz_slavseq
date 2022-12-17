@@ -34,3 +34,7 @@ rule all:
             ref=config["genome"]["build"],
             outdir=config["outdir"],
         ),
+        expand(
+            rules.classes_db_ref.output,
+            outdir=config["outdir"],
+        )
