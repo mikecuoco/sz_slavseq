@@ -55,11 +55,11 @@ if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
 
-    cells = [pd.read_pickle(fn).reset_index() for fn in snakemake.input.samples]
+    donors = [pd.read_pickle(fn).reset_index() for fn in snakemake.input.samples]
 
     # concatenate all cells into a single table
     df = (
-        pd.concat(cells)
+        pd.concat(donors)
         .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
         .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
     )
