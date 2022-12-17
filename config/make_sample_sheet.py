@@ -55,7 +55,7 @@ def fields(filename):
         r["tissue"] = "brain"
         r["tissue_id"] = "CommonBrain"
         r["sample_type"] = "single_cell"
-        r["dna_type"] = "MDA"
+        r["dna_type"] = "mda"
     elif basename.upper().startswith("US"):
         m2 = re.search(
             "^(US([DH])(\d+))_?([A-H]\d+)_(S\d+)_(R[12])$",
@@ -70,7 +70,7 @@ def fields(filename):
         ind = r["individual"] if int(r["individual"]) >= 10 else "0" + r["individual"]
         r["tissue_id"] = "US" + m2.group(2).upper() + ind
         r["sample_type"] = "single_cell"
-        r["dna_type"] = "MDA"
+        r["dna_type"] = "mda"
     elif basename.startswith("gDNA"):
         m2 = re.search("^gDNA_(US([DH])(\d+))_(R[12])$", basename, flags=re.IGNORECASE)
         r["individual"] = re.sub("^0+", "", m2.group(3))
@@ -81,7 +81,7 @@ def fields(filename):
         ind = r["individual"] if int(r["individual"]) >= 10 else "0" + r["individual"]
         r["tissue_id"] = "US" + m2.group(2).upper() + ind
         r["sample_type"] = "bulk"
-        r["dna_type"] = "gDNA"
+        r["dna_type"] = "bulk"
     else:
         r = None
 
