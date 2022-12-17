@@ -63,9 +63,9 @@ rule reads_multiqc:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/reads_multiqc.html",
+        "{outdir}/results/multiqc_reads.html",
     log:
-        "{outdir}/results/reads_multiqc.log",
+        "{outdir}/results/multiqc_reads.log",
     params:
         extra='--config config/multiqc_config.yml --title "SLAV-seq reads" --no-data-dir',
     wrapper:
@@ -90,8 +90,6 @@ rule aln_multiqc:
         "{outdir}/results/{ref}_multiqc.html",
     log:
         "{outdir}/results/{ref}_multiqc.log",
-    wildcard_constraints:
-        ref="^" + "|".join(config["genome"]["build"]) + "$",
     params:
         extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq {wildcards.ref}" --no-data-dir',
     wrapper:
