@@ -4,9 +4,7 @@ __author__ = "Michael Cuoco"
 
 import pandas as pd
 from joblib import Parallel, delayed
-import gzip
-import subprocess
-import re
+import gzip, re, subprocess, argparse
 
 # define funtions for file processing
 def my_files(dirname):
@@ -66,7 +64,7 @@ def fields(filename):
         r["sample_id1"] = m2.group(4).upper()
         r["sample_id2"] = m2.group(5).upper()
         r["read"] = m2.group(6).upper()
-        r["tissue"] = "HIPPO" if m2.group(2).upper() == "HIPPO" else "DLPFC"
+        r["tissue"] = "HIPPO" if m2.group(2).upper() == "H" else "DLPFC"
         ind = r["individual"] if int(r["individual"]) >= 10 else "0" + r["individual"]
         r["tissue_id"] = "US" + m2.group(2).upper() + ind
         r["sample_type"] = "single_cell"
@@ -77,7 +75,7 @@ def fields(filename):
         r["sample_id1"] = "bulk"
         r["sample_id2"] = "Sbulk"
         r["read"] = m2.group(4).upper()
-        r["tissue"] = "HIPPO" if m2.group(2).upper() == "HIPPO" else "DLPFC"
+        r["tissue"] = "HIPPO" if m2.group(2).upper() == "H" else "DLPFC"
         ind = r["individual"] if int(r["individual"]) >= 10 else "0" + r["individual"]
         r["tissue_id"] = "US" + m2.group(2).upper() + ind
         r["sample_type"] = "bulk"
@@ -100,41 +98,40 @@ def print_unique(df):
 
 if __name__ == "__main__":
 
-    # read first line of fastq.gz files to compare to libd data
-    data_dirs = [
-        "/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/",
-        "/raidixshare_logg01/SEQ_ARCHIVE/SEQ_ARCHIVE/Patrick_Reed/buckets/bsmn-data/Project_Data",
-    ]
-    # data_dirs = [ # for testing
-    #     "/raidixshare_logg01/fqiu/AWS/for-ndar/SLAV-Seq/USH8",
-    # ]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-dirs", nargs="+", help="directories to search for fastq.gz files")
+    parser.add_argument("--meta", type=str, help="path to slavseq_metadata.csv")
+    parser.add_argument("--find-unique", action="store_true", help="find unique files", default=False)
+    parser.add_argument("--threads", type=int, nargs=1, help="# threads to use for unique file finding", default=1)
+    parser.add_argument("--out", type=str, help="output file name", default="all_donors.tsv")
+    args = parser.parse_args()
 
-    print("searching for fastq.gz files in {}".format(", ".join(data_dirs)))
-    # use threads because first_line is i/o bound
-    results = Parallel(n_jobs=24)(
-        delayed(file_info)(f) for d in data_dirs for f in my_files(d)
-    )
-    print("found {} files".format(len(results)))
+    if args.find_unique:
+        print("searching for fastq.gz files in {}".format(", ".join(args.data_dirs)))
+        # use threads because first_line is i/o bound
+        results = Parallel(n_jobs=args.threads)(
+            delayed(file_info)(f) for d in args.data_dirs for f in my_files(d)
+        )
+        print("found {} files".format(len(results)))
 
-    # convert to dataframe
-    print("extracting first read from each file")
-    logg_files = pd.DataFrame.from_records(
-        results, columns=["filename", "first_read", "num_reads"]
-    )
-    print_unique(logg_files)
+        # convert to dataframe
+        print("extracting first read from each file")
+        logg_files = pd.DataFrame.from_records(
+            results, columns=["filename", "first_read", "num_reads"]
+        )
 
+        # remove duplicates
+        print("removing duplicate fastqs")
+        logg_files.drop_duplicates(
+            subset=["first_read", "num_reads"], inplace=True
+        ) 
+    else:
+        logg_files = pd.DataFrame({"filename": [f for d in args.data_dirs for f in my_files(d)]})
+    
     # extract sample metadata from filenames
-    df = pd.DataFrame.from_records(
-        [dict(fields(x)) for x in logg_files["filename"]]
-    ).merge(logg_files, on="filename")
+    df = pd.DataFrame.from_records([dict(fields(x)) for x in logg_files["filename"]]).merge(logg_files, on="filename")
 
-    print("removing duplicate fastqs")
-    df.drop_duplicates(
-        subset=["first_read", "num_reads"], inplace=True
-    )  # remove duplicates
-    print_unique(df)
-
-    meta = pd.read_csv("slavseq_metadata.tsv", sep="\t").drop(["MDA_PERFORMED","BULK_PERFORMED"], axis = 1)
+    meta = pd.read_csv(args.meta, sep="\t").drop(["MDA_PERFORMED","BULK_PERFORMED"], axis = 1)
     meta.columns = meta.columns.str.lower()
     meta.set_index("tissue_id", inplace=True)
 
@@ -147,7 +144,6 @@ if __name__ == "__main__":
                 "individual",
                 "pair_id",
                 "dna_type",
-                "tissue",
                 "tissue_id",
             ],
             axis=1,
@@ -160,5 +156,5 @@ if __name__ == "__main__":
         .reset_index()
         .join(meta, on="tissue_id", how="left")  # join with metadata
         .rename(columns={"pair_id": "sample", "individual": "donor"})
-        .to_csv("all_donors.tsv", sep="\t", index=False)
+        .to_csv(args.out, sep="\t", index=False)
     )
