@@ -12,8 +12,8 @@ rule fastqc:
     input:
         get_fastqc_input,
     output:
-        html="{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.html",
-        zip="{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}_fastqc.zip",
+        html="{outdir}/results/qc/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.html",
+        zip="{outdir}/results/qc/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}_fastqc.zip",
     log:
         "{outdir}/results/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.log",
     wrapper:
@@ -22,11 +22,11 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/{stage}/{ref}/{donor}/{dna_type}/{sample}.bam",
     output:
-        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat",
+        "{outdir}/results/qc/flagstat/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat",
     log:
-        "{outdir}/results/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat.log",
+        "{outdir}/results/qc/flagstat/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
@@ -63,9 +63,9 @@ rule reads_multiqc:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/multiqc_reads.html",
+        "{outdir}/results/qc/multiqc_reads.html",
     log:
-        "{outdir}/results/multiqc_reads.log",
+        "{outdir}/results/qc/multiqc_reads.log",
     params:
         extra='--config config/multiqc_config.yml --title "SLAV-seq reads" --no-data-dir',
     wrapper:
@@ -87,9 +87,9 @@ rule aln_multiqc:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/{ref}_multiqc.html",
+        "{outdir}/results/qc/{ref}_multiqc.html",
     log:
-        "{outdir}/results/{ref}_multiqc.log",
+        "{outdir}/results/qc/{ref}_multiqc.log",
     params:
         extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq {wildcards.ref}" --no-data-dir',
     wrapper:

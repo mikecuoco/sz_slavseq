@@ -24,9 +24,9 @@ rule bwa_mem:
         reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
         idx=rules.bwa_index.output.idx,
     output:
-        "{outdir}/results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
         extra="-T 19",  # Don’t output alignment with score lower than 19.
         sort_order="coordinate",  # Can be 'queryname' or 'coordinate'.
@@ -41,9 +41,9 @@ rule rmdup:
     input:
         rules.bwa_mem.output,
     output:
-        "{outdir}/results/rmdup/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/align.yml"
     script:
@@ -76,9 +76,9 @@ rule tags:
         fa=rules.gen_ref.output[0],
         gapafim=rules.install_gapafim.output,
     output:
-        "{outdir}/results/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/tags/{ref}/{donor}/{dna_type}/{sample}.err",
+        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.err",
     conda:
         "../envs/align.yml"
     shell:
@@ -109,9 +109,9 @@ rule sort:
     input:
         rules.tags.output,
     output:
-        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.log",
     wrapper:
         "v1.19.2/bio/samtools/sort"
 
@@ -120,8 +120,8 @@ rule index:
     input:
         rules.sort.output,
     output:
-        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.bam.bai",
+        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.bam.bai",
     log:
-        "{outdir}/results/sort/{ref}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.log",
     wrapper:
         "v1.19.2/bio/samtools/index"
