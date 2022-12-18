@@ -3,7 +3,6 @@
 __author__ = "Michael Cuoco"
 
 import pandas as pd
-from joblib import Parallel, delayed
 import gzip, re, subprocess, argparse
 
 # define funtions for file processing
@@ -107,6 +106,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.find_unique:
+        from joblib import Parallel, delayed
         print("searching for fastq.gz files in {}".format(", ".join(args.data_dirs)))
         # use threads because first_line is i/o bound
         results = Parallel(n_jobs=args.threads)(
@@ -151,10 +151,11 @@ if __name__ == "__main__":
         .pivot(
             columns="read",
             values="filename",
-            index=["pair_id", "individual", "dna_type", "tissue_id", "tissue"],
+            index=["pair_id", "individual", "dna_type", "tissue_id"],
         )  # pivot to get R1 and R2 in same row
         .reset_index()
         .join(meta, on="tissue_id", how="left")  # join with metadata
         .rename(columns={"pair_id": "sample", "individual": "donor"})
+        .sort_values("donor")  # sort by donor_id
         .to_csv(args.out, sep="\t", index=False)
     )
