@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   Formatting:
@@ -18,41 +18,40 @@ jobs:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_SNAKEMAKE_SNAKEFMT: true
-          
-  Testing: 
+
+  Testing:
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
-        genome: ["hs37d5","hs38DH","chm13v2"]
-        KNRGL: ["eul1db","dbVar"]
+        genome: ["hs37d5", "hs38DH", "chm13v2"]
     needs:
       - Formatting
-    steps: 
-    - uses: actions/checkout@v3
-      with:
-        lfs: true
-    - name: Snakemake cache
-      id: cache-sm
-      uses: actions/cache@v3
-      with:
-        path: .test/resources/${{ matrix.genome }}
-        key: ${{ runner.os }}-${{ matrix.genome }}-${{ matrix.KNRGL }}
-    - name: Install mamba
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        miniforge-variant: Mambaforge
-        miniforge-version: latest
-        use-mamba: true
-        python-version: 3.9
-        channels: conda-forge,bioconda,nodefaults
-        channel-priority: strict
-    - name: Install snakemake
-      run: mamba install python=3.9 snakemake==7.16 biopython
-    - name: Run workflow
-      run: snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}_${{ matrix.KNRGL }}.yml
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+      - name: Snakemake cache
+        id: cache-sm
+        uses: actions/cache@v3
+        with:
+          path: .test/resources/${{ matrix.genome }}
+          key: ${{ runner.os }}-${{ matrix.genome }}
+      - name: Install mamba
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          python-version: 3.9
+          channels: conda-forge,bioconda,nodefaults
+          channel-priority: strict
+      - name: Install snakemake
+        run: mamba install python=3.9 snakemake==7.16 biopython
+      - name: Run workflow
+        run: snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0

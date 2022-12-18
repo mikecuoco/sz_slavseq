@@ -2,12 +2,8 @@ samples: .test/chr21chr22/samples.tsv
 outdir: .test
 
 genome:
-  build: hs37d5
+  build: hs38DH
   region: [chr21, chr22]
-
-KNRGL: 
-  dbVar:
-    build: hs38DH
 
 get_features:
   min_reads: 1
