@@ -65,7 +65,7 @@ rule get_labels:
     conda:
         "../envs/features.yml"
     resources:
-        mem_mb=3000
+        mem_mb=3000,
     script:
         "../scripts/get_labels.py"
 
@@ -95,7 +95,7 @@ rule folds:
     wildcard_constraints:
         dna_type="\w+",
     resources:
-        mem_mb=10000
+        mem_mb=10000,
     script:
         "../scripts/folds.py"
 
@@ -119,7 +119,7 @@ rule train_test:
     conda:
         "../envs/model.yml"
     resources:
-        mem_mb=10000
+        mem_mb=10000,
     script:
         "../scripts/train_test.py"
 
