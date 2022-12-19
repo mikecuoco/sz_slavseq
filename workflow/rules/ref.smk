@@ -6,10 +6,6 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 
-from snakemake.remote import FTP
-
-FTP = FTP.RemoteProvider()
-
 
 rule gen_ref:
     output:
@@ -131,16 +127,10 @@ rule get_eul1db:
 
 
 rule get_dbvar:
-    input:
-        FTP.remote(
-            [
-                "ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz",
-                "ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz.tbi",
-            ],
-            static=True,
-        ),
     output:
-        "{outdir}/resources/dbVar/hs38DH_insertions.bed",
+        vcf="{outdir}/resources/dbVar/GRCh38.variant_call.all.vcf.gz",
+        tbi="{outdir}/resources/dbVar/GRCh38.variant_call.all.vcf.gz.tbi",
+        bed="{outdir}/resources/dbVar/hs38DH_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
@@ -148,12 +138,14 @@ rule get_dbvar:
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
+        curl -s https://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz > {output.vcf}
+        curl -s https://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz.tbi > {output.tbi}
 
-        bcftools query -f "%CHROM\t%POS\t%END\t%ALT\n" {input[0]} | \
+        bcftools query -f "%CHROM\t%POS\t%END\t%ALT\n" {output.vcf} | \
             grep "INS:ME:LINE1" | \
             uniq -u | \
             sed -e 's/^/chr/' | \
-            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output} 
+            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
         """
 
 

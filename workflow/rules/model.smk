@@ -64,8 +64,6 @@ rule get_labels:
         "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.log",
     conda:
         "../envs/features.yml"
-    resources:
-        mem_mb=3000,
     script:
         "../scripts/get_labels.py"
 
@@ -94,8 +92,6 @@ rule folds:
         "../envs/model.yml"
     wildcard_constraints:
         dna_type="\w+",
-    resources:
-        mem_mb=10000,
     script:
         "../scripts/folds.py"
 
@@ -118,8 +114,6 @@ rule train_test:
         "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/train_test.benchmark.txt"
     conda:
         "../envs/model.yml"
-    resources:
-        mem_mb=10000,
     script:
         "../scripts/train_test.py"
 

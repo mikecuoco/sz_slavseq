@@ -16,11 +16,26 @@ snakefmt .
 
 # testing with specified reference genome and database
 GENOME="hs37d5" # can be hs37d5, hs38dH or chm13v2
-DB="eul1db" # can be eul1db or eul2db
 snakemake \
    all \
-   --configfile .test/chr21chr22/${GENOME}_${DB}.yml \
+   --configfile .test/chr21chr22/${GENOME}.yml \
    --cores 2 \
+   --use-conda \
+   --show-failed-logs \
+   --conda-cleanup-pkgs cache \
+   --all-temp
+```
+
+## Running with SLURM on SSRDE
+
+```bash
+GENOME="hs37d5" # can be hs37d5, hs38dH or chm13v2
+snakemake \
+   all \
+   --configfile .test/chr21chr22/${GENOME}.yml \
+   --slurm \
+   --jobs 100 \
+   --default-resources slurm_partition=general \
    --use-conda \
    --show-failed-logs \
    --conda-cleanup-pkgs cache \
