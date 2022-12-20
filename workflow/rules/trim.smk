@@ -26,7 +26,7 @@ rule cutadapt2:
         adapters=f"--front={config['adapters']['r2_adapter']}{config['adapters']['nested_primer']} --adapter={Seq(config['adapters']['r1_adapter']).reverse_complement()}",
         extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4",
     log:
-        "{outdir}/results/trim/results/cutadapt2/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/trim/cutadapt2/{donor}/{dna_type}/{sample}.log",
     threads: 2
     wrapper:
         "v1.19.2/bio/cutadapt/pe"
