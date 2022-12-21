@@ -102,7 +102,6 @@ if __name__ == "__main__":
     parser.add_argument("--meta", type=str, help="path to slavseq_metadata.csv")
     parser.add_argument("--find-unique", action="store_true", help="find unique files", default=False)
     parser.add_argument("--threads", type=int, nargs=1, help="# threads to use for unique file finding", default=1)
-    parser.add_argument("--out", type=str, help="output file name", default="all_donors.tsv")
     args = parser.parse_args()
 
     if args.find_unique:
@@ -157,5 +156,8 @@ if __name__ == "__main__":
         .join(meta, on="tissue_id", how="left")  # join with metadata
         .rename(columns={"pair_id": "sample", "individual": "donor"})
         .sort_values("donor")  # sort by donor_id
-        .to_csv(args.out, sep="\t", index=False)
+        .to_csv("all_donors.tsv", sep="\t", index=False)
     )
+
+df = pd.read_csv('all_donors.tsv', sep='\t')
+df[df["donor"].isin(["2","20","37","28"])].to_csv("four_donors.tsv", sep='\t', index=False)
