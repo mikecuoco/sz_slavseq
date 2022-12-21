@@ -5,9 +5,10 @@ import functools, sys
 import pandas as pd
 import pysam
 from src.genome.Genome import Genome
+from src.features.TabixSam import TabixSam
 from src.genome import interval_generator as ig
+from src.features.occupied_windows import occupied_windows_in_genome
 from src.genome.Interval import Interval
-
 
 def read_rmsk(rmsk_outfile):
     """
@@ -109,20 +110,22 @@ def label(df):
 
 
 def get_germline_l1(
-    bam_fn: str,
+    tbx_fn: str,
     genome: Genome,
     window_size: int,
     window_step: int,
     min_reads: int,
     db: str,
 ):
+
+    tbx = TabixSam(pysam.TabixFile(tbx_fn))
+
     # create the windows
-    windows = ig.windows_in_genome(genome, window_size, window_step)
-    bam = pysam.AlignmentFile(bam_fn, "rb")
+    windows = occupied_windows_in_genome(genome, window_size, window_step, tbx_fn)
 
     w_list = []
     for w in windows:
-        reads = len([r for r in bam.fetch(w.chrom, w.start, w.end)])
+        reads = len([r for r in tbx._fetch(w.chrom, w.start, w.end)])
         if reads >= min_reads:
             w_list.append(w.as_tuple())
     df = pd.DataFrame(w_list, columns=["chrom", "start", "end"])
@@ -156,7 +159,7 @@ if __name__ == "__main__":
 
     # get germline L1 from bulk data
     germline_df = get_germline_l1(
-        snakemake.input.bam[0],
+        snakemake.input.bgz[0],
         Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
         snakemake.params.window_step,

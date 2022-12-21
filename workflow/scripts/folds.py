@@ -89,6 +89,7 @@ if __name__ == "__main__":
         .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
         .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
     )
+    df = df[df["all_reads.count"] >= snakemake.params.min_reads]
 
     # metrics
     classes_per_cell(df, snakemake.output.classes_per_cell)
