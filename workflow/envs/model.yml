@@ -3,11 +3,12 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - python==3.9
+  - python=3
   - pip
   - imbalanced-learn
-  - pandas
+  - pandas>=1.4
   - scikit-learn>=0.23.2
   - seaborn
+  - numpy=1.18
   - pip:
-    - deep-forest>=0.1.7
+      - deep-forest>=0.1.7

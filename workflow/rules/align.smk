@@ -105,23 +105,22 @@ rule tags:
         """
 
 
-rule sort:
+rule tabix:
     input:
         rules.tags.output,
     output:
-        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.bam",
+        bgz="{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
+        tbi="{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
     log:
-        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.log",
-    wrapper:
-        "v1.19.2/bio/samtools/sort"
+        "{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
+    conda:
+        "../envs/align.yml"
+    shell:
+        """
+        samtools view {input} | \
+            workflow/scripts/sam_to_tabix.py | \
+            sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
+            bgzip -c > {output.bgz} 2> {log} 
 
-
-rule index:
-    input:
-        rules.sort.output,
-    output:
-        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.bam.bai",
-    log:
-        "{outdir}/results/align/sort/{ref}/{donor}/{dna_type}/{sample}.log",
-    wrapper:
-        "v1.19.2/bio/samtools/index"
+        tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
+        """

@@ -1,7 +1,7 @@
 rule get_features:
     input:
-        bam=rules.sort.output[0],
-        bai=rules.index.output[0],
+        bgz=rules.tabix.output.bgz,
+        tbi=rules.tabix.output.tbi,
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
@@ -29,14 +29,14 @@ def get_non_ref_l1(wildcards):
 def get_labels_input(wildcards):
     donor_samples = samples.loc[samples["donor"] == wildcards.donor]
     return {
-        "bam": expand(
-            rules.sort.output,
+        "bgz": expand(
+            rules.tabix.output.bgz,
             sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,
         ),
-        "bai": expand(
-            rules.index.output,
+        "tbi": expand(
+            rules.tabix.output.tbi,
             sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,
