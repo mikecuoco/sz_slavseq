@@ -108,7 +108,7 @@ if __name__ == "__main__":
         from joblib import Parallel, delayed
         print("searching for fastq.gz files in {}".format(", ".join(args.data_dirs)))
         # use threads because first_line is i/o bound
-        results = Parallel(n_jobs=args.threads)(
+        results = Parallel(n_jobs=args.threads[0])(
             delayed(file_info)(f) for d in args.data_dirs for f in my_files(d)
         )
         print("found {} files".format(len(results)))

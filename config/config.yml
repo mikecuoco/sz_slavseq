@@ -1,5 +1,5 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: config/single_donor.tsv
+samples: config/single_sample.tsv
 outdir: results
 
 genome:
