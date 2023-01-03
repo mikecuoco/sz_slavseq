@@ -132,9 +132,14 @@ rule prcurve:
     script:
         "../scripts/prcurve.py"
 
+
 rule plot_prcurve:
     input:
-        expand(rules.prcurve.output, model_id=list(config["models"].keys()), allow_missing=True),
+        expand(
+            rules.prcurve.output,
+            model_id=list(config["models"].keys()),
+            allow_missing=True,
+        ),
     output:
         "{outdir}/results/model/train_test/{ref}_{db}/prcurve.png",
     conda:
@@ -143,6 +148,7 @@ rule plot_prcurve:
         "{outdir}/results/model/train_test/{ref}_{db}/prcurve_plot.log",
     script:
         "../scripts/plot_prcurve.py"
+
 
 rule classes_db_ref:
     input:
