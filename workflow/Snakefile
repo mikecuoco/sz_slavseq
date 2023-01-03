@@ -19,9 +19,8 @@ include: "rules/qc.smk"
 rule all:
     input:
         expand(
-            rules.prcurve.output.prcurve,
+            rules.plot_prcurve.output,
             db=list(config["KNRGL"].keys()),
-            model_id=list(config["models"].keys()),
             ref=config["genome"]["build"],
             outdir=config["outdir"],
         ),

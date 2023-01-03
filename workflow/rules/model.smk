@@ -124,8 +124,7 @@ rule prcurve:
         proba=rules.train_test.output.proba,
         label_encoder=rules.folds.output.label_encoder,
     output:
-        prcurve="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.pickle",
-        plot="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.png",
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.pickle",
     conda:
         "../envs/model.yml"
     log:
@@ -133,6 +132,17 @@ rule prcurve:
     script:
         "../scripts/prcurve.py"
 
+rule plot_prcurve:
+    input:
+        expand(rules.prcurve.output, model_id=list(config["models"].keys()), allow_missing=True),
+    output:
+        "{outdir}/results/model/train_test/{ref}_{db}/prcurve.png",
+    conda:
+        "../envs/model.yml"
+    log:
+        "{outdir}/results/model/train_test/{ref}_{db}/prcurve_plot.log",
+    script:
+        "../scripts/plot_prcurve.py"
 
 rule classes_db_ref:
     input:

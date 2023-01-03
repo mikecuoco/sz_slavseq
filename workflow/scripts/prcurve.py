@@ -7,8 +7,7 @@ import pandas as pd
 import pickle
 from sklearn.utils import shuffle
 from sklearn.metrics import precision_recall_curve
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 
 sys.stderr = open(snakemake.log[0], "w")
 
@@ -38,6 +37,7 @@ for fold in proba.keys():
                 pos_label=le.transform([label])[0],
             )
             _df["stage"], _df["label"], _df["fold"] = stage, label, fold + 1
+            _df["model_id"] = snakemake.wildcards.model_id
             df_list.append(_df)
 
             if stage == "test":
@@ -56,25 +56,6 @@ for fold in proba.keys():
 
 
 df = pd.concat(df_list).reset_index(drop=True)
-df.to_pickle(snakemake.output.prcurve)
-
-# Plot PR curves
-sns.set_style("ticks")
-fig = sns.relplot(
-    data=df,
-    x="recall",
-    y="precision",
-    hue="label",
-    col="stage",
-    row="fold",
-    kind="line",
-    markers=True,
-)
-fig.set(ylim=[0, 1], xlim=[0, 1])
-plt.savefig(snakemake.output.plot, format="png", dpi=200)
-plt.clf()
-
-# TODO: compute confusion matrix
-# TODO: report feature importance
+df.to_pickle(snakemake.output[0])
 
 sys.stderr.close()
