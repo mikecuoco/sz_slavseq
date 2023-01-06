@@ -82,10 +82,7 @@ rule folds:
         features="{outdir}/results/model/folds/{ref}_{db}/features.pickle",
         labels="{outdir}/results/model/folds/{ref}_{db}/labels.pickle",
         label_encoder="{outdir}/results/model/folds/{ref}_{db}/label_encoder.pickle",
-        classes_per_cell="{outdir}/results/model/folds/{ref}_{db}/classes_per_cell.png",
-        classes_per_donor="{outdir}/results/model/folds/{ref}_{db}/classes_per_donor.png",
-        features_per_class="{outdir}/results/model/folds/{ref}_{db}/features_per_class.png",
-        classes_per_donor_per_fold="{outdir}/results/model/folds/{ref}_{db}/classes_per_donor_per_fold.png",
+        folds="{outdir}/results/model/folds/{ref}_{db}/folds.pickle.gz",
     log:
         "{outdir}/results/model/folds/{ref}_{db}/folds.log",
     conda:
@@ -118,36 +115,47 @@ rule train_test:
         "../scripts/train_test.py"
 
 
-rule prcurve:
+rule metrics:
     input:
         labels=rules.folds.output.labels,
+        pred=rules.train_test.output.pred,
         proba=rules.train_test.output.proba,
         label_encoder=rules.folds.output.label_encoder,
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.pickle",
+        prcurve="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.pickle.gz",
+        confusion="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/confusion.pickle",
     conda:
         "../envs/model.yml"
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/metrics.log",
     script:
-        "../scripts/prcurve.py"
+        "../scripts/metrics.py"
 
 
-rule plot_prcurve:
+rule model_report:
     input:
-        expand(
-            rules.prcurve.output,
+        folds=rules.folds.output.folds,
+        prcurve=expand(
+            rules.metrics.output.prcurve,
             model_id=list(config["models"].keys()),
             allow_missing=True,
         ),
+        confusion=expand(
+            rules.metrics.output.confusion,
+            model_id=list(config["models"].keys()),
+            allow_missing=True,
+        ),
+        label_encoder=rules.folds.output.label_encoder,
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/prcurve.png",
+        "{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
     conda:
-        "../envs/model.yml"
+        "../envs/jupyter.yml"
+    params:
+        model_ids=list(config["models"].keys())
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/prcurve_plot.log",
-    script:
-        "../scripts/plot_prcurve.py"
+        notebook="{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
+    notebook:
+        "../notebooks/model_report.py.ipynb"
 
 
 rule classes_db_ref:

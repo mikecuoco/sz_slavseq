@@ -1,6 +1,6 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: config/single_sample.tsv
-outdir: results
+samples: config/four_donors.tsv
+outdir: /raidixshare_logg01/mcuoco/internal/BSMN
 
 genome:
   build: [hs37d5, hs38DH, chm13v2] # options: <hs37d5|hs38DH|chm13v2>
