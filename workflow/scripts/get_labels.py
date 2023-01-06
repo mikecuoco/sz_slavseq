@@ -10,6 +10,7 @@ from src.genome import interval_generator as ig
 from src.features.occupied_windows import occupied_windows_in_genome
 from src.genome.Interval import Interval
 
+
 def read_rmsk(rmsk_outfile):
     """
     Read the repeatmasker output table and return locations of L1HS and L1PA2-6
