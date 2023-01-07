@@ -151,7 +151,7 @@ rule model_report:
     conda:
         "../envs/jupyter.yml"
     params:
-        model_ids=list(config["models"].keys())
+        model_ids=list(config["models"].keys()),
     log:
         notebook="{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
     notebook:
