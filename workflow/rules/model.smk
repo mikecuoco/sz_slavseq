@@ -97,6 +97,7 @@ rule train_test:
     input:
         features=rules.folds.output.features,
         labels=rules.folds.output.labels,
+        label_encoder=rules.folds.output.label_encoder,
     params:
         model_params=lambda wc: config["models"][wc.model_id]["params"],
         model_name=lambda wc: config["models"][wc.model_id]["name"],
@@ -104,6 +105,7 @@ rule train_test:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
         pred="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/pred.pickle",
         proba="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/proba.pickle",
+        metrics="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/metrics.pickle",
     log:
         "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/train_test.log",
     threads: 8
@@ -115,33 +117,11 @@ rule train_test:
         "../scripts/train_test.py"
 
 
-rule metrics:
-    input:
-        labels=rules.folds.output.labels,
-        pred=rules.train_test.output.pred,
-        proba=rules.train_test.output.proba,
-        label_encoder=rules.folds.output.label_encoder,
-    output:
-        prcurve="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/prcurve.pickle.gz",
-        confusion="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/confusion.pickle",
-    conda:
-        "../envs/model.yml"
-    log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/metrics.log",
-    script:
-        "../scripts/metrics.py"
-
-
 rule model_report:
     input:
         folds=rules.folds.output.folds,
-        prcurve=expand(
-            rules.metrics.output.prcurve,
-            model_id=list(config["models"].keys()),
-            allow_missing=True,
-        ),
-        confusion=expand(
-            rules.metrics.output.confusion,
+        metrics=expand(
+            rules.train_test.output.metrics,
             model_id=list(config["models"].keys()),
             allow_missing=True,
         ),
