@@ -25,7 +25,7 @@ def flank_features(df):
             .max()
             .fillna(0)
         )
-    
+
     return df
 
 
@@ -67,14 +67,14 @@ def features(
         f["start"] = w.start
         f["end"] = w.end
         w_list.append(f)
-    
+
     df = pd.DataFrame(w_list)
 
     # set index
     df["start"] = df["start"].astype(int)
     df["end"] = df["end"].astype(int)
     df.set_index(["chrom", "start", "end"], inplace=True)
-    
+
     return df
 
 
@@ -102,5 +102,5 @@ if __name__ == "__main__":
 
     # save
     df.to_pickle(snakemake.output[0])
-    
+
     sys.stderr.close()

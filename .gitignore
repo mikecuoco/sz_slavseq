@@ -11,6 +11,5 @@ workflow/envs/src/**
 !resources/slavseq_metadata.tsv
 **__pycache__
 prep_genomes/
-workflow/notebooks/
 .test/results
 .test/resources
