@@ -5,16 +5,6 @@ __author__ = "Michael Cuoco"
 import pandas as pd
 import gzip, re, subprocess, argparse
 
-# define funtions for file processing
-def my_files(dirname):
-    """yield fastq.gz files in a directory"""
-    command = 'find {} -name "*.fastq.gz"'.format(dirname)
-    with subprocess.Popen(command, shell=True, stdout=subprocess.PIPE) as p:
-        for line in p.stdout:
-            l = line.decode().rstrip()
-            yield l
-
-
 def num_reads(file):
     """get number of reads in an open file"""
     return int((1 + sum(1 for _ in file)) / 4)
@@ -98,18 +88,18 @@ def print_unique(df):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dirs", nargs="+", help="directories to search for fastq.gz files")
+    parser.add_argument("--files", nargs="+", help="fastq.gz files")
     parser.add_argument("--meta", type=str, help="path to slavseq_metadata.csv")
     parser.add_argument("--find-unique", action="store_true", help="find unique files", default=False)
     parser.add_argument("--threads", type=int, nargs=1, help="# threads to use for unique file finding", default=1)
+    parser.add_argument("--outfile", type=str, help="output file", default="sample_sheet.tsv")
     args = parser.parse_args()
 
     if args.find_unique:
         from joblib import Parallel, delayed
-        print("searching for fastq.gz files in {}".format(", ".join(args.data_dirs)))
         # use threads because first_line is i/o bound
         results = Parallel(n_jobs=args.threads[0])(
-            delayed(file_info)(f) for d in args.data_dirs for f in my_files(d)
+            delayed(file_info)(f) for f in args.files
         )
         print("found {} files".format(len(results)))
 
@@ -125,7 +115,7 @@ if __name__ == "__main__":
             subset=["first_read", "num_reads"], inplace=True
         ) 
     else:
-        logg_files = pd.DataFrame({"filename": [f for d in args.data_dirs for f in my_files(d)]})
+        logg_files = pd.DataFrame({"filename": [f for f in args.files]})
     
     # extract sample metadata from filenames
     df = pd.DataFrame.from_records([dict(fields(x)) for x in logg_files["filename"]]).merge(logg_files, on="filename")
@@ -156,8 +146,8 @@ if __name__ == "__main__":
         .join(meta, on="tissue_id", how="left")  # join with metadata
         .rename(columns={"pair_id": "sample", "individual": "donor"})
         .sort_values("donor")  # sort by donor_id
-        .to_csv("all_donors.tsv", sep="\t", index=False)
+        .to_csv(args.outfile, sep="\t", index=False)
     )
 
-df = pd.read_csv('all_donors.tsv', sep='\t')
+df = pd.read_csv(args.outfile, sep='\t')
 df[df["donor"].isin(["2","20","37","28"])].to_csv("four_donors.tsv", sep='\t', index=False)
