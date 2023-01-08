@@ -78,6 +78,8 @@ rule folds:
     params:
         num_folds=config["num_folds"],
         min_reads=config["get_features"]["min_reads"],
+        split_by="donor_id",
+        downsample=True,
     output:
         features="{outdir}/results/model/folds/{ref}_{db}/features.pickle",
         labels="{outdir}/results/model/folds/{ref}_{db}/labels.pickle",

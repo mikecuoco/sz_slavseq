@@ -59,7 +59,7 @@ with open(snakemake.output.label_encoder, "wb") as f:
     pickle.dump(le, f)
 
 # get donor_id for group split
-groups = df["donor_id"]
+groups = df[snakemake.params.split_by]
 
 # use StratifiedGroupKFold to preserve class balance and group balance
 sgkf = StratifiedGroupKFold(n_splits=snakemake.params.num_folds)
@@ -73,9 +73,10 @@ for fold, (train_index, test_index) in enumerate(
 ):
     train, test = df.iloc[train_index], df.iloc[test_index]
 
-    train, y_train = RandomUnderSampler(random_state=42).fit_resample(
-        train, train["label"]
-    )
+    if snakemake.params.downsample:
+        train, y_train = RandomUnderSampler(random_state=42).fit_resample(
+            train, train["label"]
+        )
 
     # ensure all classes are represented in the splits
     for d in [train["label"], test["label"]]:
