@@ -79,26 +79,25 @@ rule tags:
         "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.err",
     conda:
         "../envs/align.yml"
+    params:
+        consensus="ATGTACCCTAAAACTTAGAGTATAATAAA",
+        prefix_length=len("ATGTACCCTAAAACTTAGAGTATAATAAA") + 2,
+        r1_flank_length=750,
+        r2_flank_length=len("ATGTACCCTAAAACTTAGAGTATAATAAA") + 2,
+        soft_clip_length_threshold=5,
     shell:
         """
         touch {log} && exec 2>{log} 
-
-        # set inputs
-        export CONSENSUS='ATGTACCCTAAAACTTAGAGTATAATAAA'
-        PREFIX_LENGTH=`perl -e 'print length($ENV{{CONSENSUS}})+2'`
-        R1_FLANK_LENGTH=750
-        R2_FLANK_LENGTH=${{PREFIX_LENGTH}}
-        SOFT_CLIP_LENGTH_THRESHOLD=5
 
         (samtools sort -n {input.bam} | \
             samtools view -h | \
             workflow/scripts/add_tags_hts.pl \
                 --genome_fasta_file {input.fa} \
-                --prefix_length ${{PREFIX_LENGTH}} \
-                --consensus ${{CONSENSUS}} \
-                --r1_flank_length ${{R1_FLANK_LENGTH}} \
-                --r2_flank_length ${{R2_FLANK_LENGTH}} \
-                --soft_clip_length_threshold ${{SOFT_CLIP_LENGTH_THRESHOLD}} | \
+                --prefix_length {params.prefix_length} \
+                --consensus {params.consensus} \
+                --r1_flank_length {params.r1_flank_length} \
+                --r2_flank_length {params.r2_flank_length} \
+                --soft_clip_length_threshold {params.soft_clip_length_threshold} | \
                 samtools view -S -b - > {output}) 
         """
 
