@@ -21,7 +21,7 @@ rule bwa_index:
 
 rule bwa_mem:
     input:
-        reads=[rules.cutadapt2.output.fastq1, rules.cutadapt2.output.fastq2],
+        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
         idx=rules.bwa_index.output.idx,
     output:
         "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
