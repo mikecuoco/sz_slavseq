@@ -1,10 +1,8 @@
 def get_fastqc_input(wildcards):
     if wildcards.trim == "none":
         reads = get_cutadapt_input(wildcards)
-    if wildcards.trim == "cutadapt1":
-        reads = rules.cutadapt1.output
-    if wildcards.trim == "cutadapt2":
-        reads = rules.cutadapt2.output
+    if wildcards.trim == "cutadapt":
+        reads = rules.cutadapt.output
     return reads[0] if wildcards.read == "R1" else reads[1]
 
 
@@ -36,7 +34,7 @@ rule reads_multiqc:
         expand(
             expand(
                 rules.fastqc.output.html,
-                trim=["none", "cutadapt1", "cutadapt2"],
+                trim=["none", "cutadapt"],
                 read=["R1", "R2"],
                 allow_missing=True,
             ),
@@ -47,15 +45,7 @@ rule reads_multiqc:
             allow_missing=True,
         ),
         expand(
-            rules.cutadapt1.output,
-            zip,
-            sample=samples["sample"],
-            donor=samples["donor"],
-            dna_type=samples["dna_type"],
-            allow_missing=True,
-        ),
-        expand(
-            rules.cutadapt2.output,
+            rules.cutadapt.output,
             zip,
             sample=samples["sample"],
             donor=samples["donor"],

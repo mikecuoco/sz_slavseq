@@ -1,5 +1,4 @@
 import pandas as pd
-from Bio.Seq import Seq
 from pathlib import Path
 from snakemake.utils import validate
 
@@ -13,17 +12,3 @@ samples = (
 )
 
 validate(samples, schema="../schemas/samples.schema.yaml")
-
-
-def get_cutadapt_input(wildcards):
-    sample = samples.loc[wildcards.sample, wildcards.donor, wildcards.dna_type]
-
-    if "R1" in sample:
-        return [sample["R1"], sample["R2"]]
-    else:
-        accession = sample["sra"]
-        return expand(
-            "results/fastq/{accession}_{read}.fastq.gz",
-            accession=accession,
-            read=[1, 2],
-        )
