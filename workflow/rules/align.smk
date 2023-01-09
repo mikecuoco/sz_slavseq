@@ -44,8 +44,12 @@ rule rmdup:
         "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/align.yml"
-    script:
-        "../scripts/slavseq_rmdup_hts.py"
+    shadow:
+        "shallow"
+    shell:
+        """
+        workflow/scripts/slavseq_rmdup_hts.pl {input} {output} > {log} 2>&1
+        """
 
 
 rule install_gapafim:
