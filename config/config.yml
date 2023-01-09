@@ -31,30 +31,49 @@ num_folds: 4
 
 # Do not set n_jobs > 8
 models:
-  rfc:
+  RandomForestClassifier:
     name: "RandomForestClassifier"
     params:
       random_state: 1
+      class_weight: "balanced_subsample"
       n_jobs: 8
-  cfc:
+  CascadeForestClassifier:
     name: "CascadeForestClassifier"
     params:
+      random_state: 1
       n_jobs: 8
-  mlp_10_3:
+  MLPClassifier:
     name: "MLPClassifier"
     params:
       hidden_layer_sizes:
         - 10
         - 3
-  logreg_elastic:
+  LogisticRegression:
     name: "LogisticRegression"
     params:
-      solver: 'saga'
-      penalty: 'elasticnet'
+      solver: "saga"
+      penalty: "elasticnet"
       n_jobs: 8
       l1_ratio: 0.5
-  # svc: 
-  #   name: "SVC"
-  #   params:
-    
-    
+  SVC:
+    name: "SVC"
+    params:
+      random_state: 1
+      probability: True
+      break_ties: True
+      class_weight: "balanced"
+  DecisionTreeClassifier:
+    name: "DecisionTreeClassifier"
+    params:
+      random_state: 1
+      class_weight: "balanced"
+  HistGradientBoostingClassifier:
+    name: "HistGradientBoostingClassifier"
+    params:
+      random_state: 1
+      # class_weight: "balanced"
+  XGBClassifier:
+    name: "XGBClassifier"
+    params:
+      random_state: 1
+      n_jobs: 8
