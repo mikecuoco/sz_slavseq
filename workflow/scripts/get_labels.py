@@ -118,7 +118,7 @@ def get_germline_l1(
     min_reads: int,
     db: str,
 ):
-
+    # load the alignment
     tbx = TabixSam(pysam.TabixFile(tbx_fn))
 
     # create the windows
@@ -126,6 +126,8 @@ def get_germline_l1(
 
     w_list = []
     for w in windows:
+        if w is None:
+            continue
         reads = len([r for r in tbx._fetch(w.chrom, w.start, w.end)])
         if reads >= min_reads:
             w_list.append(w.as_tuple())
@@ -168,6 +170,11 @@ if __name__ == "__main__":
         snakemake.wildcards.db,
     )
 
+    # collapse to single column
+    germline_df["label"] = pd.Series(label(germline_df), index=germline_df.index)
+    germline_df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1).to_pickle(snakemake.output.bulk)
+    germline_df.drop(["label"], axis=1, inplace=True)
+
     # get features from single cell data
     features_df = pd.concat([pd.read_pickle(f) for f in snakemake.input.features])
 
@@ -186,5 +193,5 @@ if __name__ == "__main__":
     assert len(set(df["label"])) == 3, "Not all labels are present"
 
     # save
-    df.to_pickle(snakemake.output[0])
+    df.to_pickle(snakemake.output.mda)
     sys.stderr.close()

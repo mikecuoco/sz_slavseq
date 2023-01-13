@@ -59,7 +59,8 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.pickle.gz",
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
+        mda="{outdir}/results/model/get_labels/{ref}_{db}/{donor}.mda.pickle.gz",
     log:
         "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.log",
     conda:
@@ -71,7 +72,7 @@ rule get_labels:
 rule folds:
     input:
         samples=expand(
-            rules.get_labels.output,
+            rules.get_labels.output.mda,
             donor=set(samples["donor"]),
             allow_missing=True,
         ),
@@ -143,7 +144,7 @@ rule model_report:
 rule classes_db_ref:
     input:
         expand(
-            rules.get_labels.output,
+            rules.get_labels.output.mda,
             donor=set(samples["donor"]),
             ref=config["genome"]["build"],
             db=list(config["KNRGL"].keys()),
