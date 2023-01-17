@@ -77,10 +77,8 @@ rule folds:
             allow_missing=True,
         ),
     params:
-        num_folds=config["num_folds"],
         min_reads=config["get_features"]["min_reads"],
-        split_by="donor_id",
-        downsample=True,
+        **config["folds"]
     output:
         features="{outdir}/results/model/folds/{ref}_{db}/features.pickle",
         labels="{outdir}/results/model/folds/{ref}_{db}/labels.pickle",
@@ -140,21 +138,15 @@ rule model_report:
     notebook:
         "../notebooks/model_report.py.ipynb"
 
-
-rule classes_db_ref:
+rule render_report:
     input:
-        expand(
-            rules.get_labels.output.mda,
-            donor=set(samples["donor"]),
-            ref=config["genome"]["build"],
-            db=list(config["KNRGL"].keys()),
-            allow_missing=True,
-        ),
+        notebook=rules.model_report.output,
     output:
-        "{outdir}/results/model/folds/classes_db_ref.png",
+        "{outdir}/results/model/train_test/{ref}_{db}/model_report.html",
     conda:
-        "../envs/model.yml"
+        "../envs/jupyter.yml"
     log:
-        "{outdir}/results/model/folds/classes_db_ref.log",
-    script:
-        "../scripts/classes_db_ref.py"
+        "{outdir}/results/model/train_test/{ref}_{db}/model_report.log",
+    shell:
+        "jupyter nbconvert --to html --execute {input.notebook} --output $(basename {output}) 2> {log} 2>&1"
+

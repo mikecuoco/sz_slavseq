@@ -73,9 +73,14 @@ for fold, (train_index, test_index) in enumerate(
 ):
     train, test = df.iloc[train_index], df.iloc[test_index]
 
-    if snakemake.params.downsample:
-        train, y_train = RandomUnderSampler(random_state=42).fit_resample(
+    if snakemake.params.downsample_train:
+        train, _ = RandomUnderSampler(random_state=42).fit_resample(
             train, train["label"]
+        )
+        
+    if snakemake.params.downsample_test:
+        test, _ = RandomUnderSampler(random_state=42).fit_resample(
+            test, test["label"]
         )
 
     # ensure all classes are represented in the splits

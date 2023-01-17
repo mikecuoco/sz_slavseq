@@ -19,7 +19,7 @@ include: "rules/qc.smk"
 rule all:
     input:
         expand(
-            rules.model_report.output,
+            rules.render_report.output,
             db=list(config["KNRGL"].keys()),
             ref=config["genome"]["build"],
             outdir=config["outdir"],
@@ -31,9 +31,5 @@ rule all:
         expand(
             rules.aln_multiqc.output,
             ref=config["genome"]["build"],
-            outdir=config["outdir"],
-        ),
-        expand(
-            rules.classes_db_ref.output,
             outdir=config["outdir"],
         ),

@@ -3,14 +3,12 @@ samples: config/four_donors.tsv
 outdir: /raidixshare_logg01/mcuoco/internal/BSMN
 
 genome:
-  build: [hs37d5, hs38DH, chm13v2] # options: <hs37d5|hs38DH|chm13v2>
+  build: hs38DH # options: <hs37d5|hs38DH|chm13v2>
   region: all # for chromosome 22: use "22" for hs37d5, use "chr22" for hs38DH and chm13v2
 
 KNRGL:
   dbVar:
     build: hs38DH
-  eul1db:
-    build: hg19
 
 adapters:
   r1_adapter: "AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT"
@@ -27,53 +25,15 @@ get_features:
   min_secondary_mapq: 20
   library_3_or_5: 3
 
-num_folds: 4
+folds:
+  split_by: "donor_id"
+  num_folds: 4
+  downsample_train: True
+  downsample_test: True
 
 # Do not set n_jobs > 8
 models:
-  RandomForestClassifier:
+  RandomForestClassifier10:
     name: "RandomForestClassifier"
     params:
-      random_state: 1
-      class_weight: "balanced_subsample"
-      n_jobs: 8
-  CascadeForestClassifier:
-    name: "CascadeForestClassifier"
-    params:
-      random_state: 1
-      n_jobs: 8
-  MLPClassifier:
-    name: "MLPClassifier"
-    params:
-      hidden_layer_sizes:
-        - 10
-        - 3
-  LogisticRegression:
-    name: "LogisticRegression"
-    params:
-      solver: "saga"
-      penalty: "elasticnet"
-      n_jobs: 8
-      l1_ratio: 0.5
-  SVC:
-    name: "SVC"
-    params:
-      random_state: 1
-      probability: True
-      break_ties: True
-      class_weight: "balanced"
-  DecisionTreeClassifier:
-    name: "DecisionTreeClassifier"
-    params:
-      random_state: 1
-      class_weight: "balanced"
-  HistGradientBoostingClassifier:
-    name: "HistGradientBoostingClassifier"
-    params:
-      random_state: 1
-      # class_weight: "balanced"
-  XGBClassifier:
-    name: "XGBClassifier"
-    params:
-      random_state: 1
-      n_jobs: 8
+      n_estimators: 10

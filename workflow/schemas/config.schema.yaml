@@ -7,12 +7,12 @@ type: object
 properties:
   samples:
     type: string
-  
+
   genome:
     type: object
     properties:
       build:
-        type: [ string, array ]
+        type: [string, array]
       region:
         type: [integer, string, array]
         default: all
@@ -38,26 +38,34 @@ properties:
 
   get_features:
     type: object
-    min_reads: 
+    min_reads:
       type: integer
-    window_size: 
+    window_size:
       type: integer
-    window_step: 
+    window_step:
       type: integer
-    min_mapq: 
+    min_mapq:
       type: integer
-    min_ya: 
+    min_ya:
       type: integer
-    max_yg: 
+    max_yg:
       type: integer
-    min_secondary_mapq: 
+    min_secondary_mapq:
       type: integer
-    library_3_or_5: 
+    library_3_or_5:
       type: integer
       enum: [3, 5]
 
-  num_folds:
-    type: integer
+  folds:
+    type: object
+    split_by:
+      type: string
+    num_folds:
+      type: integer
+    downsample_train:
+      type: boolean
+    downsample_test:
+      type: boolean
 
   models:
     type: object
@@ -66,7 +74,6 @@ required:
   - samples
   - genome
   - adapters
-  - num_folds
   - get_features
+  - folds
   - models
-  

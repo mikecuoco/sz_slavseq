@@ -8,4 +8,6 @@ genome:
 get_features:
   min_reads: 1
 
-num_folds: 2
+folds:
+  split_by: "donor_id"
+  num_folds: 2
