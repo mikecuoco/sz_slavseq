@@ -77,11 +77,9 @@ for fold, (train_index, test_index) in enumerate(
         train, _ = RandomUnderSampler(random_state=42).fit_resample(
             train, train["label"]
         )
-        
+
     if snakemake.params.downsample_test:
-        test, _ = RandomUnderSampler(random_state=42).fit_resample(
-            test, test["label"]
-        )
+        test, _ = RandomUnderSampler(random_state=42).fit_resample(test, test["label"])
 
     # ensure all classes are represented in the splits
     for d in [train["label"], test["label"]]:
