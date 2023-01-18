@@ -11,6 +11,7 @@ from sklearn.utils import shuffle
 from sklearn.metrics import precision_recall_curve, auc, confusion_matrix
 import pdb
 
+
 def make_pipeline(clf_type, params):
 
     # TODO: add hyperparameter tuning
@@ -55,7 +56,7 @@ def make_pipeline(clf_type, params):
         from sklearn.ensemble import HistGradientBoostingClassifier
 
         clf = HistGradientBoostingClassifier()
-    
+
     elif clf_type == "AdaBoostClassifier":
         from sklearn.ensemble import AdaBoostClassifier
 
@@ -111,9 +112,16 @@ if __name__ == "__main__":
         pipe.fit(features[fold]["train"], y_true[fold]["train"])
 
         # save feature importances
-        if hasattr(pipe._final_estimator, 'feature_importances_') and hasattr(pipe._final_estimator, 'feature_names_in_'):
-            metrics[fold]['feature_importances'] = pd.DataFrame({"feature name": pipe._final_estimator.feature_names_in_, "importance": pipe._final_estimator.feature_importances_}).set_index("feature name")
-            
+        if hasattr(pipe._final_estimator, "feature_importances_") and hasattr(
+            pipe._final_estimator, "feature_names_in_"
+        ):
+            metrics[fold]["feature_importances"] = pd.DataFrame(
+                {
+                    "feature name": pipe._final_estimator.feature_names_in_,
+                    "importance": pipe._final_estimator.feature_importances_,
+                }
+            ).set_index("feature name")
+
         # make shuffled test data
         y_true[fold]["test_shuffled"] = shuffle(y_true[fold]["test"], random_state=42)
 
@@ -136,7 +144,7 @@ if __name__ == "__main__":
                 normalize="true",
             )
 
-            for label in ["KNRGL", "RL1", "OTHER"]:
+            for label in le.classes_:
                 metrics[fold][stage][label] = {}
 
                 # get prcurve
