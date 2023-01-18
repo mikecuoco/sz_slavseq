@@ -59,10 +59,10 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
-        mda="{outdir}/results/model/get_labels/{ref}_{db}/{donor}.mda.pickle.gz",
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
+        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.mda.pickle.gz",
     log:
-        "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.log",
+        "{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.log",
     conda:
         "../envs/features.yml"
     script:
@@ -80,16 +80,14 @@ rule folds:
         min_reads=config["get_features"]["min_reads"],
         **config["folds"]
     output:
-        features="{outdir}/results/model/folds/{ref}_{db}/features.pickle",
-        labels="{outdir}/results/model/folds/{ref}_{db}/labels.pickle",
-        label_encoder="{outdir}/results/model/folds/{ref}_{db}/label_encoder.pickle",
-        folds="{outdir}/results/model/folds/{ref}_{db}/folds.pickle.gz",
+        features="{outdir}/results/model/folds/{ref}_{db}/{label_config}/features.pickle",
+        labels="{outdir}/results/model/folds/{ref}_{db}/{label_config}/labels.pickle",
+        label_encoder="{outdir}/results/model/folds/{ref}_{db}/{label_config}/label_encoder.pickle",
+        folds="{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.pickle.gz",
     log:
-        "{outdir}/results/model/folds/{ref}_{db}/folds.log",
+        "{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.log",
     conda:
         "../envs/model.yml"
-    wildcard_constraints:
-        dna_type="\w+",
     script:
         "../scripts/folds.py"
 
@@ -104,14 +102,14 @@ rule train_test:
         model_name=lambda wc: config["models"][wc.model_id]["name"],
     output:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
-        pred="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/pred.pickle",
-        proba="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/proba.pickle",
-        metrics="{outdir}/results/model/train_test/{ref}_{db}/{model_id}/metrics.pickle",
+        pred="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/pred.pickle",
+        proba="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/proba.pickle",
+        metrics="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/metrics.pickle",
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/train_test.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/train_test.log",
     threads: 8
     benchmark:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}/train_test.benchmark.txt"
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/train_test.benchmark.txt"
     conda:
         "../envs/model.yml"
     script:
@@ -128,13 +126,13 @@ rule model_report:
         ),
         label_encoder=rules.folds.output.label_encoder,
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.ipynb",
     conda:
         "../envs/jupyter.yml"
     params:
         model_ids=list(config["models"].keys()),
     log:
-        notebook="{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
+        notebook="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.ipynb",
     notebook:
         "../notebooks/model_report.py.ipynb"
 
@@ -142,11 +140,11 @@ rule render_report:
     input:
         notebook=rules.model_report.output,
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/model_report.html",
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.html",
     conda:
         "../envs/jupyter.yml"
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/model_report.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.log",
     shell:
         "jupyter nbconvert --to html --execute {input.notebook} --output $(basename {output}) 2> {log} 2>&1"
 

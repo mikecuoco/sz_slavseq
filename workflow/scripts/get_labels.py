@@ -172,7 +172,9 @@ if __name__ == "__main__":
 
     # collapse to single column
     germline_df["label"] = pd.Series(label(germline_df), index=germline_df.index)
-    germline_df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1).to_pickle(snakemake.output.bulk)
+    germline_df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1).to_pickle(
+        snakemake.output.bulk
+    )
     germline_df.drop(["label"], axis=1, inplace=True)
 
     # get features from single cell data
@@ -185,12 +187,15 @@ if __name__ == "__main__":
 
     # collapse to single column
     df["label"] = pd.Series(label(df), index=df.index)
+
+    if snakemake.wildcards.label_config == "rmRL1":
+        df = df.loc[df["label"] != "RL1", :]
+    elif snakemake.wildcards.label_config == "mergeRL1":
+        df.loc[df["label"] == "KNRGL", ["label"]] = "GERMLINE"
+        df.loc[df["label"] == "RL1", ["label"]] = "GERMLINE"
     df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1, inplace=True)
 
     df["build"] = snakemake.wildcards.ref
-
-    # error check
-    assert len(set(df["label"])) == 3, "Not all labels are present"
 
     # save
     df.to_pickle(snakemake.output.mda)
