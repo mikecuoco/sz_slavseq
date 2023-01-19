@@ -7,7 +7,7 @@ rule get_features:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pickle.gz",
+        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pqt",
     log:
         "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.log",
     conda:
@@ -59,12 +59,13 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
-        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.mda.pickle.gz",
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}_bulk.bed",
+        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}_mda.pqt",
     log:
         "{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.log",
     conda:
         "../envs/features.yml"
+    threads: 8
     script:
         "../scripts/get_labels.py"
 
@@ -88,6 +89,7 @@ rule folds:
         "{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.log",
     conda:
         "../envs/model.yml"
+    threads: 8
     script:
         "../scripts/folds.py"
 
