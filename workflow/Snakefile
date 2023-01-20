@@ -3,13 +3,16 @@ from snakemake.utils import min_version
 ##### set minimum snakemake version #####
 min_version("7.16.0")
 
+
 wildcard_constraints:
     dna_type="\w+",
     label_config="\w+",
     db="\w+",
-    ref="\w+"
+    ref="\w+",
+
 
 configfile: "config/config.yml"
+
 
 include: "rules/common.smk"
 include: "rules/ref.smk"
@@ -27,7 +30,7 @@ rule all:
             rules.render_report.output,
             db=list(config["KNRGL"].keys()),
             ref=config["genome"]["build"],
-            label_config=["None","rmRL1","mergeRL1"],
+            label_config=["None", "rmRL1", "mergeRL1"],
             outdir=config["outdir"],
         ),
         expand(
