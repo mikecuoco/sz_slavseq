@@ -1,0 +1,36 @@
+module_order:
+  - fastqc:
+      name: "FastQC (raw)"
+      anchor: "fastqc_raw"
+      path_filters:
+        - "*_none_R[1-2]_fastqc.zip"
+  - fastqc:
+      name: "FastQC (1st trim)"
+      anchor: "fastqc_trim1"
+      path_filters:
+        - "*_cutadapt1_R?_fastqc.zip"
+  - cutadapt:
+      name: "Cutadapt 1st trim"
+      anchor: "cutadapt_trim1"
+      path_filters:
+        - "*cutadapt1/*_qc.txt"
+  - fastqc:
+      name: "FastQC (2nd trim)"
+      anchor: "fastqc_trim2"
+      path_filters:
+        - "*_cutadapt2_R?_fastqc.zip"
+  - cutadapt:
+      name: "Cutadapt 2nd trim"
+      anchor: "cutadapt_trim2"
+      path_filters:
+        - "*cutadapt2/*_qc.txt"
+  - samtools/flagstat:
+      name: "Samtools Flagstat (before rmdup)"
+      anchor: "flagstat_prermdup"
+      path_filters:
+        - "*bwa_mem/*flagstat"
+  - samtools/flagstat:
+      name: "Samtools Flagstat (after rmdup)"
+      anchor: "flagstat_postrmdup"
+      path_filters:
+        - "*rmdup/*flagstat"

@@ -6,109 +6,108 @@ __author__ = "Michael Cuoco"
 
 import sys
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
-from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 
 
-def label(df):
-    for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
-        if x.reference_l1hs_l1pa2_6:
-            yield "RL1"
-        elif x.in_NRdb:
-            yield "KNRGL"
-        else:
-            yield "OTHER"
+sys.stderr = open(snakemake.log[0], "w")
 
+donors = [pd.read_pickle(fn).reset_index() for fn in snakemake.input.samples]
 
-def main(files, num_folds, min_reads):
+# concatenate all cells into a single table
+df = (
+    pd.concat(donors)
+    .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
+    .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
+)
+df = df[df["all_reads.count"] >= snakemake.params.min_reads]
 
-    # read in feature tables for each cell
-    cells = []
-    for fn in files:
-        cells.append(pd.read_pickle(fn).reset_index())
-
-    # concatenate all cells into a single table, remove windows below min_reads
-    df = (
-        pd.concat(cells)
-        .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
-        .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
+# make features
+features = [
+    x
+    for x in df.columns
+    if not any(
+        x.endswith(y)
+        for y in [
+            "chrom",
+            "start",
+            "end",
+            "cell_id",
+            "donor_id",
+            "label",
+            "build",
+            "db",
+        ]
     )
-    df = df[df["all_reads.count"] >= min_reads]
+]
+df = df.fillna(0).reset_index()
+df[features] = np.minimum(
+    df[features], 4e9
+)  # take minimum of features and 4e9 to avoid overflow error
 
-    # make features
-    features = [
-        x
-        for x in df.columns
-        if not any(
-            x.endswith(y)
-            for y in [
-                "chrom",
-                "start",
-                "end",
-                "cell_id",
-                "donor_id",
-                "in_NRdb",
-                "reference_l1hs_l1pa2_6",
-                "fold",
-                "_peak_position",
-                "_en_motif",
-                "_te_strand",
-            ]
+# make labels, using LabelEncoder() to convert strings to integers
+le = LabelEncoder()
+le = le.fit(list(set(df["label"])))
+
+# save label encoder
+with open(snakemake.output.label_encoder, "wb") as f:
+    pickle.dump(le, f)
+
+# get donor_id for group split
+groups = df[snakemake.params.split_by]
+
+# use StratifiedGroupKFold to preserve class balance and group balance
+sgkf = StratifiedGroupKFold(n_splits=snakemake.params.num_folds)
+
+# store labels of each fold to plot class balance
+features_dict, labels_dict = {}, {}
+folds = []
+
+for fold, (train_index, test_index) in enumerate(
+    sgkf.split(df[features], df["label"], groups=groups)
+):
+    train, test = df.iloc[train_index], df.iloc[test_index]
+
+    if snakemake.params.downsample_train:
+        train, _ = RandomUnderSampler(random_state=42).fit_resample(
+            train, train["label"]
         )
-    ]
-    X = df[features].fillna(0)
-    X = np.minimum(X, 4e9)  # take minimum of features and 4e9 to avoid overflow error
 
-    # make labels, using LabelEncoder() to convert strings to integers
-    Y = pd.Series(label(df), index=df.index)
-    le = LabelEncoder()
-    le = le.fit(list(set(Y)))
-    y = le.transform(Y)
+    if snakemake.params.downsample_test:
+        test, _ = RandomUnderSampler(random_state=42).fit_resample(test, test["label"])
 
-    # save label encoder
-    with open(snakemake.output.label_encoder, "wb") as f:
-        pickle.dump(le, f)
+    # ensure all classes are represented in the splits
+    for d in [train["label"], test["label"]]:
+        assert len(set(d)) == len(
+            set(df["label"])
+        ), "not all classes represented in split"
 
-    # get cell_id for group split
-    # TODO: split by donor
-    groups = df.index.get_level_values("cell_id")
+    features_dict[fold] = {"train": train[features], "test": test[features]}
+    labels_dict[fold] = {
+        "train": le.transform(train["label"]),
+        "test": le.transform(test["label"]),
+    }
 
-    # use groupkfold to split by chromosome and train/test
-    sgkf = StratifiedGroupKFold(n_splits=num_folds)
+    # append to metrics
+    train["fold"] = fold + 1
+    train["stage"] = "train"
+    folds.append(train)
+    test["fold"] = fold + 1
+    test["stage"] = "test"
+    folds.append(test)
 
-    for fold, (train_index, test_index) in enumerate(
-        sgkf.split(X, y, groups=groups.to_list())
-    ):
-        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-        y_train, y_test = y[train_index], y[test_index]
+# save
+with open(snakemake.output.features, "wb") as f:
+    pickle.dump(features_dict, f)
 
-        # ensure all classes are represented in the splits
-        for d in [y_train, y_test]:
-            assert len(set(d)) == len(set(y)), "not all classes represented in split"
+with open(snakemake.output.labels, "wb") as f:
+    pickle.dump(labels_dict, f)
 
-        X_train, y_train = RandomOverSampler(random_state=42).fit_resample(
-            X_train, y_train
-        )
-        X_test, y_test = RandomOverSampler(random_state=42).fit_resample(X_test, y_test)
+pd.concat(folds).to_pickle(snakemake.output.folds)
 
-        # save train/test splits
-        X_train.to_pickle(snakemake.output.train_features[fold])
-        X_test.to_pickle(snakemake.output.test_features[fold])
-
-        with open(snakemake.output.train_labels[fold], "wb") as f:
-            pickle.dump(y_train, f)
-
-        with open(snakemake.output.test_labels[fold], "wb") as f:
-            pickle.dump(y_test, f)
-
-
-if __name__ == "__main__":
-
-    sys.stderr = open(snakemake.log[0], "w")
-    main(
-        snakemake.input.samples, snakemake.params.num_folds, snakemake.params.min_reads
-    )
-    sys.stderr.close()
+sys.stderr.close()

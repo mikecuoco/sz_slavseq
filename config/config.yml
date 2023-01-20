@@ -1,18 +1,22 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: config/single_donor.tsv
-outdir: /raidixshare_log-g/mcuoco/projects/sz_slavseq
+samples: config/four_donors.tsv
+outdir: /raidixshare_logg01/mcuoco/internal/BSMN
 
 genome:
-  build: [hs37d5, hs38DH, chm13v2] # options: <hs37d5|hs38DH|chm13v2>
+  build: hs38DH # options: <hs37d5|hs38DH|chm13v2>
   region: all # for chromosome 22: use "22" for hs37d5, use "chr22" for hs38DH and chm13v2
 
+KNRGL:
+  dbVar:
+    build: hs38DH
+
 adapters:
-  r1_adapter: 'AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT'
-  r2_adapter: 'CAAGCAGAAGACGGCATACGAGANNNNNNNGTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT'
-  nested_primer: 'TAACTAACCTGCACAATGTGCAC'
+  r1_adapter: "AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT"
+  r2_adapter: "CAAGCAGAAGACGGCATACGAGANNNNNNNGTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT"
+  nested_primer: "TAACTAACCTGCACAATGTGCAC"
 
 get_features:
-  min_reads: 3
+  min_reads: 5
   window_size: 750
   window_step: 250
   min_mapq: 40
@@ -21,14 +25,15 @@ get_features:
   min_secondary_mapq: 20
   library_3_or_5: 3
 
-num_folds: 4
+folds:
+  split_by: "donor_id"
+  num_folds: 4
+  downsample_train: True
+  downsample_test: True
 
+# Do not set n_jobs > 8
 models:
-  rfc_1:
+  RandomForestClassifier10:
     name: "RandomForestClassifier"
     params:
-      random_state: 1
-      n_jobs: -1
-  mlp_1:
-    name: "MLPClassifier"
-    params:
+      n_estimators: 10

@@ -1,3 +1,0 @@
-donor	sample	dna_type	R1	R2
-2	gDNA_usd2	bulk	/cndd3/mcuoco/data/sz_slavseq/BulkSamples/gDNA_usd7_R1.fastq.gz	/cndd3/mcuoco/data/sz_slavseq/BulkSamples/gDNA_usd7_R2.fastq.gz
-2	gDNA_usd2	mda	/cndd3/mcuoco/data/sz_slavseq/BulkSamples/gDNA_usd7_R1.fastq.gz	/cndd3/mcuoco/data/sz_slavseq/BulkSamples/gDNA_usd7_R2.fastq.gz

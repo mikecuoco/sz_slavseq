@@ -11,7 +11,25 @@ from src.features.WindowFeatures import WindowFeatures
 from src.features.occupied_windows import occupied_windows_in_genome
 
 
-def get_features(
+def flank_features(df):
+
+    # sort
+    df.sort_index(inplace=True)
+
+    for i in range(1, 8):
+        flank_size = 2**i
+        field_name = "flank_" + str(flank_size) + "_max_reads"
+        df[field_name] = (
+            df["all_reads.count"]
+            .rolling(window=2 * flank_size + 1, center=True, min_periods=1)
+            .max()
+            .fillna(0)
+        )
+
+    return df
+
+
+def features(
     filename: str,
     genome: Genome,
     window_size: int,
@@ -29,7 +47,7 @@ def get_features(
     # create the windows
     windows = occupied_windows_in_genome(genome, window_size, window_step, filename)
 
-    # iterate over the windows to compute the features
+    # first pass through the genome to get features for each window
     w_list = []
     for w in windows:
         wf = WindowFeatures(
@@ -60,29 +78,10 @@ def get_features(
     return df
 
 
-def get_flank_features(df):
-
-    df.sort_index(inplace=True)
-
-    for i in range(1, 8):
-        flank_size = 2**i
-        field_name = "flank_" + str(flank_size) + "_max_reads"
-        df[field_name] = (
-            df["all_reads.count"]
-            .rolling(window=2 * flank_size + 1, center=True, min_periods=1)
-            .max()
-            .fillna(0)
-        )
-
-    return df
-
-
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
-
-    # first pass through the genome to get features for each window
-    df = get_features(
+    df = features(
         snakemake.input.bgz,
         Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
@@ -95,13 +94,13 @@ if __name__ == "__main__":
         None,
     )
 
-    # second pass through the genome to get collect flanking features
-    df = get_flank_features(df)
+    df = flank_features(df)
 
-    # write the features to a file
     df["cell_id"] = snakemake.wildcards.sample
     df["donor_id"] = snakemake.wildcards.donor
     df.set_index(["cell_id", "donor_id"], append=True, inplace=True)
+
+    # save
     df.to_pickle(snakemake.output[0])
 
     sys.stderr.close()

@@ -1,14 +1,15 @@
 rule get_features:
     input:
         bgz=rules.tabix.output.bgz,
+        tbi=rules.tabix.output.tbi,
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pickle.gz",
+        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pickle.gz",
     log:
-        "{outdir}/results/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/features.yml"
     script:
@@ -26,17 +27,23 @@ def get_non_ref_l1(wildcards):
 
 
 def get_labels_input(wildcards):
-    donor_samples = samples[samples["donor"] == wildcards.donor]
+    donor_samples = samples.loc[samples["donor"] == wildcards.donor]
     return {
         "bgz": expand(
             rules.tabix.output.bgz,
-            sample=donor_samples[samples["dna_type"] == "bulk"]["sample"],
+            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        "tbi": expand(
+            rules.tabix.output.tbi,
+            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,
         ),
         "features": expand(
             rules.get_features.output,
-            sample=donor_samples[samples["dna_type"] == "mda"]["sample"],
+            sample=donor_samples.loc[samples["dna_type"] == "mda"]["sample"],
             dna_type="mda",
             allow_missing=True,
         ),
@@ -52,126 +59,92 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/get_labels/{ref}_{db}/{donor}.pickle.gz",
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
+        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.mda.pickle.gz",
     log:
-        "{outdir}/results/get_labels/{ref}_{db}/{donor}.log",
+        "{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.log",
     conda:
         "../envs/features.yml"
     script:
         "../scripts/get_labels.py"
 
 
-# define variables relevant to these rules
-folds = range(1, config["num_folds"] + 1)
-model_ids = list(config["models"].keys())
-
-
 rule folds:
     input:
         samples=expand(
-            "{{outdir}}/results/get_labels/{{ref}}_{{db}}/{donor}.pickle.gz",
-            donor=samples.loc[(samples["dna_type"] == "mda")]["donor"],
+            rules.get_labels.output.mda,
+            donor=set(samples["donor"]),
+            allow_missing=True,
         ),
     params:
-        num_folds=config["num_folds"],
         min_reads=config["get_features"]["min_reads"],
+        **config["folds"]
     output:
-        train_features=expand(
-            "{{outdir}}/results/folds/{{ref}}_{{db}}/fold_{fold}/X_train.pickle.gz",
-            fold=folds,
-        ),
-        test_features=expand(
-            "{{outdir}}/results/folds/{{ref}}_{{db}}/fold_{fold}/X_test.pickle.gz",
-            fold=folds,
-        ),
-        train_labels=expand(
-            "{{outdir}}/results/folds/{{ref}}_{{db}}/fold_{fold}/Y_train.pickle",
-            fold=folds,
-        ),
-        test_labels=expand(
-            "{{outdir}}/results/folds/{{ref}}_{{db}}/fold_{fold}/Y_test.pickle",
-            fold=folds,
-        ),
-        label_encoder="{outdir}/results/folds/{ref}_{db}/label_encoder.pickle",
+        features="{outdir}/results/model/folds/{ref}_{db}/{label_config}/features.pickle",
+        labels="{outdir}/results/model/folds/{ref}_{db}/{label_config}/labels.pickle",
+        label_encoder="{outdir}/results/model/folds/{ref}_{db}/{label_config}/label_encoder.pickle",
+        folds="{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.pickle.gz",
     log:
-        "{outdir}/results/folds/{ref}_{db}/folds.log",
+        "{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.log",
     conda:
         "../envs/model.yml"
-    wildcard_constraints:
-        dna_type="\w+",
     script:
         "../scripts/folds.py"
 
 
 rule train_test:
     input:
-        train_features=rules.folds.output.train_features,
-        train_labels=rules.folds.output.train_labels,
-        test_features=rules.folds.output.test_features,
+        features=rules.folds.output.features,
+        labels=rules.folds.output.labels,
         label_encoder=rules.folds.output.label_encoder,
     params:
-        num_folds=config["num_folds"],
         model_params=lambda wc: config["models"][wc.model_id]["params"],
         model_name=lambda wc: config["models"][wc.model_id]["name"],
     output:
         # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
-        train_pred=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/train_predictions.pickle",
-            fold=folds,
-        ),
-        train_proba=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/train_probabilities.pickle",
-            fold=folds,
-        ),
-        test_pred=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/test_predictions.pickle",
-            fold=folds,
-        ),
-        test_proba=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{{model_id}}/fold_{fold}/test_probabilities.pickle",
-            fold=folds,
-        ),
+        pred="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/pred.pickle",
+        proba="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/proba.pickle",
+        metrics="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/metrics.pickle",
     log:
-        "{outdir}/results/train_test/{ref}_{db}/{model_id}.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/train_test.log",
+    threads: 8
+    benchmark:
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/train_test.benchmark.txt"
     conda:
         "../envs/model.yml"
     script:
         "../scripts/train_test.py"
 
 
-rule metrics:
+rule model_report:
     input:
-        train_labels=rules.folds.output.train_labels,
-        train_pred=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/train_predictions.pickle",
-            model_id=model_ids,
-            fold=folds,
-        ),
-        train_proba=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/train_probabilities.pickle",
-            model_id=model_ids,
-            fold=folds,
-        ),
-        test_labels=rules.folds.output.test_labels,
-        test_pred=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/test_predictions.pickle",
-            model_id=model_ids,
-            fold=folds,
-        ),
-        test_proba=expand(
-            "{{outdir}}/results/train_test/{{ref}}_{{db}}/{model_id}/fold_{fold}/test_probabilities.pickle",
-            model_id=model_ids,
-            fold=folds,
+        folds=rules.folds.output.folds,
+        metrics=expand(
+            rules.train_test.output.metrics,
+            model_id=list(config["models"].keys()),
+            allow_missing=True,
         ),
         label_encoder=rules.folds.output.label_encoder,
-    params:
-        num_folds=config["num_folds"],
-        models=model_ids,
     output:
-        prcurve="{outdir}/results/metrics/{ref}_{db}/prcurve.svg",
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.ipynb",
     conda:
-        "../envs/model.yml"
+        "../envs/jupyter.yml"
+    params:
+        model_ids=list(config["models"].keys()),
     log:
-        "{outdir}/results/metrics/{ref}_{db}.log",
-    script:
-        "../scripts/metrics.py"
+        notebook="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.ipynb",
+    notebook:
+        "../notebooks/model_report.py.ipynb"
+
+rule render_report:
+    input:
+        notebook=rules.model_report.output,
+    output:
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.html",
+    conda:
+        "../envs/jupyter.yml"
+    log:
+        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.log",
+    shell:
+        "jupyter nbconvert --to html --execute {input.notebook} --output $(basename {output}) 2> {log} 2>&1"
+

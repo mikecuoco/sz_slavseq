@@ -2,16 +2,16 @@ samples: .test/chr21chr22/samples.tsv
 outdir: .test
 
 genome:
-  build: [hs37d5, hs38DH, chm13v2] 
+  build: [hs37d5, hs38DH, chm13v2]
   region: [chr21, chr22]
 
 KNRGL:
   dbVar:
     build: hs38DH
-  eul1db:
-    build: hg19
 
 get_features:
   min_reads: 1
 
-num_folds: 2
+folds:
+  split_by: "donor_id"
+  num_folds: 2
