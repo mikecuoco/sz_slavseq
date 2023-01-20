@@ -7,6 +7,8 @@ dependencies:
   - pip
   - imbalanced-learn
   - pandas>=1.4
+  - polars
+  - pyarrow
   - scikit-learn>=0.23.2
   - seaborn
   - xgboost

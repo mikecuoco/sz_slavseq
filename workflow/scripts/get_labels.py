@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 __author__ = "Rohini Gadde", "Michael Cuoco"
 
-import functools, sys
+import functools, sys, os
+import polars as pl
 import pandas as pd
 import pysam
 from src.genome.Genome import Genome
@@ -9,6 +10,8 @@ from src.features.TabixSam import TabixSam
 from src.genome import interval_generator as ig
 from src.features.occupied_windows import occupied_windows_in_genome
 from src.genome.Interval import Interval
+
+os.environ["POLARS_MAX_THREADS"] = str(snakemake.threads)
 
 
 def read_rmsk(rmsk_outfile):
@@ -74,11 +77,11 @@ def read_reference_l1():
     df = make_l1_windows(
         df,
         snakemake.input.chromsizes,
-        "reference_l1hs_l1pa2_6",
+        "in_rmsk",
         snakemake.params.window_size,
         snakemake.params.window_step,
     )
-    return df
+    return pl.DataFrame(df.reset_index())
 
 
 @functools.lru_cache()
@@ -97,17 +100,16 @@ def read_non_ref_db():
         snakemake.params.window_size,
         snakemake.params.window_step,
     )
-    return df
+    return pl.DataFrame(df.reset_index())
 
 
-def label(df):
-    for x in df[["in_NRdb", "reference_l1hs_l1pa2_6"]].itertuples():
-        if x.reference_l1hs_l1pa2_6:
-            yield "RL1"
-        elif x.in_NRdb:
-            yield "KNRGL"
-        else:
-            yield "OTHER"
+def label(x):
+    if x["in_rmsk"]:
+        return "RL1"
+    elif x["in_NRdb"]:
+        return "KNRGL"
+    else:
+        return "OTHER"
 
 
 def get_germline_l1(
@@ -116,7 +118,6 @@ def get_germline_l1(
     window_size: int,
     window_step: int,
     min_reads: int,
-    db: str,
 ):
     # load the alignment
     tbx = TabixSam(pysam.TabixFile(tbx_fn))
@@ -131,27 +132,25 @@ def get_germline_l1(
         reads = len([r for r in tbx._fetch(w.chrom, w.start, w.end)])
         if reads >= min_reads:
             w_list.append(w.as_tuple())
-    df = pd.DataFrame(w_list, columns=["chrom", "start", "end"])
-
-    # set index
-    df["start"] = df["start"].astype(int)
-    df["end"] = df["end"].astype(int)
-    df.set_index(["chrom", "start", "end"], inplace=True)
+    df = pl.DataFrame(w_list, columns=["chrom", "start", "end"])
 
     # merge ref and nonref l1
     df = (
-        df.merge(read_non_ref_db(), left_index=True, right_index=True, how="left")
-        .merge(read_reference_l1(), left_index=True, right_index=True, how="left")
-        .fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False})
+        df.join(read_non_ref_db(), on=["chrom", "start", "end"], how="left")
+        .join(read_reference_l1(), on=["chrom", "start", "end"], how="left")
+        .fill_null(False)
     )
 
-    df = df.loc[df["in_NRdb"] | df["reference_l1hs_l1pa2_6"]]
-    df.loc[
-        df["in_NRdb"] & df["reference_l1hs_l1pa2_6"], ["in_NRdb"]
-    ] = False  # if ref and nonref l1 are present at the same site, set nonref to false
+    # only keep windows with L1 in either the reference or nonref database
+    df = df.filter(pl.col("in_NRdb") | pl.col("in_rmsk"))
 
-    # add database source
-    df["db"] = df["in_NRdb"].apply(lambda x: db if x == True else "rmsk")
+    # if ref and nonref l1 are present at the same site, set nonref to false
+    df = df.with_column(
+        pl.when(pl.col("in_rmsk") & pl.col("in_NRdb"))
+        .then(False)
+        .otherwise(pl.col("in_NRdb"))
+        .alias("in_NRdb")
+    )
 
     return df
 
@@ -167,36 +166,44 @@ if __name__ == "__main__":
         snakemake.params.window_size,
         snakemake.params.window_step,
         snakemake.params.min_reads,
-        snakemake.wildcards.db,
     )
-
-    # collapse to single column
-    germline_df["label"] = pd.Series(label(germline_df), index=germline_df.index)
-    germline_df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1).to_pickle(
-        snakemake.output.bulk
-    )
-    germline_df.drop(["label"], axis=1, inplace=True)
-
-    # get features from single cell data
-    features_df = pd.concat([pd.read_pickle(f) for f in snakemake.input.features])
-
-    # merge and return
-    df = features_df.merge(
-        germline_df, left_index=True, right_index=True, how="left"
-    ).fillna({"in_NRdb": False, "reference_l1hs_l1pa2_6": False, "db": False})
-
-    # collapse to single column
-    df["label"] = pd.Series(label(df), index=df.index)
-
-    if snakemake.wildcards.label_config == "rmRL1":
-        df = df.loc[df["label"] != "RL1", :]
-    elif snakemake.wildcards.label_config == "mergeRL1":
-        df.loc[df["label"] == "KNRGL", ["label"]] = "GERMLINE"
-        df.loc[df["label"] == "RL1", ["label"]] = "GERMLINE"
-    df.drop(["in_NRdb", "reference_l1hs_l1pa2_6"], axis=1, inplace=True)
-
-    df["build"] = snakemake.wildcards.ref
 
     # save
-    df.to_pickle(snakemake.output.mda)
+    germline_df.with_columns(
+        [
+            pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label"),
+            pl.lit(snakemake.wildcards.db).alias("db"),
+            pl.lit(snakemake.wildcards.ref).alias("build"),
+        ]
+    ).drop(["in_NRdb", "in_rmsk"]).write_csv(snakemake.output.bulk)
+
+    # get features from single cell data
+    features_df = pl.concat([pl.read_parquet(f) for f in snakemake.input.features])
+
+    # merge
+    df = features_df.join(
+        germline_df, on=["chrom", "start", "end"], how="left"
+    ).fill_null(False)
+
+    # collapse to single column
+    df = df.with_column(
+        pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label")
+    ).drop(["in_NRdb", "in_rmsk"])
+
+    if snakemake.wildcards.label_config == "rmRL1":
+        df = df.filter(pl.col("label") != "RL1")
+    elif snakemake.wildcards.label_config == "mergeRL1":
+        df = df.with_column(
+            pl.when(pl.col("label") != "OTHER")
+            .then("GERMLINE")
+            .otherwise(pl.col("label"))
+            .alias("label")
+        )
+
+    # add db and build columns
+    df = df.with_column(pl.lit(snakemake.wildcards.db).alias("db"))
+    df = df.with_column(pl.lit(snakemake.wildcards.ref).alias("build"))
+
+    # save
+    df.write_parquet(snakemake.output.mda)
     sys.stderr.close()

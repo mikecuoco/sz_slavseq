@@ -3,18 +3,20 @@
 __author__ = "Michael Cuoco"
 
 import pysam
-import pandas as pd
-import sys
+import polars as pl
+import sys, os
 from src.genome.Genome import Genome
 from src.features.TabixSam import TabixSam
 from src.features.WindowFeatures import WindowFeatures
 from src.features.occupied_windows import occupied_windows_in_genome
 
+os.environ["POLARS_MAX_THREADS"] = str(snakemake.threads)
+
 
 def flank_features(df):
 
     # sort
-    df.sort_index(inplace=True)
+    df = df.sort(["chrom", "start", "end"]).to_pandas()
 
     for i in range(1, 8):
         flank_size = 2**i
@@ -26,7 +28,7 @@ def flank_features(df):
             .fillna(0)
         )
 
-    return df
+    return pl.DataFrame(df)
 
 
 def features(
@@ -68,12 +70,7 @@ def features(
         f["end"] = w.end
         w_list.append(f)
 
-    df = pd.DataFrame(w_list)
-
-    # set index
-    df["start"] = df["start"].astype(int)
-    df["end"] = df["end"].astype(int)
-    df.set_index(["chrom", "start", "end"], inplace=True)
+    df = pl.DataFrame(w_list)
 
     return df
 
@@ -96,11 +93,11 @@ if __name__ == "__main__":
 
     df = flank_features(df)
 
-    df["cell_id"] = snakemake.wildcards.sample
-    df["donor_id"] = snakemake.wildcards.donor
-    df.set_index(["cell_id", "donor_id"], append=True, inplace=True)
+    # add cell_id and donor_id columns
+    df = df.with_column(pl.lit(snakemake.wildcards.sample).alias("cell_id"))
+    df = df.with_column(pl.lit(snakemake.wildcards.donor).alias("donor_id"))
 
     # save
-    df.to_pickle(snakemake.output[0])
+    df.write_parquet(snakemake.output[0])
 
     sys.stderr.close()

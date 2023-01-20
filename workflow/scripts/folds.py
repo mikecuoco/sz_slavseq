@@ -4,28 +4,24 @@ __author__ = "Michael Cuoco"
 
 # TODO: make function and object names more concise
 
-import sys
+import sys, os
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
+import polars as pl
 import pickle
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
 from imblearn.under_sampling import RandomUnderSampler
 
-
+os.environ["POLARS_MAX_THREADS"] = str(snakemake.threads)
 sys.stderr = open(snakemake.log[0], "w")
 
-donors = [pd.read_pickle(fn).reset_index() for fn in snakemake.input.samples]
+donors = [pl.read_parquet(fn) for fn in snakemake.input.samples]
 
 # concatenate all cells into a single table
-df = (
-    pd.concat(donors)
-    .sort_values(["chrom", "start", "end", "cell_id", "donor_id"])
-    .set_index(["chrom", "start", "end", "cell_id", "donor_id"])
-)
-df = df[df["all_reads.count"] >= snakemake.params.min_reads]
+df = pl.concat(donors).sort(["chrom", "start", "end", "cell_id", "donor_id"])
+
+# remove windows with too few reads
+df = df.filter(pl.col("all_reads.count") >= snakemake.params.min_reads)
 
 # make features
 features = [
@@ -45,10 +41,12 @@ features = [
         ]
     )
 ]
-df = df.fillna(0).reset_index()
-df[features] = np.minimum(
-    df[features], 4e9
-)  # take minimum of features and 4e9 to avoid overflow error
+
+# replace NaN and null values with 0
+df = df.fill_null(strategy="zero").fill_nan(0)
+
+# take minimum of features and 4e9 to avoid overflow error
+df = df.with_columns(pl.col(features).apply(lambda x: min(x, 4e9)))
 
 # make labels, using LabelEncoder() to convert strings to integers
 le = LabelEncoder()
@@ -58,7 +56,7 @@ le = le.fit(list(set(df["label"])))
 with open(snakemake.output.label_encoder, "wb") as f:
     pickle.dump(le, f)
 
-# get donor_id for group split
+# get variable for group split
 groups = df[snakemake.params.split_by]
 
 # use StratifiedGroupKFold to preserve class balance and group balance
@@ -71,7 +69,8 @@ folds = []
 for fold, (train_index, test_index) in enumerate(
     sgkf.split(df[features], df["label"], groups=groups)
 ):
-    train, test = df.iloc[train_index], df.iloc[test_index]
+
+    train, test = df[train_index, :].to_pandas(), df[test_index, :].to_pandas()
 
     if snakemake.params.downsample_train:
         train, _ = RandomUnderSampler(random_state=42).fit_resample(

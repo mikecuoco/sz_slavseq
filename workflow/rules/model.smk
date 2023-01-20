@@ -7,7 +7,7 @@ rule get_features:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pickle.gz",
+        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pqt",
     log:
         "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.log",
     conda:
@@ -59,12 +59,13 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
-        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.mda.pickle.gz",
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}_bulk.bed",
+        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}_mda.pqt",
     log:
         "{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.log",
     conda:
         "../envs/features.yml"
+    threads: 8
     script:
         "../scripts/get_labels.py"
 
@@ -77,8 +78,8 @@ rule folds:
             allow_missing=True,
         ),
     params:
+        **config["folds"],
         min_reads=config["get_features"]["min_reads"],
-        **config["folds"]
     output:
         features="{outdir}/results/model/folds/{ref}_{db}/{label_config}/features.pickle",
         labels="{outdir}/results/model/folds/{ref}_{db}/{label_config}/labels.pickle",
@@ -88,6 +89,7 @@ rule folds:
         "{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.log",
     conda:
         "../envs/model.yml"
+    threads: 8
     script:
         "../scripts/folds.py"
 
@@ -136,6 +138,7 @@ rule model_report:
     notebook:
         "../notebooks/model_report.py.ipynb"
 
+
 rule render_report:
     input:
         notebook=rules.model_report.output,
@@ -147,4 +150,3 @@ rule render_report:
         "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.log",
     shell:
         "jupyter nbconvert --to html --execute {input.notebook} --output $(basename {output}) 2> {log} 2>&1"
-
