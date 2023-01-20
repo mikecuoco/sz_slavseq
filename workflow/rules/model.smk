@@ -59,7 +59,7 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.bulk.pickle.gz", # TODO: save this as a bed file
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.bulk.pickle.gz",  # TODO: save this as a bed file
         mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.mda.pickle.gz",
     log:
         "{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.log",
@@ -77,8 +77,8 @@ rule folds:
             allow_missing=True,
         ),
     params:
+        **config["folds"],
         min_reads=config["get_features"]["min_reads"],
-        **config["folds"]
     output:
         features="{outdir}/results/model/folds/{ref}_{db}/{label_config}/features.pickle",
         labels="{outdir}/results/model/folds/{ref}_{db}/{label_config}/labels.pickle",
@@ -136,6 +136,7 @@ rule model_report:
     notebook:
         "../notebooks/model_report.py.ipynb"
 
+
 rule render_report:
     input:
         notebook=rules.model_report.output,
@@ -147,4 +148,3 @@ rule render_report:
         "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.log",
     shell:
         "jupyter nbconvert --to html --execute {input.notebook} --output $(basename {output}) 2> {log} 2>&1"
-
