@@ -52,7 +52,7 @@ rule macs2_evaluate:
     log:
         notebook="{outdir}/results/macs2_eval/{ref}_{db}/{donor}.ipynb",
     conda:
-        "../envs/jupyter.yml"
+        "../envs/jupyter_peaks.yml"
     notebook:
         "../notebooks/evaluate_macs2.py.ipynb"
 
@@ -62,8 +62,8 @@ rule render_macs2_evaluate:
     output:
         "{outdir}/results/macs2_eval/{ref}_{db}/{donor}.html",
     conda:
-        "../envs/jupyter.yml"
-    notebook:
+        "../envs/jupyter_peaks.yml"
+    shell:
         "jupyter nbconvert --to html --execute {input} --output $(basename {output})"
 
 
