@@ -56,11 +56,21 @@ rule macs2_evaluate:
     notebook:
         "../notebooks/evaluate_macs2.py.ipynb"
 
+rule render_macs2_evaluate:
+    input:
+        rules.macs2_evaluate.output,
+    output:
+        "{outdir}/results/macs2_eval/{ref}_{db}/{donor}.html",
+    conda:
+        "../envs/jupyter.yml"
+    notebook:
+        "jupyter nbconvert --to html --execute {input} --output $(basename {output})"
+
 
 rule peaks:
     input:
         expand(
-            rules.macs2_evaluate.output,
+            rules.render_macs2_evaluate.output,
             outdir=config["outdir"],
             ref=config["genome"]["build"],
             db=list(config["KNRGL"].keys()),
