@@ -69,6 +69,7 @@ rule get_labels:
     script:
         "../scripts/get_labels.py"
 
+
 rule feature_report:
     input:
         expand(
@@ -129,7 +130,11 @@ rule train_test:
 
 rule model_report:
     input:
-        expand(rules.train_test.output, model_id=config["models"].keys(), allow_missing=True),
+        expand(
+            rules.train_test.output,
+            model_id=config["models"].keys(),
+            allow_missing=True,
+        ),
     output:
         "{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
     conda:
