@@ -157,32 +157,3 @@ rule render_reports:
         jupyter nbconvert --to html --execute {input.features} --output $(basename {output.features}) 
         jupyter nbconvert --to html --execute {input.model} --output $(basename {output.model}) 
         """
-
-
-rule imbalance_experiment:
-    input:
-        samples=expand(
-            rules.get_labels.output.mda,
-            donor=set(samples["donor"]),
-            allow_missing=True,
-        ),
-    output:
-        "{outdir}/results/model/experiment/{ref}_{db}/imbalance_experiment.ipynb",
-    log:
-        notebook="{outdir}/results/model/experiment/{ref}_{db}/imbalance_experiment.ipynb",
-    threads: 8
-    params:
-        **config["folds"]
-    conda:
-        "../envs/jupyter.yml"
-    notebook:
-        "../notebooks/imbalance_experiment.py.ipynb"
-
-rule experiment:
-    input:
-        expand(
-            rules.imbalance_experiment.output,
-            outdir=config["outdir"],
-            db=list(config["KNRGL"].keys()),
-            ref=config["genome"]["build"],
-        )
