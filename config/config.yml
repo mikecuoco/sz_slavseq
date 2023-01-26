@@ -1,5 +1,5 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: config/four_donors.tsv
+samples: config/single_donor.tsv
 outdir: /raidixshare_logg01/mcuoco/internal/BSMN
 
 genome:
@@ -16,7 +16,6 @@ adapters:
   nested_primer: "TAACTAACCTGCACAATGTGCAC"
 
 get_features:
-  min_reads: 5
   window_size: 750
   window_step: 250
   min_mapq: 40
@@ -24,16 +23,19 @@ get_features:
   max_yg: 15
   min_secondary_mapq: 20
   library_3_or_5: 3
+  rmL1: True
 
 folds:
-  split_by: "donor_id"
+  split_by: "cell_id"
   num_folds: 4
-  downsample_train: True
-  downsample_test: True
+  min_reads: 5
+  test_sampling_strategy: "auto"
 
 # Do not set n_jobs > 8
 models:
-  RandomForestClassifier10:
+  RFC10:
     name: "RandomForestClassifier"
+    train_sampling_strategy: "auto"
     params:
       n_estimators: 10
+      random_state: 1

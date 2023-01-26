@@ -9,9 +9,7 @@ KNRGL:
   dbVar:
     build: hs38DH
 
-get_features:
-  min_reads: 1
-
 folds:
   split_by: "donor_id"
   num_folds: 2
+  min_reads: 1

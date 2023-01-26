@@ -2,111 +2,79 @@
 # Created on: 10/26/22, 1:59 PM
 __author__ = "Michael Cuoco"
 
-# TODO: make function and object names more concise
-
-import sys, os
+import sys, pickle, os
+from gzip import GzipFile
 import pandas as pd
-import polars as pl
-import pickle
+import numpy as np
 from sklearn.model_selection import StratifiedGroupKFold
-from sklearn.preprocessing import LabelEncoder
 from imblearn.under_sampling import RandomUnderSampler
 
-os.environ["POLARS_MAX_THREADS"] = str(snakemake.threads)
-sys.stderr = open(snakemake.log[0], "w")
+# get access to the src directory
+sys.path.append((os.path.abspath("workflow")))
+from src.model import Model
 
-donors = [pl.read_parquet(fn) for fn in snakemake.input.samples]
+def read_prep_data(files):
 
-# concatenate all cells into a single table
-df = pl.concat(donors).sort(["chrom", "start", "end", "cell_id", "donor_id"])
-
-# remove windows with too few reads
-df = df.filter(pl.col("all_reads.count") >= snakemake.params.min_reads)
-
-# make features
-features = [
-    x
-    for x in df.columns
-    if not any(
-        x.endswith(y)
-        for y in [
+    # read in data
+    df = pd.concat([pd.read_parquet(fn) for fn in files]).set_index(
+        [
             "chrom",
             "start",
             "end",
             "cell_id",
             "donor_id",
-            "label",
-            "build",
-            "db",
         ]
     )
-]
 
-# replace NaN and null values with 0
-df = df.fill_null(strategy="zero").fill_nan(0)
-
-# take minimum of features and 4e9 to avoid overflow error
-df = df.with_columns(pl.col(features).apply(lambda x: min(x, 4e9)))
-
-# make labels, using LabelEncoder() to convert strings to integers
-le = LabelEncoder()
-le = le.fit(list(set(df["label"])))
-
-# save label encoder
-with open(snakemake.output.label_encoder, "wb") as f:
-    pickle.dump(le, f)
-
-# get variable for group split
-groups = df[snakemake.params.split_by]
-
-# use StratifiedGroupKFold to preserve class balance and group balance
-sgkf = StratifiedGroupKFold(n_splits=snakemake.params.num_folds)
-
-# store labels of each fold to plot class balance
-features_dict, labels_dict = {}, {}
-folds = []
-
-for fold, (train_index, test_index) in enumerate(
-    sgkf.split(df[features], df["label"], groups=groups)
-):
-
-    train, test = df[train_index, :].to_pandas(), df[test_index, :].to_pandas()
-
-    if snakemake.params.downsample_train:
-        train, _ = RandomUnderSampler(random_state=42).fit_resample(
-            train, train["label"]
+    # make features
+    features = [
+        x
+        for x in df.columns
+        if not any(
+            x.endswith(y)
+            for y in [
+                "chrom",
+                "start",
+                "end",
+                "cell_id",
+                "donor_id",
+                "label",
+                "build",
+                "db",
+            ]
         )
+    ]
 
-    if snakemake.params.downsample_test:
-        test, _ = RandomUnderSampler(random_state=42).fit_resample(test, test["label"])
+    # replace NA values with 0
+    df[features] = df[features].fillna(0)
 
-    # ensure all classes are represented in the splits
-    for d in [train["label"], test["label"]]:
-        assert len(set(d)) == len(
-            set(df["label"])
-        ), "not all classes represented in split"
+    # take minimum of features and 4e9 to avoid overflow error
+    df[features] = np.minimum(df[features], 4e9)
 
-    features_dict[fold] = {"train": train[features], "test": test[features]}
-    labels_dict[fold] = {
-        "train": le.transform(train["label"]),
-        "test": le.transform(test["label"]),
-    }
+    return df, features
 
-    # append to metrics
-    train["fold"] = fold + 1
-    train["stage"] = "train"
-    folds.append(train)
-    test["fold"] = fold + 1
-    test["stage"] = "test"
-    folds.append(test)
+if __name__ == "__main__":
 
-# save
-with open(snakemake.output.features, "wb") as f:
-    pickle.dump(features_dict, f)
+    sys.stderr = open(snakemake.log[0], "w")
 
-with open(snakemake.output.labels, "wb") as f:
-    pickle.dump(labels_dict, f)
+    # read and prepare data
+    df, features = read_prep_data(snakemake.input)
 
-pd.concat(folds).to_pickle(snakemake.output.folds)
+    # setup folds strategy
+    kf = StratifiedGroupKFold(n_splits=snakemake.params.num_folds, shuffle = True, random_state=42)
 
-sys.stderr.close()
+    # setup test sampling strategy
+    if snakemake.params.test_sampling_strategy:
+        test_sampler = RandomUnderSampler(sampling_strategy=snakemake.params.test_sampling_strategy, random_state=42)
+    else:
+        test_sampler = None
+
+    # create object for model
+    m = Model(df, features, snakemake.params.min_reads)
+    m = m.split(kf, snakemake.params.split_by, test_sampler)
+
+    # save
+    with GzipFile(snakemake.output[0], "wb") as f:
+        pickle.dump(m, f)
+
+    sys.stderr.close()

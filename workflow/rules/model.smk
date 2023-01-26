@@ -59,59 +59,68 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}_bulk.bed",
-        mda="{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}_mda.pqt",
+        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{donor}_bulk.bed",
+        mda="{outdir}/results/model/get_labels/{ref}_{db}/{donor}_mda.pqt",
     log:
-        "{outdir}/results/model/get_labels/{ref}_{db}/{label_config}/{donor}.log",
+        "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.log",
     conda:
         "../envs/features.yml"
     threads: 8
     script:
         "../scripts/get_labels.py"
 
+rule feature_report:
+    input:
+        expand(
+            rules.get_labels.output.mda,
+            donor=set(samples["donor"]),
+            allow_missing=True,
+        ),
+    output:
+        "{outdir}/results/model/get_labels/{ref}_{db}/feature_report.ipynb",
+    log:
+        notebook="{outdir}/results/model/get_labels/{ref}_{db}/feature_report.ipynb",
+    conda:
+        "../envs/model.yml"
+    notebook:
+        "../notebooks/feature_report.py.ipynb"
+
 
 rule folds:
     input:
-        samples=expand(
+        expand(
             rules.get_labels.output.mda,
             donor=set(samples["donor"]),
             allow_missing=True,
         ),
     params:
         **config["folds"],
-        min_reads=config["get_features"]["min_reads"],
     output:
-        features="{outdir}/results/model/folds/{ref}_{db}/{label_config}/features.pickle",
-        labels="{outdir}/results/model/folds/{ref}_{db}/{label_config}/labels.pickle",
-        label_encoder="{outdir}/results/model/folds/{ref}_{db}/{label_config}/label_encoder.pickle",
-        folds="{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.pickle.gz",
+        "{outdir}/results/model/folds/{ref}_{db}/folds.pkl.gz",
     log:
-        "{outdir}/results/model/folds/{ref}_{db}/{label_config}/folds.log",
+        "{outdir}/results/model/folds/{ref}_{db}/folds.log",
     conda:
         "../envs/model.yml"
-    threads: 8
     script:
         "../scripts/folds.py"
 
 
 rule train_test:
     input:
-        features=rules.folds.output.features,
-        labels=rules.folds.output.labels,
-        label_encoder=rules.folds.output.label_encoder,
+        rules.folds.output,
     params:
-        model_params=lambda wc: config["models"][wc.model_id]["params"],
         model_name=lambda wc: config["models"][wc.model_id]["name"],
+        model_params=lambda wc: config["models"][wc.model_id]["params"],
+        train_sampling_strategy=lambda wc: config["models"][wc.model_id][
+            "train_sampling_strategy"
+        ],
     output:
-        # model="results/train_test/{ref}/{dna_type}/{model}/model.pickle",
-        pred="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/pred.pickle",
-        proba="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/proba.pickle",
-        metrics="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/metrics.pickle",
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.pkl.gz",
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/train_test.log",
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.log",
     threads: 8
     benchmark:
-        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/{model_id}/train_test.benchmark.txt"
+        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.benchmark.txt"
     conda:
         "../envs/model.yml"
     script:
@@ -120,33 +129,60 @@ rule train_test:
 
 rule model_report:
     input:
-        folds=rules.folds.output.folds,
-        metrics=expand(
-            rules.train_test.output.metrics,
-            model_id=list(config["models"].keys()),
-            allow_missing=True,
-        ),
-        label_encoder=rules.folds.output.label_encoder,
+        expand(rules.train_test.output, model_id=config["models"].keys(), allow_missing=True),
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.ipynb",
+        "{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
     conda:
-        "../envs/jupyter.yml"
-    params:
-        model_ids=list(config["models"].keys()),
+        "../envs/model.yml"
     log:
-        notebook="{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.ipynb",
+        notebook="{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
     notebook:
         "../notebooks/model_report.py.ipynb"
 
 
-rule render_report:
+rule render_reports:
     input:
-        notebook=rules.model_report.output,
+        features=rules.feature_report.output,
+        model=rules.model_report.output,
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.html",
+        features="{outdir}/results/model/get_labels/{ref}_{db}/feature_report.html",
+        model="{outdir}/results/model/train_test/{ref}_{db}/model_report.html",
+    conda:
+        "../envs/model.yml"
+    log:
+        "{outdir}/results/model/train_test/{ref}_{db}/render_reports.log",
+    shell:
+        """
+        touch {log} && exec > {log} 2>&1
+        jupyter nbconvert --to html --execute {input.features} --output $(basename {output.features}) 
+        jupyter nbconvert --to html --execute {input.model} --output $(basename {output.model}) 
+        """
+
+
+rule imbalance_experiment:
+    input:
+        samples=expand(
+            rules.get_labels.output.mda,
+            donor=set(samples["donor"]),
+            allow_missing=True,
+        ),
+    output:
+        "{outdir}/results/model/experiment/{ref}_{db}/imbalance_experiment.ipynb",
+    log:
+        notebook="{outdir}/results/model/experiment/{ref}_{db}/imbalance_experiment.ipynb",
+    threads: 8
+    params:
+        **config["folds"]
     conda:
         "../envs/jupyter.yml"
-    log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{label_config}/model_report.log",
-    shell:
-        "jupyter nbconvert --to html --execute {input.notebook} --output $(basename {output}) 2> {log} 2>&1"
+    notebook:
+        "../notebooks/imbalance_experiment.py.ipynb"
+
+rule experiment:
+    input:
+        expand(
+            rules.imbalance_experiment.output,
+            outdir=config["outdir"],
+            db=list(config["KNRGL"].keys()),
+            ref=config["genome"]["build"],
+        )

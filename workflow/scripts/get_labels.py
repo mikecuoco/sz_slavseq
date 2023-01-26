@@ -4,9 +4,10 @@ __author__ = "Rohini Gadde", "Michael Cuoco"
 import functools, sys, os
 import polars as pl
 import pandas as pd
-import pysam
+
+# get access to the src directory
+sys.path.append((os.path.abspath("workflow")))
 from src.genome.Genome import Genome
-from src.features.TabixSam import TabixSam
 from src.genome import interval_generator as ig
 from src.features.occupied_windows import occupied_windows_in_genome
 from src.genome.Interval import Interval
