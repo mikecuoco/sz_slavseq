@@ -7,8 +7,11 @@ from gzip import GzipFile
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from imblearn.under_sampling import RandomUnderSampler
+
 # get access to the src directory
 sys.path.append((os.path.abspath("workflow")))
+from src.model import Model
+
 
 def make_pipeline(clf_type, params):
 
@@ -94,19 +97,25 @@ if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
 
-    with GzipFile(snakemake.input[0], "rb") as f:
-        m = pickle.load(f)
+    with open(snakemake.input.features, "r") as f:
+        features = f.read().splitlines()
+
+    with GzipFile(snakemake.input.folds, "rb") as f:
+        folds = pickle.load(f)
 
     # setup
     if snakemake.params.train_sampling_strategy:
-        train_sampler = RandomUnderSampler(sampling_strategy=snakemake.params.train_sampling_strategy, random_state=42)
+        train_sampler = RandomUnderSampler(
+            sampling_strategy=snakemake.params.train_sampling_strategy, random_state=42
+        )
     else:
         train_sampler = None
 
     clf = make_pipeline(snakemake.params.model_name, snakemake.params.model_params)
-    m = m.train_test(clf, train_sampler, snakemake.wildcards.model_id)
+    m = Model(clf, train_sampler, snakemake.wildcards.model_id)
+    m = m.train_test(folds, features)
 
     with GzipFile(snakemake.output[0], "wb") as f:
-        pickle.dump(m, f)
+        pickle.dump(m, f, protocol=-1)
 
     sys.stderr.close()

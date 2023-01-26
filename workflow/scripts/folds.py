@@ -9,22 +9,11 @@ import numpy as np
 from sklearn.model_selection import StratifiedGroupKFold
 from imblearn.under_sampling import RandomUnderSampler
 
-# get access to the src directory
-sys.path.append((os.path.abspath("workflow")))
-from src.model import Model
 
 def read_prep_data(files):
 
     # read in data
-    df = pd.concat([pd.read_parquet(fn) for fn in files]).set_index(
-        [
-            "chrom",
-            "start",
-            "end",
-            "cell_id",
-            "donor_id",
-        ]
-    )
+    df = pd.concat([pd.read_parquet(fn) for fn in files])
 
     # make features
     features = [
@@ -53,28 +42,50 @@ def read_prep_data(files):
 
     return df, features
 
+
 if __name__ == "__main__":
 
     sys.stderr = open(snakemake.log[0], "w")
 
     # read and prepare data
     df, features = read_prep_data(snakemake.input)
+    df = (
+        df[df["all_reads.count"] >= snakemake.params.min_reads]
+        .reset_index()
+        .drop("index", axis=1)
+    )
 
     # setup folds strategy
-    kf = StratifiedGroupKFold(n_splits=snakemake.params.num_folds, shuffle = True, random_state=42)
+    kf = StratifiedGroupKFold(
+        n_splits=snakemake.params.num_folds, shuffle=True, random_state=42
+    )
 
-    # setup test sampling strategy
-    if snakemake.params.test_sampling_strategy:
-        test_sampler = RandomUnderSampler(sampling_strategy=snakemake.params.test_sampling_strategy, random_state=42)
-    else:
-        test_sampler = None
+    # create folds
+    groups = df[snakemake.params.split_by]
 
-    # create object for model
-    m = Model(df, features, snakemake.params.min_reads)
-    m = m.split(kf, snakemake.params.split_by, test_sampler)
+    folds = {}
+    for f, (train_index, test_index) in enumerate(
+        kf.split(df, df["label"], groups=groups)
+    ):
+        folds[f] = {}
+
+        # make train set
+        folds[f]["train"] = df.loc[train_index, :]
+
+        # make test set
+        if snakemake.params.test_sampling_strategy:
+            folds[f]["test"], _ = RandomUnderSampler(
+                sampling_strategy=snakemake.params.test_sampling_strategy,
+                random_state=42,
+            ).fit_resample(df.loc[test_index, :], df.loc[test_index, "label"])
+        else:
+            folds[f]["test"] = df.loc[test_index, :]
 
     # save
-    with GzipFile(snakemake.output[0], "wb") as f:
-        pickle.dump(m, f)
+    with open(snakemake.output.features, "w") as f:
+        f.write("\n".join(features))
+
+    with GzipFile(snakemake.output.folds, "wb") as f:
+        pickle.dump(folds, f, protocol=-1)
 
     sys.stderr.close()

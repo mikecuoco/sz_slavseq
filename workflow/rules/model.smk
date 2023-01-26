@@ -97,7 +97,8 @@ rule folds:
     params:
         **config["folds"],
     output:
-        "{outdir}/results/model/folds/{ref}_{db}/folds.pkl.gz",
+        folds="{outdir}/results/model/folds/{ref}_{db}/folds.pkl.gz",
+        features="{outdir}/results/model/folds/{ref}_{db}/features.txt",
     log:
         "{outdir}/results/model/folds/{ref}_{db}/folds.log",
     conda:
@@ -108,7 +109,8 @@ rule folds:
 
 rule train_test:
     input:
-        rules.folds.output,
+        folds=rules.folds.output.folds,
+        features=rules.folds.output.features,
     params:
         model_name=lambda wc: config["models"][wc.model_id]["name"],
         model_params=lambda wc: config["models"][wc.model_id]["params"],
