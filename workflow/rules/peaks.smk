@@ -1,6 +1,7 @@
 rule macs2:
     input:
-        rules.tags.output,
+        bam=rules.tags.output,
+        fai=rules.gen_ref.output[1]
     output:
         "{outdir}/results/macs2/{ref}/{donor}/{dna_type}/{sample}_peaks.narrowPeak",
     log:
@@ -8,7 +9,11 @@ rule macs2:
     conda:
         "../envs/peaks.yml"
     shell:
-        "macs2 callpeak -t {input} --name {wildcards.sample} --outdir $(dirname {output}) --nomodel --extsize 750 2> {log}"
+        """
+        touch {log} && exec > {log} 2>&1
+        GSIZE=$(awk '{{sum+=$2}} END{{print sum}}' {input.fai})
+        macs2 callpeak -g $GSIZE -t {input.bam} --name {wildcards.sample} --outdir $(dirname {output}) --nomodel --extsize 750 2> {log}
+        """
 
 
 def get_evaluate_input(wildcards):
@@ -21,7 +26,13 @@ def get_evaluate_input(wildcards):
             allow_missing=True,
         ),
         "bam": expand(
-            rules.tags.output,
+            rules.sort.output,
+            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        "bai": expand(
+            rules.index.output,
             sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample"],
             dna_type="bulk",
             allow_missing=True,

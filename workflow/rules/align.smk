@@ -125,3 +125,23 @@ rule tabix:
 
         tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
         """
+
+rule sort:
+    input:
+        rules.tags.output,
+    output:
+        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.sorted.bam",
+    log:
+        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}_sort.log",
+    wrapper:
+        "v1.21.4/bio/samtools/sort"
+
+rule index:
+    input:
+        rules.sort.output,
+    output:
+        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.sorted.bam.bai",
+    log:
+        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}_index.log",
+    wrapper:
+        "v1.21.4/bio/samtools/index"
