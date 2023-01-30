@@ -22,12 +22,14 @@ rule macs2:
         "../envs/peaks.yml"
     params:
         genome_size="hs" if config["genome"]["region"] == "all" else genome_size,
+        keep_dup=1,
+        qValue_cutoff=0.05
     shell:
         """
         touch {log} && exec > {log} 2>&1
 
         # get filtered reads
-        macs2 filterdup -i {input} | \
+        macs2 filterdup --keep-dup {params.keep_dup} -i {input} | \
             awk '{{if ($2 >= 0 && $3 >= 0) print $0}}' | \
             bedtools sort | \
             bgzip > {output.bgz}
@@ -36,9 +38,10 @@ rule macs2:
         macs2 callpeak \
             -g {params.genome_size} \
             -t {input} \
-            -q 0.01 \
+            -q {params.qValue_cutoff} \
             --SPMR \
             --format BAMPE \
+            --keep-dup {params.keep_dup} \
             --name {wildcards.sample} \
             --outdir $(dirname {output.peaks}) \
             --cutoff-analysis
