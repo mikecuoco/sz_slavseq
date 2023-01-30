@@ -5,6 +5,9 @@ __author__ = "Michael Cuoco"
 import pysam
 import polars as pl
 import sys, os
+
+# get access to the src directory
+sys.path.append((os.path.abspath("workflow")))
 from src.genome.Genome import Genome
 from src.features.TabixSam import TabixSam
 from src.features.WindowFeatures import WindowFeatures

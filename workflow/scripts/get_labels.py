@@ -4,9 +4,10 @@ __author__ = "Rohini Gadde", "Michael Cuoco"
 import functools, sys, os
 import polars as pl
 import pandas as pd
-import pysam
+
+# get access to the src directory
+sys.path.append((os.path.abspath("workflow")))
 from src.genome.Genome import Genome
-from src.features.TabixSam import TabixSam
 from src.genome import interval_generator as ig
 from src.features.occupied_windows import occupied_windows_in_genome
 from src.genome.Interval import Interval
@@ -117,10 +118,7 @@ def get_germline_l1(
     genome: Genome,
     window_size: int,
     window_step: int,
-    min_reads: int,
 ):
-    # load the alignment
-    tbx = TabixSam(pysam.TabixFile(tbx_fn))
 
     # create the windows
     windows = occupied_windows_in_genome(genome, window_size, window_step, tbx_fn)
@@ -129,9 +127,7 @@ def get_germline_l1(
     for w in windows:
         if w is None:
             continue
-        reads = len([r for r in tbx._fetch(w.chrom, w.start, w.end)])
-        if reads >= min_reads:
-            w_list.append(w.as_tuple())
+        w_list.append(w.as_tuple())
     df = pl.DataFrame(w_list, columns=["chrom", "start", "end"])
 
     # merge ref and nonref l1
@@ -165,7 +161,6 @@ if __name__ == "__main__":
         Genome(snakemake.input.chromsizes),
         snakemake.params.window_size,
         snakemake.params.window_step,
-        snakemake.params.min_reads,
     )
 
     # save
@@ -190,15 +185,8 @@ if __name__ == "__main__":
         pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label")
     ).drop(["in_NRdb", "in_rmsk"])
 
-    if snakemake.wildcards.label_config == "rmRL1":
+    if snakemake.params.rmL1:
         df = df.filter(pl.col("label") != "RL1")
-    elif snakemake.wildcards.label_config == "mergeRL1":
-        df = df.with_column(
-            pl.when(pl.col("label") != "OTHER")
-            .then("GERMLINE")
-            .otherwise(pl.col("label"))
-            .alias("label")
-        )
 
     # add db and build columns
     df = df.with_column(pl.lit(snakemake.wildcards.db).alias("db"))

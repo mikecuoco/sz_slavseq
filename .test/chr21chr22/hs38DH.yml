@@ -5,9 +5,12 @@ genome:
   build: hs38DH
   region: [chr21, chr22]
 
-get_features:
-  min_reads: 1
+KNRGL:
+  dbVar:
+    build: hs38DH
 
 folds:
   split_by: "donor_id"
   num_folds: 2
+  test_sampling_strategy: False
+  min_reads: 1

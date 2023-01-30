@@ -26,10 +26,9 @@ include: "rules/qc.smk"
 rule all:
     input:
         expand(
-            rules.render_report.output,
+            rules.render_reports.output,
             db=list(config["KNRGL"].keys()),
             ref=config["genome"]["build"],
-            label_config=["None", "rmRL1", "mergeRL1"],
             outdir=config["outdir"],
         ),
         expand(
