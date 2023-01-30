@@ -4,4 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.7
+  - bedtools
+  - htslib
+  - tabix
   - macs2
