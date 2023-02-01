@@ -11,8 +11,8 @@ bam = pysam.AlignmentFile(snakemake.input.bam, "rb")  # must be coordinate sorte
 peaks = {}
 print("Finding L1 reads with same start position...")
 for r in bam.fetch():
-    # ignore marked duplicates 
-    if r.is_duplicate:  
+    # ignore marked duplicates
+    if r.is_duplicate:
         continue
 
     # only use primary alignments
@@ -20,7 +20,7 @@ for r in bam.fetch():
         continue
 
     # ignore reads on edges of chrs
-    if r.reference_end is None or r.reference_start is None: 
+    if r.reference_end is None or r.reference_start is None:
         continue
 
     if r.reference_name not in peaks.keys():
@@ -45,9 +45,11 @@ for r in bam.fetch():
 
 # cluster peaks
 print("Clustering pileups...")
-t = snakemake.params.cluster_threshold; dist = {}; new_peaks = {}
+t = snakemake.params.cluster_threshold
+dist = {}
+new_peaks = {}
 for chr in peaks.keys():
-    
+
     # skip chr if no peaks
     chr_coords = list(peaks[chr].keys())
     if chr_coords == []:
@@ -55,13 +57,14 @@ for chr in peaks.keys():
 
     # get distance matrix
     m = np.array([coord for coord in chr_coords]).reshape(-1, 1)
-    dist[chr] = squareform(pdist(m, 'euclidean'))
+    dist[chr] = squareform(pdist(m, "euclidean"))
 
     # cluster peaks
-    i = 0; new_peaks[chr] = {} # initialize
+    i = 0
+    new_peaks[chr] = {}  # initialize
     while i < len(chr_coords):
         # get all peaks within t bp
-        k,  = np.where(dist[chr][i] <= t)
+        (k,) = np.where(dist[chr][i] <= t)
         coords = [chr_coords[j] for j in k]
         start, end = min(coords), max(coords)
         end += 1 if start == end else 0  # add 1 to end if start == end
@@ -75,13 +78,13 @@ cols = {"chr": [], "start": [], "end": [], "num_reads": []}
 for chr in new_peaks.keys():
     for start, end in new_peaks[chr].keys():
         # skip peaks with only one read
-        if len(new_peaks[chr][(start,end)]) == 1:
+        if len(new_peaks[chr][(start, end)]) == 1:
             continue
 
         cols["chr"].append(chr)
         cols["start"].append(start)
         cols["end"].append(end)
-        cols["num_reads"].append(len(new_peaks[chr][(start,end)]))
+        cols["num_reads"].append(len(new_peaks[chr][(start, end)]))
 
 # save to file
 pd.DataFrame(cols).to_csv(snakemake.output[0], sep="\t", index=False, header=False)
