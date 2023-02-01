@@ -26,8 +26,6 @@ include: "rules/peaks.smk"
 
 # include: "rules/model.smk"
 # include: "rules/qc.smk"
-
-
 rule all:
     input:
         expand(

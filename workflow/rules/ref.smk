@@ -205,9 +205,7 @@ rule fix_names:
     log:
         "{outdir}/resources/{db}/{ref}_fixnames.log",
     run:
-        # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])
-        # read in the chromosome map
         chrom_map = pd.read_csv(input["chrom_map"], sep="\t", names=["hs37d5", "ann"])
         # change the names in a loop
         for name in chrom_map["ann"].to_list():
