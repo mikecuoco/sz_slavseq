@@ -1,0 +1,16 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3
+  - ipdb
+  - pandas
+  - pyranges
+  - pyarrow
+  - scipy
+  - pysam>=0.20.0
+  - jupyter
+  - jupyterlab_code_formatter
+  - nbconvert
+  - seaborn
