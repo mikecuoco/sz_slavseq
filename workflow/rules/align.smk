@@ -29,7 +29,8 @@ rule bwa_mem:
     log:
         "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
-        extra=r"-R '@RG\tID:{donor}\tSM:{sample}'",  # TODO: consider removing duplicates to speed up peak calling
+        extra=r"-R '@RG\tID:{donor}\tSM:{sample}'", 
+        samblaster_extra="-r --addMateTags",
     threads: 32
     wrapper:
         "v1.21.6/bio/bwa/mem-samblaster"
