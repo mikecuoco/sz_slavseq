@@ -6,7 +6,7 @@ sys.stderr = open(snakemake.log[0], "w")
 
 # iterate over reads
 bam = pysam.AlignmentFile(snakemake.input.bam, "rb")  # must be coordinate sorted
-peaks = {}; 
+peaks = {}
 print("Calling non-reference L1 insertions...")
 for r in bam.fetch():
 
@@ -21,20 +21,19 @@ for r in bam.fetch():
     # investigate discordant read1
     if r.is_read1:
         if r.template_length == 0 or abs(r.template_length) > 2000:
-            if r.reference_name not in peaks.keys(): # create new list for each chr
+            if r.reference_name not in peaks.keys():  # create new list for each chr
                 peaks[r.reference_name] = []
                 i, start, end = 0, 0, 0
                 peaks[r.reference_name].append([r])
-            elif r.get_overlap(start, end) > 0: # if overlaps last read, add to existing peak
+            elif (
+                r.get_overlap(start, end) > 0
+            ):  # if overlaps last read, add to existing peak
                 peaks[r.reference_name][i].append(r)
-            else: # create new peak
+            else:  # create new peak
                 i += 1
                 peaks[r.reference_name].append([r])
             start = r.reference_end if r.is_reverse else r.reference_start
             end = r.reference_start if r.is_reverse else r.reference_end
-
-
-import ipdb; ipdb.set_trace()
 
 
 # convert to bed file
@@ -47,8 +46,12 @@ for chr in peaks.keys():
             continue
 
         bed["chr"].append(chr)
-        bed["start"].append(min([r.reference_end if r.is_reverse else r.reference_start for r in p]))
-        bed["end"].append(max([r.reference_start if r.is_reverse else r.reference_end for r in p]))
+        bed["start"].append(
+            min([r.reference_end if r.is_reverse else r.reference_start for r in p])
+        )
+        bed["end"].append(
+            max([r.reference_start if r.is_reverse else r.reference_end for r in p])
+        )
         bed["num_reads"].append(len(p))
 
 # save to file
