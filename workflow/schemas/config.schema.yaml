@@ -5,7 +5,11 @@ description: snakemake configuration file
 type: object
 
 properties:
+  outdir:
+    type: string
   samples:
+    type: string
+  donors:
     type: string
 
   genome:
@@ -71,7 +75,9 @@ properties:
     type: object
 
 required:
+  - outdir
   - samples
+  - donors
   - genome
   - adapters
   - get_features
