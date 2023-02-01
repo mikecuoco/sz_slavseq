@@ -29,7 +29,7 @@ rule bwa_mem:
     log:
         "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
     params:
-        extra=r"-R '@RG\tID:{donor}\tSM:{sample}'", 
+        extra=r"-R '@RG\tID:{donor}\tSM:{sample}'",
         samblaster_extra="-r --addMateTags",
     threads: 32
     wrapper:
