@@ -172,38 +172,51 @@ class WindowFeatures:
         return peakpos, peakcount, peak_te_strand
 
     def features0(self, alignments):
+        # get all primary r1
         primary_r1_reads = list(
             itertools.filterfalse(lambda x: not (x["primary_r1"] is x), alignments)
         )
 
         feature_dict = dict()
-        feature_dict["count"] = len(primary_r1_reads)
+        # count primary r1
+        feature_dict["count"] = len(primary_r1_reads) 
+
+        # count primary r1 on positive strand
         feature_dict["plus_strand.count"] = len(
             list(
                 itertools.filterfalse(
                     lambda x: not (x["sam"][1] & 16 == 0), primary_r1_reads
                 )
             )
-        )
+        ) 
+
+        # count secondary reads above min_secondary_mapq
         feature_dict["secondary.count"] = secondary_read_count(
             alignments, self.min_secondary_mapq
         )
+
+        # get median r2 polyA length in primary r1 
         feature_dict["median_r2_poly_a_length"] = (
             np.nan
             if feature_dict["count"] == 0
             else np.median([x["r2_poly_a_length"] for x in primary_r1_reads])
         )
 
+        # get median YS tag in primary r1 (What is YS?)
         feature_dict["median_ys"] = (
             np.nan
             if feature_dict["count"] == 0
             else np.median([x["tags"]["YS"] for x in primary_r1_reads])
         )
+
+        # get median YG tag in primary r1 (SW score to flanking genome)
         feature_dict["median_yg"] = (
             np.nan
             if feature_dict["count"] == 0
             else np.median([x["tags"]["YG"] for x in primary_r1_reads])
         )
+
+        # get median YA tag in primary r1 (SW score of first $prefix_length bp of read2 to L1 consensus)
         feature_dict["median_ya"] = (
             np.nan
             if feature_dict["count"] == 0
@@ -269,9 +282,12 @@ class WindowFeatures:
         return feature_dict
 
     def features(self):
+        # get all reads from tabix file, add polyA length to reads with Y2 tag
         all_alignments = list(
             self.tabixsam.fetch_polyA(self.chrom, self.start, self.end)
         )
+
+        # filter out primary read 1 with low mapping quality mates
         alignments_from_well_mapped_reads = list(
             primary_read_filter(all_alignments, lambda x: x["sam"][4] >= self.min_mapq)
         )
