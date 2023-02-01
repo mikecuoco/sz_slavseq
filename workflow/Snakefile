@@ -32,7 +32,7 @@ rule all:
     input:
         expand(
             expand(
-                rules.compare_peaks_report.output,
+                rules.render_peaks_report.output,
                 zip,
                 donor=samples.loc[samples["dna_type"] == "bulk"]["donor_id"],
                 dna_type="bulk",
