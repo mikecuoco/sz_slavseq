@@ -31,8 +31,8 @@ rule render_peaks_report:
     input:
         rules.peaks_report.output,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}_cluster{t}.html",
+        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.html",
     conda:
         "../envs/peaks.yml"
     shell:
-        "jupyter nbconvert --to html {input} --output {output}"
+        "jupyter nbconvert --to html {input} --output $(basename {output})"
