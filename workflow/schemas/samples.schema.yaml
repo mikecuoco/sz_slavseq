@@ -3,12 +3,15 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 description: an entry in the sample sheet
 
 properties:
-  donor:
-    type: string
-    description: number identifying the sample donor
   sample:
     type: string
-    description: sample identifier 
+    description: sample identifier
+  tissue_id:
+    type: string
+    description: tissue identifier
+  donor_id:
+    type: string
+    description: donor identifier
   dna_type:
     type: string
     description: type of sequencing (bulk, mda,...)
@@ -23,9 +26,8 @@ properties:
     description: SRA/ENA accession number for automatic download of fastq files
 
 required:
-  - donor
-  - sample
+  - sample_id
+  - tissue_id
+  - donor_id
   - dna_type
-
 # Add necessity for R1/R2 or sra
-  

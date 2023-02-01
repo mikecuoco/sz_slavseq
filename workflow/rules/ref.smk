@@ -157,7 +157,22 @@ rule get_dbvar:
             grep "INS:ME:LINE1" | \
             uniq -u | \
             sed -e 's/^/chr/' | \
-            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed}
+            awk -v OFS='\t' '{{print $1,$2-1,$3}}' > {output.bed}
+        """
+
+
+rule get_donor_knrgl:
+    input:
+        lambda wc: donors.loc[wc.donor]["KNRGL"],
+    output:
+        "{outdir}/resources/{donor}/hs38DH_insertions.bed",
+    conda:
+        "../envs/ref.yml"
+    log:
+        "{outdir}/resources/{donor}/get_vcf.log",
+    shell:
+        """
+        bcftools query -f "%CHROM\t%POS\t%END\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3}}' > {output}
         """
 
 
