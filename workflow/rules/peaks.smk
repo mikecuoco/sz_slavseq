@@ -1,7 +1,7 @@
 rule peaks:
     input:
-        bam=rules.bwa_mem.output.bam,
-        bai=rules.bwa_mem.output.index,
+        bam=rules.tags.output.bam,
+        index=rules.tags.output.index,
     output:
         "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.bed",
     conda:

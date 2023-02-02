@@ -1,0 +1,13 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python>=3.7
+  - pip
+  - sambamba
+  - perl>=5.32
+  - perl-bio-db-hts>=3.01
+  - gcc>=12.1.0
+  - gawk
+  - make
