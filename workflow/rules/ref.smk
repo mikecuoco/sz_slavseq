@@ -157,10 +157,10 @@ rule get_donor_knrgl:
     conda:
         "../envs/ref.yml"
     log:
-        "{outdir}/resources/{donor}/get_vcf.log",
+        "{outdir}/resources/{donor}/get_donor_knrgl.log",
     shell:
         """
-        bcftools query -f "%CHROM\t%POS\t%END\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3}}' > {output} 
+        bcftools query -f "%CHROM\t%POS\t%END\t%INFO/SVLEN\t%INFO/SUBTYPE\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5}}' > {output} 
         """
 
 
