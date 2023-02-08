@@ -14,15 +14,50 @@ rule peaks:
 
 rule peaks_report:
     input:
-        peaks=rules.peaks.output,
+        bulk_peaks=lambda wc: expand(
+            rules.peaks.output,
+            sample=samples.loc[
+                (samples["dna_type"] == "bulk")
+                & (samples["donor_id"] == wc.donor),
+            ]["sample_id"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        bulk_bam=lambda wc: expand(
+            rules.tags.output.bam,
+            sample=samples.loc[
+                (samples["dna_type"] == "bulk")
+                & (samples["donor_id"] == wc.donor),
+            ]["sample_id"],
+            dna_type="bulk",
+            allow_missing=True,
+        ),
+        cell_peaks=lambda wc: expand(
+            rules.peaks.output,
+            sample=samples.loc[
+                (samples["dna_type"] == "mda")
+                & (samples["donor_id"] == wc.donor),
+            ]["sample_id"],
+            dna_type="mda",
+            allow_missing=True,
+        ),
+        cell_bam=lambda wc: expand(
+            rules.tags.output.bam,
+            sample=samples.loc[
+                (samples["dna_type"] == "mda")
+                & (samples["donor_id"] == wc.donor),
+            ]["sample_id"],
+            dna_type="mda",
+            allow_missing=True,
+        ),
         rl1=rules.run_rmsk.output,
         knrgl=rules.get_donor_knrgl.output,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.ipynb",
+        "{outdir}/results/peaks/{ref}/{donor}/peak_report.ipynb",
     conda:
         "../envs/peaks.yml"
     log:
-        notebook="{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.ipynb",
+        notebook="{outdir}/results/peaks/{ref}/{donor}/peak_report.ipynb",
     notebook:
         "../notebooks/peaks_report.py.ipynb"
 
@@ -31,7 +66,7 @@ rule render_peaks_report:
     input:
         rules.peaks_report.output,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.html",
+        "{outdir}/results/peaks/{ref}/{donor}/peak_report.html",
     conda:
         "../envs/peaks.yml"
     shell:
