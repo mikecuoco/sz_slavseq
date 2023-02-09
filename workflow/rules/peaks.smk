@@ -1,21 +1,45 @@
-rule peaks:
+if config["genome"]["region"] != "all":
+    fai = expand(
+        rules.gen_ref.output[1], ref=config["genome"]["build"], outdir=config["outdir"]
+    )[0]
+    with open(fai, "r") as f:
+        genome_size = sum([int(x.split("\t")[1]) for x in f.readlines()])
+
+rule macs2:
     input:
-        bam=rules.tags.output.bam,
-        index=rules.tags.output.index,
+        rules.filter.output
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.bed",
+        peaks="{outdir}/results/macs2/{ref}/{donor}/{dna_type}/{sample}_peaks.narrowPeak",
+        summits="{outdir}/results/macs2/{ref}/{donor}/{dna_type}/{sample}_summits.bed",
+        xls="{outdir}/results/macs2/{ref}/{donor}/{dna_type}/{sample}_peaks.xls",
+        cutoff="{outdir}/results/macs2/{ref}/{donor}/{dna_type}/{sample}_cutoff_analysis.txt",
+    log:
+        "{outdir}/results/macs2/{ref}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/peaks.yml"
-    log:
-        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.log",
-    script:
-        "../scripts/peaks.py"
+    params:
+        genome_size="hs" if config["genome"]["region"] == "all" else genome_size,
+        qValue_cutoff=0.05,
+        extsize=200,
+    shell:
+        """
+        macs2 callpeak \
+            -g {params.genome_size} \
+            -t {input} \
+            -q {params.qValue_cutoff} \
+            --nomodel \
+            --extsize {params.extsize} \
+            --format BAM \
+            --name {wildcards.sample} \
+            --outdir $(dirname {output.peaks}) \
+            --cutoff-analysis 2> {log}
+        """
 
 
 rule peaks_report:
     input:
         bulk_peaks=lambda wc: expand(
-            rules.peaks.output,
+            rules.macs2.output.peaks,
             sample=samples.loc[
                 (samples["dna_type"] == "bulk")
                 & (samples["donor_id"] == wc.donor),
@@ -33,7 +57,7 @@ rule peaks_report:
             allow_missing=True,
         ),
         cell_peaks=lambda wc: expand(
-            rules.peaks.output,
+            rules.macs2.output.peaks,
             sample=samples.loc[
                 (samples["dna_type"] == "mda")
                 & (samples["donor_id"] == wc.donor),
@@ -53,11 +77,11 @@ rule peaks_report:
         rl1=rules.run_rmsk.output,
         knrgl=rules.get_donor_knrgl.output,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/peak_report.ipynb",
+        "{outdir}/results/macs2/{ref}/{donor}/peak_report.ipynb",
     conda:
         "../envs/peaks.yml"
     log:
-        notebook="{outdir}/results/peaks/{ref}/{donor}/peak_report.ipynb",
+        notebook="{outdir}/results/macs2/{ref}/{donor}/peak_report.ipynb",
     notebook:
         "../notebooks/peaks_report.py.ipynb"
 
@@ -66,7 +90,7 @@ rule render_peaks_report:
     input:
         rules.peaks_report.output,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/peak_report.html",
+        "{outdir}/results/macs2/{ref}/{donor}/peak_report.html",
     conda:
         "../envs/peaks.yml"
     shell:

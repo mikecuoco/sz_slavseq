@@ -5,12 +5,12 @@ min_version("7.16.0")
 
 
 wildcard_constraints:
-    dna_type="\w+",
-    label_config="\w+",
-    db="\w+",
-    ref="\w+",
-    sample="\w+",
-    t="\w+",
+	dna_type="\w+",
+	label_config="\w+",
+	db="\w+",
+	ref="\w+",
+	sample="\w+",
+	t="\w+",
 
 
 configfile: "config/config.yml"
@@ -27,10 +27,16 @@ include: "rules/peaks.smk"
 # include: "rules/model.smk"
 # include: "rules/qc.smk"
 rule all:
-    input:
-        expand(
-            rules.render_peaks_report.output,
-            donor=samples["donor_id"].unique(),
-            outdir=config["outdir"],
-            ref=config["genome"]["build"],
-        ),
+	input:
+		expand(
+			expand(
+				rules.macs2.output,
+				zip,
+				donor=samples["donor_id"],
+				sample=samples["sample_id"],
+				dna_type=samples["dna_type"],
+				allow_missing=True,
+			),
+			ref=config["genome"]["build"],
+			outdir=config["outdir"],
+		),

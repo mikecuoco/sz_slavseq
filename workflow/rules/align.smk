@@ -89,3 +89,16 @@ rule tags:
                 samtools sort - -o {output.bam})
         samtools index {output.bam}
         """
+
+rule filter:
+    input:
+        bam=rules.tags.output.bam,
+        index=rules.tags.output.index,
+    output:
+        "{outdir}/results/align/filter/{ref}/{donor}/{dna_type}/{sample}.bam",
+    conda:
+        "../envs/tags.yml"
+    log:
+        "{outdir}/results/align/filter/{ref}/{donor}/{dna_type}/{sample}.log",
+    script:
+        "../scripts/filter_reads.py"
