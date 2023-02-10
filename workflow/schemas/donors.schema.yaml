@@ -1,0 +1,11 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+
+description: an entry in the tissue sheet
+
+properties:
+  donor_id:
+    type: string
+    description: donor identifier
+
+required:
+  - donor_id

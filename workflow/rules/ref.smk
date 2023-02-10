@@ -145,7 +145,22 @@ rule get_dbvar:
             grep "INS:ME:LINE1" | \
             uniq -u | \
             sed -e 's/^/chr/' | \
-            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
+            awk -v OFS='\t' '{{print $1,$2-1,$3}}' > {output.bed} 
+        """
+
+
+rule get_donor_knrgl:
+    input:
+        lambda wc: donors.loc[wc.donor]["KNRGL"],
+    output:
+        "{outdir}/resources/{donor}/hs38DH_insertions.bed",
+    conda:
+        "../envs/ref.yml"
+    log:
+        "{outdir}/resources/{donor}/get_donor_knrgl.log",
+    shell:
+        """
+        bcftools query -f "%CHROM\t%POS\t%END\t%INFO/SVLEN\t%INFO/SUBTYPE\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5}}' > {output} 
         """
 
 
@@ -190,9 +205,7 @@ rule fix_names:
     log:
         "{outdir}/resources/{db}/{ref}_fixnames.log",
     run:
-        # read in the bed file
         bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])
-        # read in the chromosome map
         chrom_map = pd.read_csv(input["chrom_map"], sep="\t", names=["hs37d5", "ann"])
         # change the names in a loop
         for name in chrom_map["ann"].to_list():

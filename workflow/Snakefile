@@ -9,6 +9,8 @@ wildcard_constraints:
     label_config="\w+",
     db="\w+",
     ref="\w+",
+    sample="\w+",
+    t="\w+",
 
 
 configfile: "config/config.yml"
@@ -19,24 +21,16 @@ include: "rules/ref.smk"
 include: "rules/download.smk"
 include: "rules/trim.smk"
 include: "rules/align.smk"
-include: "rules/model.smk"
-include: "rules/qc.smk"
+include: "rules/peaks.smk"
 
 
+# include: "rules/model.smk"
+# include: "rules/qc.smk"
 rule all:
     input:
         expand(
-            rules.render_reports.output,
-            db=list(config["KNRGL"].keys()),
+            rules.render_peaks_report.output,
+            donor=samples["donor_id"].unique(),
+            outdir=config["outdir"],
             ref=config["genome"]["build"],
-            outdir=config["outdir"],
-        ),
-        expand(
-            rules.reads_multiqc.output,
-            outdir=config["outdir"],
-        ),
-        expand(
-            rules.aln_multiqc.output,
-            ref=config["genome"]["build"],
-            outdir=config["outdir"],
         ),

@@ -1,5 +1,5 @@
-donor	sample	dna_type	R1	R2
-1	A	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
-1	B	bulk	.test/data/gDNA_usd7_R1.fastq.gz	.test/data/gDNA_usd7_R2.fastq.gz
-2	A	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
-2	B	bulk	.test/data/gDNA_usd7_R1.fastq.gz	.test/data/gDNA_usd7_R2.fastq.gz
+sample_id	tissue_id	donor_id	dna_type	R1	R2
+A_H1	H1	1	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
+B_H1	H1	1	bulk	.test/data/gDNA_usd7_R1.fastq.gz	.test/data/gDNA_usd7_R2.fastq.gz
+A_H2	H2	2	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
+B_H2	H2	2	bulk	.test/data/gDNA_usd7_R1.fastq.gz	.test/data/gDNA_usd7_R2.fastq.gz
