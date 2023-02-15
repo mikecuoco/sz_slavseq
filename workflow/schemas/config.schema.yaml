@@ -40,26 +40,6 @@ properties:
       - r2_adapter
       - nested_primer
 
-  get_features:
-    type: object
-    min_reads:
-      type: integer
-    window_size:
-      type: integer
-    window_step:
-      type: integer
-    min_mapq:
-      type: integer
-    min_ya:
-      type: integer
-    max_yg:
-      type: integer
-    min_secondary_mapq:
-      type: integer
-    library_3_or_5:
-      type: integer
-      enum: [3, 5]
-
   folds:
     type: object
     split_by:
@@ -80,6 +60,5 @@ required:
   - donors
   - genome
   - adapters
-  - get_features
   - folds
   - models
