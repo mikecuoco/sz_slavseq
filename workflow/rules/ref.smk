@@ -160,7 +160,7 @@ rule get_donor_knrgl:
         "{outdir}/resources/{donor}/get_donor_knrgl.log",
     shell:
         """
-        bcftools query -f "%CHROM\t%POS\t%END\t%INFO/SVLEN\t%INFO/SUBTYPE\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5}}' > {output} 
+        bcftools query -f "%CHROM\t%POS\t%END\t%INFO/STRAND\t%INFO/SVLEN\t%INFO/SUBTYPE\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5}}' > {output} 
         """
 
 
