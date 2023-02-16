@@ -3,7 +3,7 @@ rule peaks:
         bam=rules.tags.output.bam,
         index=rules.tags.output.index,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.bed",
+        peaks="{outdir}/results/peaks/{ref}/{donor}/{dna_type}/{sample}.bed",
     conda:
         "../envs/peaks.yml"
     log:
@@ -15,10 +15,9 @@ rule peaks:
 rule peaks_report:
     input:
         bulk_peaks=lambda wc: expand(
-            rules.peaks.output,
+            rules.peaks.output.peaks,
             sample=samples.loc[
-                (samples["dna_type"] == "bulk")
-                & (samples["donor_id"] == wc.donor),
+                (samples["dna_type"] == "bulk") & (samples["donor_id"] == wc.donor),
             ]["sample_id"],
             dna_type="bulk",
             allow_missing=True,
@@ -26,17 +25,15 @@ rule peaks_report:
         bulk_bam=lambda wc: expand(
             rules.tags.output.bam,
             sample=samples.loc[
-                (samples["dna_type"] == "bulk")
-                & (samples["donor_id"] == wc.donor),
+                (samples["dna_type"] == "bulk") & (samples["donor_id"] == wc.donor),
             ]["sample_id"],
             dna_type="bulk",
             allow_missing=True,
         ),
         cell_peaks=lambda wc: expand(
-            rules.peaks.output,
+            rules.peaks.output.peaks,
             sample=samples.loc[
-                (samples["dna_type"] == "mda")
-                & (samples["donor_id"] == wc.donor),
+                (samples["dna_type"] == "mda") & (samples["donor_id"] == wc.donor),
             ]["sample_id"],
             dna_type="mda",
             allow_missing=True,
@@ -44,8 +41,7 @@ rule peaks_report:
         cell_bam=lambda wc: expand(
             rules.tags.output.bam,
             sample=samples.loc[
-                (samples["dna_type"] == "mda")
-                & (samples["donor_id"] == wc.donor),
+                (samples["dna_type"] == "mda") & (samples["donor_id"] == wc.donor),
             ]["sample_id"],
             dna_type="mda",
             allow_missing=True,
@@ -53,18 +49,19 @@ rule peaks_report:
         rl1=rules.run_rmsk.output,
         knrgl=rules.get_donor_knrgl.output,
     output:
-        "{outdir}/results/peaks/{ref}/{donor}/peak_report.ipynb",
+        notebook="{outdir}/results/peaks/{ref}/{donor}/peaks_report.ipynb",
+        bulk_insertions="{outdir}/results/peaks/{ref}/{donor}/bulk_insertions.tsv",
     conda:
         "../envs/peaks.yml"
     log:
-        notebook="{outdir}/results/peaks/{ref}/{donor}/peak_report.ipynb",
+        notebook="{outdir}/results/peaks/{ref}/{donor}/peaks_report.ipynb",
     notebook:
         "../notebooks/peaks_report.py.ipynb"
 
 
 rule render_peaks_report:
     input:
-        rules.peaks_report.output,
+        rules.peaks_report.output.notebook,
     output:
         "{outdir}/results/peaks/{ref}/{donor}/peak_report.html",
     conda:
