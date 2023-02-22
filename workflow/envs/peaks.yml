@@ -3,14 +3,17 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - python=3
+  - python
+  - numpy<1.24
   - ipdb
   - pandas
-  - pyranges
-  - pyarrow
+  - pyranges>=0.0.120
   - scipy
   - pysam>=0.20.0
   - jupyter
   - jupyterlab_code_formatter
   - nbconvert
   - seaborn
+  - bamread
+  - khmer
+  - tqdm
