@@ -20,11 +20,11 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/align/{stage}/{donor}/{dna_type}/{sample}.bam",
+        rules.bwa_mem.output
     output:
-        "{outdir}/results/qc/flagstat/{stage}/{donor}/{dna_type}/{sample}.flagstat",
+        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/{stage}/{donor}/{dna_type}/{sample}.flagstat.log",
+        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
@@ -67,7 +67,6 @@ rule aln_multiqc:
         expand(
             expand(
                 rules.flagstat.output,
-                stage=["bwa_mem", "rmdup"],
                 allow_missing=True,
             ),
             zip,
