@@ -11,6 +11,7 @@ rule install_bwakit:
         wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
         """
 
+
 # handle specified region
 region = (
     "".join(config["genome"]["region"])
@@ -25,8 +26,8 @@ rule gen_ref:
         bwakit=rules.install_bwakit.output,
         fa=FTP.remote(
             "ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_full_analysis_set.fna.gz",
-            static=True
-            )
+            static=True,
+        ),
     output:
         multiext(
             f"{{outdir}}/resources/hs38DH{region_name}",

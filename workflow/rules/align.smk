@@ -3,18 +3,21 @@ rule bwa_index:
         bwakit=rules.install_bwakit.output,
         fa=rules.gen_ref.output[0],
     output:
-        idx=protected(multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}",
-            ".amb",
-            ".ann",
-            ".bwt",
-            ".pac",
-            ".sa",
-        ))
+        idx=protected(
+            multiext(
+                f"{{outdir}}/resources/hs38DH{region_name}",
+                ".amb",
+                ".ann",
+                ".bwt",
+                ".pac",
+                ".sa",
+            )
+        ),
     log:
         "{outdir}/resources/bwa_index.log",
     shell:
         "{input.bwakit}/bin/bwa index {input.fa} > {log} 2>&1"
+
 
 rule bwa_mem:
     input:

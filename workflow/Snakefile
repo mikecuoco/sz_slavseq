@@ -1,5 +1,5 @@
 from snakemake.utils import min_version
-import snakemake.remote.FTP import RemoteProvider as FTP
+from snakemake.remote.FTP import RemoteProvider as FTP
 
 
 ##### set minimum snakemake version #####
