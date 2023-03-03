@@ -26,11 +26,11 @@ class BasePeakCaller(object):
 					and (not r.is_unmapped)
 					and (not r.is_secondary)
 					and (not r.is_supplementary)
-					and (not r.has_tag("XA"))
-					and (not r.has_tag("SA"))
+					# and (not r.has_tag("XA"))
+					# and (not r.has_tag("SA"))
 					and (r.has_tag("YA") and r.has_tag("YG"))
 					and (r.get_tag("YA") > 20 and r.get_tag("YA") > r.get_tag("YG"))
-					and (r.mapping_quality >= 60)
+					# and (r.mapping_quality >= 60)
 				):
 					yield Read(r.reference_name,r.reference_start,r.reference_end,r.is_reverse)
 			else:
@@ -60,6 +60,7 @@ class SlidingPeakCaller(BasePeakCaller):
 		read_filter: bool,
 		window_size: int,
 		step_size: int,
+		min_reads: int,
 		merge: bool,
 		bg_sizes: list,
 	) -> None:
@@ -79,8 +80,9 @@ class SlidingPeakCaller(BasePeakCaller):
 			), "peak size must be smaller than background window sizes"
 		self.window_size = window_size
 		self.step_size = step_size
-		self.bg_sizes = bg_sizes
+		self.min_reads = min_reads
 		self.merge = merge
+		self.bg_sizes = bg_sizes
 
 	def window(
 		self, contig: str, window_size: int, step_size: int = 1, min_reads: int = 1
@@ -284,7 +286,7 @@ class SlidingPeakCaller(BasePeakCaller):
 			return
 
 		# get peak windows
-		peak_windows = self.window(contig, self.window_size, self.step_size)
+		peak_windows = self.window(contig, self.window_size, self.step_size, min_reads=self.min_reads)
 
 		# adjust for background if bg_sizes is not empty
 		if self.bg_sizes:
@@ -359,4 +361,4 @@ class OverlapPeakCaller(BasePeakCaller):
 	def call_peaks(self, contig: str):
 
 		reads = self.get_reads(contig)
-		return self.merge_reads(iter(reads))
+		return self.merge_reads(reads)
