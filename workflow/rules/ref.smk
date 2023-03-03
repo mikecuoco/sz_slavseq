@@ -35,7 +35,7 @@ rule gen_ref:
             ".genome",
         ),
     log:
-        "{outdir}/resources/{ref}/gen_ref.log",
+        "{outdir}/resources/gen_ref.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -100,12 +100,12 @@ rule run_rmsk:
         lib=rules.make_dfam_lib.output,
     output:
         multiext(
-            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}.fa",
+            f"{{outdir}}/resources/hs38DH{region_name}.fa",
             ".out",
             ".masked",
         ),
     log:
-        "{outdir}/resources/{ref}/run_rmsk.log",
+        "{outdir}/resources/run_rmsk.log",
     conda:
         "../envs/ref.yml"
     params:

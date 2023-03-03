@@ -7,9 +7,9 @@ rule get_features:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.pqt",
+        "{outdir}/results/model/get_features/{db}/{donor}/{dna_type}/{sample}.pqt",
     log:
-        "{outdir}/results/model/get_features/{ref}_{db}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/model/get_features/{db}/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/features.yml"
     script:
@@ -18,12 +18,10 @@ rule get_features:
 
 def get_non_ref_l1(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
-    if wildcards.ref == "hs37d5":
-        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_fixnames_insertions.bed"
-    elif wildcards.ref != KNRGL_build:
-        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_lifted_insertions.bed"
+    if KNRGL_build != "hg38"
+        return f"{wildcards.outdir}/resources/{wildcards.db}_lifted_insertions.bed"
     else:
-        return f"{wildcards.outdir}/resources/{wildcards.db}/{wildcards.ref}_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}_insertions.bed"
 
 
 def get_labels_input(wildcards):
@@ -59,10 +57,10 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{ref}_{db}/{donor}_bulk.bed",
-        mda="{outdir}/results/model/get_labels/{ref}_{db}/{donor}_mda.pqt",
+        bulk="{outdir}/results/model/get_labels/{db}/{donor}_bulk.bed",
+        mda="{outdir}/results/model/get_labels/{db}/{donor}_mda.pqt",
     log:
-        "{outdir}/results/model/get_labels/{ref}_{db}/{donor}.log",
+        "{outdir}/results/model/get_labels/{db}/{donor}.log",
     conda:
         "../envs/features.yml"
     threads: 8
@@ -78,9 +76,9 @@ rule feature_report:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/model/get_labels/{ref}_{db}/feature_report.ipynb",
+        "{outdir}/results/model/get_labels/{db}/feature_report.ipynb",
     log:
-        notebook="{outdir}/results/model/get_labels/{ref}_{db}/feature_report.ipynb",
+        notebook="{outdir}/results/model/get_labels/{db}/feature_report.ipynb",
     conda:
         "../envs/model.yml"
     notebook:
@@ -97,10 +95,10 @@ rule folds:
     params:
         **config["folds"],
     output:
-        folds="{outdir}/results/model/folds/{ref}_{db}/folds.pkl.gz",
-        features="{outdir}/results/model/folds/{ref}_{db}/features.txt",
+        folds="{outdir}/results/model/folds/{db}/folds.pkl.gz",
+        features="{outdir}/results/model/folds/{db}/features.txt",
     log:
-        "{outdir}/results/model/folds/{ref}_{db}/folds.log",
+        "{outdir}/results/model/folds/{db}/folds.log",
     conda:
         "../envs/model.yml"
     script:
@@ -118,12 +116,12 @@ rule train_test:
             "train_sampling_strategy"
         ],
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.pkl.gz",
+        "{outdir}/results/model/train_test/{db}/{model_id}.pkl.gz",
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.log",
+        "{outdir}/results/model/train_test/{db}/{model_id}.log",
     threads: 8
     benchmark:
-        "{outdir}/results/model/train_test/{ref}_{db}/{model_id}.benchmark.txt"
+        "{outdir}/results/model/train_test/{db}/{model_id}.benchmark.txt"
     conda:
         "../envs/model.yml"
     script:
@@ -138,11 +136,11 @@ rule model_report:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
+        "{outdir}/results/model/train_test/{db}/model_report.ipynb",
     conda:
         "../envs/model.yml"
     log:
-        notebook="{outdir}/results/model/train_test/{ref}_{db}/model_report.ipynb",
+        notebook="{outdir}/results/model/train_test/{db}/model_report.ipynb",
     notebook:
         "../notebooks/model_report.py.ipynb"
 
@@ -152,12 +150,12 @@ rule render_reports:
         features=rules.feature_report.output,
         model=rules.model_report.output,
     output:
-        features="{outdir}/results/model/get_labels/{ref}_{db}/feature_report.html",
-        model="{outdir}/results/model/train_test/{ref}_{db}/model_report.html",
+        features="{outdir}/results/model/get_labels/{db}/feature_report.html",
+        model="{outdir}/results/model/train_test/{db}/model_report.html",
     conda:
         "../envs/model.yml"
     log:
-        "{outdir}/results/model/train_test/{ref}_{db}/render_reports.log",
+        "{outdir}/results/model/train_test/{db}/render_reports.log",
     shell:
         """
         touch {log} && exec > {log} 2>&1
