@@ -1,3 +1,16 @@
+rule install_bwakit:
+    output:
+        directory("resources/bwa.kit"),
+    conda:
+        "../envs/env.yml"
+    log:
+        "resources/install_bwakit.log",
+    shell:
+        """
+        mkdir -p resources && cd resources
+        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
+        """
+
 # handle specified region
 region = (
     "".join(config["genome"]["region"])
