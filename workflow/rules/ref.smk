@@ -21,6 +21,12 @@ region_name = f"_{region}" if region != "all" else ""
 
 
 rule gen_ref:
+    input:
+        bwakit=rules.install_bwakit.output,
+        fa=FTP.remote(
+            "ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_full_analysis_set.fna.gz",
+            static=True
+            )
     output:
         multiext(
             f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}",
@@ -42,30 +48,22 @@ rule gen_ref:
     shell:
         """
         # start logging
-        touch {log} && exec 2>{log} 
+        touch {log} && exec 2>{log}
 
-        # allow errors temporarily to handle broken pipe with hs37d5
-        set +e 
-        bash workflow/scripts/run-gen-ref.sh {wildcards.ref}
-        set -e
-
-        # hs37d5 only accepts strings of digits (e.g. '22')
-        # delete letters from params.region if necessary (e.g. 'chr22' -> '22')
-        if [ "{params.region}" != "all" ] && [ {wildcards.ref} == "hs37d5" ]; then
-            region=$(echo "{params.region}" | sed 's/[a-z]//gI')
-        else
-            region="{params.region}"
-        fi
+        # download reference
+        gzip -dc {input.fa} > hs38DH.fa
+        cat {input.bwakit}/resource-GRCh38/hs38DH-extra.fa >> hs38DH.fa
 
         # filter for the region if specified
         if [ "{params.region}" != "all" ]; then
-            samtools faidx {wildcards.ref}.fa $region > {output[0]}
+            samtools faidx {wildcards.ref}.fa {params.region} > {output[0]}
         else
             mv {wildcards.ref}.fa {output[0]}
         fi
 
+        # index
         samtools faidx {output[0]}
-        cut -f 1,2 {output[1]} > {output[2]} # TODO: use samtools dict instead?
+        cut -f 1,2 {output[1]} > {output[2]}
         """
 
 
