@@ -29,7 +29,7 @@ rule gen_ref:
             )
     output:
         multiext(
-            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}",
+            f"{{outdir}}/resources/hs38DH{region_name}",
             ".fa",
             ".fa.fai",
             ".genome",
@@ -56,9 +56,9 @@ rule gen_ref:
 
         # filter for the region if specified
         if [ "{params.region}" != "all" ]; then
-            samtools faidx {wildcards.ref}.fa {params.region} > {output[0]}
+            samtools faidx hs38DH.fa {params.region} > {output[0]}
         else
-            mv {wildcards.ref}.fa {output[0]}
+            mv hs38DH.fa {output[0]}
         fi
 
         # index
@@ -182,33 +182,3 @@ rule liftover:
         source=get_KNRGL_build,
     script:
         "../scripts/liftover_bed.sh"
-
-
-def get_fixnames_input(wildcards):
-    KNRGL_build = get_KNRGL_build(wildcards)
-    if wildcards.ref == "hs37d5" and KNRGL_build == "hg19":
-        return f"{wildcards.outdir}/resources/{wildcards.db}/hg19_insertions.bed"
-    elif wildcards.ref == "hs37d5" and KNRGL_build != "hg19":
-        return f"{wildcards.outdir}/resources/{wildcards.db}/hg19_lifted_insertions.bed"
-
-
-rule fix_names:
-    input:
-        bed=get_fixnames_input,
-        chrom_map="resources/hs37d5_map.tsv",
-    output:
-        "{outdir}/resources/{db}/{ref}_fixnames_insertions.bed",
-    log:
-        "{outdir}/resources/{db}/{ref}_fixnames.log",
-    run:
-        # read in the bed file
-        bed = pd.read_csv(input["bed"], sep="\t", names=["chr", "start", "end"])
-        # read in the chromosome map
-        chrom_map = pd.read_csv(input["chrom_map"], sep="\t", names=["hs37d5", "ann"])
-        # change the names in a loop
-        for name in chrom_map["ann"].to_list():
-            bed.loc[bed["chr"] == name, "chr"] = chrom_map.loc[
-                chrom_map["ann"] == name, "hs37d5"
-            ].values[0]
-
-        bed.to_csv(output[0], sep="\t", index=False, header=False)
