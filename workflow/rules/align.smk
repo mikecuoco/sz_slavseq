@@ -23,7 +23,7 @@ rule bwa_mem:
         fa=rules.gen_ref.output[0],
         reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
-        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.aln.bam",
+        "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
     threads: 4
     shell:
         """
@@ -63,9 +63,9 @@ rule tags:
         fa=rules.gen_ref.output[0],
         gapafim=rules.install_gapafim.output,
     output:
-        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.err",
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.err",
     conda:
         "../envs/align.yml"
     params:
@@ -95,10 +95,10 @@ rule tabix:
     input:
         rules.tags.output,
     output:
-        bgz="{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
-        tbi="{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
+        bgz="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz",
+        tbi="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz.tbi",
     log:
-        "{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/align.yml"
     shell:
