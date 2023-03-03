@@ -19,9 +19,9 @@ rule get_features:
 def get_non_ref_l1(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
     if "38" in KNRGL_build:
-        return f"{wildcards.outdir}/resources/{wildcards.db}_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_insertions.bed"
     else:
-        return f"{wildcards.outdir}/resources/{wildcards.db}_lifted_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_lifted_insertions.bed"
 
 
 def get_labels_input(wildcards):
