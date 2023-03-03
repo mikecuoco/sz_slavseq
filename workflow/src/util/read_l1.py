@@ -29,7 +29,7 @@ def read_rmsk(fn):
     # correct strand
     rmsk["Strand"] = rmsk.apply(lambda x: "+" if x.Strand == "+" else "-", axis=1)
 
-    return pr.PyRanges(rmsk)
+    return rmsk
 
 
 def read_knrgl(fn):
@@ -52,4 +52,4 @@ def read_knrgl(fn):
         lambda x: x.End + 750 if x.Strand == "+" else x.End, axis=1
     )
 
-    return pr.PyRanges(knrgl)
+    return knrgl
