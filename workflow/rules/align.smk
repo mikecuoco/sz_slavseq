@@ -1,54 +1,39 @@
 rule bwa_index:
     input:
-        rules.gen_ref.output[0],
+        bwakit=rules.install_bwakit.output,
+        fa=rules.gen_ref.output[0],
     output:
-        idx=multiext(
-            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}",
+        idx=protected(multiext(
+            f"{{outdir}}/resources/hs38DH{region_name}",
             ".amb",
             ".ann",
             ".bwt",
             ".pac",
             ".sa",
-        ),
+        ))
     log:
-        "{outdir}/resources/{ref}/bwa_index.log",
-    cache: True
-    params:
-        algorithm="bwtsw",
-    wrapper:
-        "v1.18.0/bio/bwa/index"
-
+        "{outdir}/resources/bwa_index.log",
+    shell:
+        "{input.bwakit}/bin/bwa index {input.fa} > {log} 2>&1"
 
 rule bwa_mem:
     input:
-        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
+        bwakit=rules.install_bwakit.output,
         idx=rules.bwa_index.output.idx,
+        fa=rules.gen_ref.output[0],
+        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
-        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
-    log:
-        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
-    params:
-        extra="-T 19",  # Don’t output alignment with score lower than 19.
+        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.aln.bam",
     threads: 4
-    cache: True
-    wrapper:
-        "v1.19.2/bio/bwa/mem"
-
-
-rule rmdup:
-    input:
-        rules.bwa_mem.output,
-    output:
-        "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.bam",
-    log:
-        "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/align.yml"
-    shadow:
-        "shallow"
     shell:
         """
-        workflow/scripts/slavseq_rmdup_hts.pl {input} {output} > {log} 2>&1
+        prefix="$(dirname {output})$(basename {output} .aln.bam)""
+
+        {input.bwakit}/bin/bwa mem \
+            -sd \
+            -t {threads} \
+            -o $prefix \
+            {input.reads} \
         """
 
 
@@ -74,7 +59,7 @@ rule install_gapafim:
 
 rule tags:
     input:
-        bam=rules.rmdup.output,
+        bam=rules.bwa_mem.output,
         fa=rules.gen_ref.output[0],
         gapafim=rules.install_gapafim.output,
     output:
