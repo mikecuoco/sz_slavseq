@@ -20,6 +20,8 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 
+from snakemake.remote import FTP 
+FTP = FTP.RemoteProvider()
 
 rule gen_ref:
     input:
