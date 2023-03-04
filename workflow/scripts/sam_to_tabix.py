@@ -10,30 +10,25 @@ This way, a search for chr1:1000-2000 will return all 3 alignments. A
 search for chr14:2020-2040 or chrX:10-110 will return nothing.
 """
 
-import sys
-import pysam
+import sys, pysam
 
-
-def print_err(msg):
-    sys.stderr.write(msg + "\n")
-
-
-def output_alignments(alignments, primary_r1):
-    for al in alignments:
-        joined = "\t".join(
-            [
-                primary_r1.reference_name,
-                str(primary_r1.reference_start),
-                str(primary_r1.reference_end),
-                al.to_string(),
-            ]
-        )
-        sys.stdout.write(joined)
+def output_alignments(alignments, primary_r1, qname):
+    if len(alignments) > 0 and primary_r1:
+        for al in alignments:
+            joined = "\t".join(
+                [
+                    primary_r1.reference_name,
+                    str(primary_r1.reference_start),
+                    str(primary_r1.reference_end),
+                    al.to_string(),
+                ]
+            )
+            print(joined, file=sys.stdout)
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 2:
-        sys.stderr.write("Usage: sam_to_tabix.py input.bam > output.tabix")
+        print("Usage: sam_to_tabix.py input.bam > output.tabix", file=sys.stderr)
         sys.exit(1)
 
 
@@ -54,6 +49,7 @@ if __name__ == "__main__":
                 break
 
         # iterate over all alignments
+        kept, skipped = 0,0
         for al in b:
             if al.is_unmapped:
                 continue
@@ -63,10 +59,11 @@ if __name__ == "__main__":
 
             # check if read has new name
             if last_qname != current_qname:
-                if len(alignments) > 0 and primary_r1 is not None:
-                    output_alignments(alignments, primary_r1)
+                output_alignments(alignments, primary_r1, last_qname)
+                if primary_r1:
+                    kept += len(alignments) 
                 else:
-                    print_err("No primary alignments for " + last_qname)
+                    skipped += len(alignments)
                 alignments = []
                 primary_r1 = None
                 last_qname = current_qname
@@ -79,4 +76,10 @@ if __name__ == "__main__":
                 assert primary_r1 is None, "Primary R1 error"
                 primary_r1 = al
 
-    output_alignments(alignments, primary_r1)
+output_alignments(alignments, primary_r1, last_qname)
+if primary_r1:
+    kept += len(alignments) 
+else:
+    skipped += len(alignments)
+print(kept, "alignments processed", file=sys.stderr)
+print(skipped, "alignments without primary read1 were skipped", file=sys.stderr)
