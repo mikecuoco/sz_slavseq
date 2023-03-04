@@ -2,32 +2,34 @@ rule install_bwakit:
     output:
         directory("resources/bwa.kit"),
     conda:
-        "../envs/env.yml"
+        "../envs/ref.yml"
     log:
         "resources/install_bwakit.log",
     shell:
         """
-        mkdir -p resources && cd resources
+        mkdir -p $(dirname {output}) && cd $(dirname {output})
         wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
         """
 
 
 # handle specified region
 region = (
-    "".join(config["genome"]["region"])
-    if isinstance(config["genome"]["region"], list)
-    else config["genome"]["region"]
+    "".join(config["region"])
+    if isinstance(config["region"], list)
+    else config["region"]
 )
 region_name = f"_{region}" if region != "all" else ""
 
 from snakemake.remote import FTP 
 FTP = FTP.RemoteProvider()
 
+# generate hg38 reference with decoy and alt contigs
 rule gen_ref:
     input:
         bwakit=rules.install_bwakit.output,
         fa=FTP.remote(
             "ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_full_analysis_set.fna.gz",
+            keep_local=True,
             static=True,
         ),
     output:
@@ -42,24 +44,24 @@ rule gen_ref:
     conda:
         "../envs/ref.yml"
     params:
-        region=" ".join(config["genome"]["region"])
-        if isinstance(config["genome"]["region"], list)
-        else config["genome"]["region"],
+        region=" ".join(config["region"])
+        if isinstance(config["region"], list)
+        else config["region"],
     shadow:
         "shallow"
-    cache: True
     shell:
         """
         # start logging
         touch {log} && exec 2>{log}
 
-        # download reference
+        # decompress reference, allow unexpected EOF
         gzip -dc {input.fa} > hs38DH.fa
         cat {input.bwakit}/resource-GRCh38/hs38DH-extra.fa >> hs38DH.fa
 
         # filter for the region if specified
         if [ "{params.region}" != "all" ]; then
             samtools faidx hs38DH.fa {params.region} > {output[0]}
+            rm -f hs38DH.fa
         else
             mv hs38DH.fa {output[0]}
         fi
@@ -102,11 +104,11 @@ rule run_rmsk:
         fa=rules.gen_ref.output[0],
         lib=rules.make_dfam_lib.output,
     output:
-        multiext(
+        protected(multiext(
             f"{{outdir}}/resources/hs38DH{region_name}.fa",
             ".out",
             ".masked",
-        ),
+        ))
     log:
         "{outdir}/resources/run_rmsk.log",
     conda:
@@ -116,8 +118,7 @@ rule run_rmsk:
         # empty string is default
         # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
         # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
-        speed="-s" if config["genome"]["region"] == "all" else "-qq",
-    cache: True
+        speed="-s" if config["region"] == "all" else "-qq",
     shadow:
         "shallow"
     threads: 24
