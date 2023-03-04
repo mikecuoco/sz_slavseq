@@ -21,7 +21,9 @@ def get_non_ref_l1(wildcards):
     if "38" in KNRGL_build:
         return f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_insertions.bed"
     else:
-        return f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_lifted_insertions.bed"
+        return (
+            f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_lifted_insertions.bed"
+        )
 
 
 def get_labels_input(wildcards):

@@ -20,7 +20,7 @@ rule fastqc:
 
 rule flagstat:
     input:
-        rules.bwa_mem.output
+        rules.bwa_mem.output,
     output:
         "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat",
     log:

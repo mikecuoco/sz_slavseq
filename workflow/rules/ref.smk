@@ -20,8 +20,10 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 
-from snakemake.remote import FTP 
+from snakemake.remote import FTP
+
 FTP = FTP.RemoteProvider()
+
 
 # generate hg38 reference with decoy and alt contigs
 rule gen_ref:
@@ -104,11 +106,13 @@ rule run_rmsk:
         fa=rules.gen_ref.output[0],
         lib=rules.make_dfam_lib.output,
     output:
-        protected(multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}.fa",
-            ".out",
-            ".masked",
-        ))
+        protected(
+            multiext(
+                f"{{outdir}}/resources/hs38DH{region_name}.fa",
+                ".out",
+                ".masked",
+            )
+        ),
     log:
         "{outdir}/resources/run_rmsk.log",
     conda:
