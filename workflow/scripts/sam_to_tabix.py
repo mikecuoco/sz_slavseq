@@ -11,23 +11,7 @@ search for chr14:2020-2040 or chrX:10-110 will return nothing.
 """
 
 import sys
-import re
-
-
-def is_primary_r1_alignment(a):
-    return int(a[1]) & (2048 | 256 | 4) == 0 and int(a[1]) & (64) != 0
-
-
-def qname(a):
-    m = re.search("^([^/]*)", a[0])
-    return m.group(1)
-
-
-def cigar2reflen(cigar):
-    r = 0
-    for m in re.finditer("(\d+)[MDN]", cigar):
-        r += int(m.group(1))
-    return r
+import pysam
 
 
 def print_err(msg):
@@ -35,52 +19,64 @@ def print_err(msg):
 
 
 def output_alignments(alignments, primary_r1):
-    if primary_r1 is None and len(alignments) > 0:
-        print_err(alignments)
-
-    if len(alignments) > 0 and primary_r1 is not None:
-        for al in alignments:
-            joined = "\t".join(
-                [
-                    primary_r1[2],
-                    primary_r1[3],
-                    str(int(primary_r1[3]) + cigar2reflen(primary_r1[5])),
-                    al,
-                ]
-            )
-            sys.stdout.write(joined)
+    for al in alignments:
+        joined = "\t".join(
+            [
+                primary_r1.reference_name,
+                str(primary_r1.reference_start),
+                str(primary_r1.reference_end),
+                al.to_string(),
+            ]
+        )
+        sys.stdout.write(joined)
 
 
-#             print( "{}".format(joined), '\t', '', sys.stdout, False)
-# print('\t'.join([primary_r1[2], primary_r1[3], str(int(primary_r1[3])+cigar2reflen(primary_r1[5])), al]),end='')
+if __name__ == "__main__":
+    if len(sys.argv) > 2:
+        sys.stderr.write("Usage: sam_to_tabix.py input.bam > output.tabix")
+        sys.exit(1)
 
-# print(alignments)
 
-alignments = []
-primary_r1 = None
+    # iterate over all alignments
+    with pysam.AlignmentFile(str(sys.argv[1]), "rb") as bam:
 
-last_qname = None
-
-for line in sys.stdin:
-    a = line.split("\t")
-    a[-1] = a[-1].rstrip()
-
-    current_qname = qname(a)
-
-    if last_qname != current_qname:
-        output_alignments(alignments, primary_r1)
+        # initialize 
         alignments = []
+        b = bam.fetch(until_eof=True)
         primary_r1 = None
-        last_qname = current_qname
+        for al in b:
+            if al.is_unmapped:
+                continue
+            last_qname = al.query_name
+            alignments.append(al)
+            if al.is_read1 and (not al.is_secondary) and (not al.is_supplementary):
+                primary_r1 = al
+                break
 
-    alignments.append(line)
-    # alignments.append(str(cigar2reflen(a[5]))+'_'+str(((int(a[1])&128)//128)+1))
+        # iterate over all alignments
+        for al in b:
+            if al.is_unmapped:
+                continue
 
-    if is_primary_r1_alignment(a):
-        if primary_r1 is not None:
-            print_err("Primary R1 error: " + primary_r1[0])
-            # assert primary_r1 is not None
+            # grab the read name
+            current_qname = al.query_name
 
-        primary_r1 = a
+            # check if read has new name
+            if last_qname != current_qname:
+                if len(alignments) > 0 and primary_r1 is not None:
+                    output_alignments(alignments, primary_r1)
+                else:
+                    print_err("No primary alignments for " + last_qname)
+                alignments = []
+                primary_r1 = None
+                last_qname = current_qname
 
-output_alignments(alignments, primary_r1)
+            # add the alignment to the list
+            alignments.append(al)
+
+            # check if this is the primary r1 alignment, if so, store it
+            if al.is_read1 and (not al.is_secondary) and (not al.is_supplementary):
+                assert primary_r1 is None, "Primary R1 error"
+                primary_r1 = al
+
+    output_alignments(alignments, primary_r1)
