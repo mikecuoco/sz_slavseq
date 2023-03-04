@@ -28,8 +28,6 @@ rule bwa_mem:
     output:
         "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
     threads: 4
-    conda: 
-        "../envs/align.yml"
     shell:
         """
         prefix="$(dirname {output})/$(basename {output} .aln.bam)"
@@ -37,6 +35,7 @@ rule bwa_mem:
 
         # -s sort option doesn't work
         {input.bwakit}/run-bwamem \
+            -R "@RG\\tID:{wildcards.donor}\\tSM:{wildcards.sample}\\tPL:ILLUMINA" \
             -d \
             -t {threads} \
             -o $prefix \
@@ -111,9 +110,7 @@ rule tabix:
         "../envs/align.yml"
     shell:
         """
-        samtools sort -n {input} | \
-            samtools view | \
-            workflow/scripts/sam_to_tabix.py | \
+        workflow/scripts/sam_to_tabix.py {input} | \
             sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
             bgzip -c > {output.bgz} 2> {log} 
 
