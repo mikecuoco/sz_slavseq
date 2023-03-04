@@ -128,7 +128,7 @@ def get_germline_l1(
         if w is None:
             continue
         w_list.append(w.as_tuple())
-    df = pl.DataFrame(w_list, columns=["chrom", "start", "end"])
+    df = pl.DataFrame(w_list, schema=["chrom", "start", "end"])
 
     # merge ref and nonref l1
     df = (
@@ -168,7 +168,6 @@ if __name__ == "__main__":
         [
             pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label"),
             pl.lit(snakemake.wildcards.db).alias("db"),
-            pl.lit(snakemake.wildcards.ref).alias("build"),
         ]
     ).drop(["in_NRdb", "in_rmsk"]).write_csv(snakemake.output.bulk)
 
@@ -190,7 +189,6 @@ if __name__ == "__main__":
 
     # add db and build columns
     df = df.with_column(pl.lit(snakemake.wildcards.db).alias("db"))
-    df = df.with_column(pl.lit(snakemake.wildcards.ref).alias("build"))
 
     # save
     df.write_parquet(snakemake.output.mda)
