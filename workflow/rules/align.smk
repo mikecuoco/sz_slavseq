@@ -5,7 +5,7 @@ rule bwa_index:
     output:
         idx=protected(
             multiext(
-                f"{{outdir}}/resources/hs38DH{region_name}",
+                f"{{outdir}}/resources/hs38DH{region_name}.fa",
                 ".amb",
                 ".ann",
                 ".bwt",
@@ -16,7 +16,7 @@ rule bwa_index:
     log:
         "{outdir}/resources/bwa_index.log",
     shell:
-        "{input.bwakit}/bin/bwa index {input.fa} > {log} 2>&1"
+        "{input.bwakit}/bwa index {input.fa} > {log} 2>&1"
 
 
 rule bwa_mem:
@@ -28,15 +28,20 @@ rule bwa_mem:
     output:
         "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
     threads: 4
+    conda: 
+        "../envs/align.yml"
     shell:
         """
-        prefix="$(dirname {output})$(basename {output} .aln.bam)""
+        prefix="$(dirname {output})/$(basename {output} .aln.bam)"
+        idxbase="$(dirname {input.idx[0]})/$(basename {input.idx[0]} .amb)"
 
-        {input.bwakit}/bin/bwa mem \
-            -sd \
+        # -s sort option doesn't work
+        {input.bwakit}/run-bwamem \
+            -d \
             -t {threads} \
             -o $prefix \
-            {input.reads} \
+            $idxbase \
+            {input.reads} | bash
         """
 
 
@@ -106,7 +111,8 @@ rule tabix:
         "../envs/align.yml"
     shell:
         """
-        samtools view {input} | \
+        samtools sort -n {input} | \
+            samtools view | \
             workflow/scripts/sam_to_tabix.py | \
             sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
             bgzip -c > {output.bgz} 2> {log} 
