@@ -8,17 +8,6 @@ properties:
   samples:
     type: string
 
-  genome:
-    type: object
-    properties:
-      build:
-        type: [string, array]
-      region:
-        type: [integer, string, array]
-        default: all
-    required:
-      - build
-
   KNRGL:
     type: object
 
@@ -72,7 +61,6 @@ properties:
 
 required:
   - samples
-  - genome
   - adapters
   - get_features
   - folds

@@ -24,9 +24,6 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    strategy:
-      matrix:
-        genome: ["hs37d5", "hs38DH", "chm13v2"]
     needs:
       - Formatting
     steps:
@@ -37,8 +34,8 @@ jobs:
         id: cache-sm
         uses: actions/cache@v3
         with:
-          path: .test/resources/${{ matrix.genome }}
-          key: ${{ runner.os }}-${{ matrix.genome }}
+          path: .test/resources/
+          key: ${{ runner.os }}
       - name: Install mamba
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -51,7 +48,7 @@ jobs:
       - name: Install snakemake
         run: mamba install python=3.9 snakemake==7.16 biopython
       - name: Run workflow
-        run: snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/${{ matrix.genome }}.yml
+        run: snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/chr21chr22/config.yml
 
     # - name: Test report
     #   uses: snakemake/snakemake-github-action@v1.24.0

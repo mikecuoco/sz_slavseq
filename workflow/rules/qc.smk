@@ -20,11 +20,11 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/align/{stage}/{ref}/{donor}/{dna_type}/{sample}.bam",
+        rules.bwa_mem.output,
     output:
-        "{outdir}/results/qc/flagstat/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat",
+        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/{stage}/{ref}/{donor}/{dna_type}/{sample}.flagstat.log",
+        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
@@ -67,7 +67,6 @@ rule aln_multiqc:
         expand(
             expand(
                 rules.flagstat.output,
-                stage=["bwa_mem", "rmdup"],
                 allow_missing=True,
             ),
             zip,
@@ -77,10 +76,10 @@ rule aln_multiqc:
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/qc/{ref}_multiqc.html",
+        "{outdir}/results/qc/multiqc.html",
     log:
-        "{outdir}/results/qc/{ref}_multiqc.log",
+        "{outdir}/results/qc/multiqc.log",
     params:
-        extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq {wildcards.ref}" --no-data-dir',
+        extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"

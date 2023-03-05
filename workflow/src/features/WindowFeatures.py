@@ -225,7 +225,7 @@ class WindowFeatures:
         feature_dict["median_xd"] = (
             np.nan
             if feature_dict["count"] == 0
-            else np.median([x["tags"]["XD"] for x in primary_r1_reads])
+            else np.median([x["tags"]["XD"] for x in primary_r1_reads if "XD" in x["tags"]])
         )
 
         d = r1r2_distances(alignments)

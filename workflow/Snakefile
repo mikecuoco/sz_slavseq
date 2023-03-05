@@ -1,5 +1,6 @@
 from snakemake.utils import min_version
 
+
 ##### set minimum snakemake version #####
 min_version("7.16.0")
 
@@ -8,7 +9,6 @@ wildcard_constraints:
     dna_type="\w+",
     label_config="\w+",
     db="\w+",
-    ref="\w+",
 
 
 configfile: "config/config.yml"
@@ -28,7 +28,6 @@ rule all:
         expand(
             rules.render_reports.output,
             db=list(config["KNRGL"].keys()),
-            ref=config["genome"]["build"],
             outdir=config["outdir"],
         ),
         expand(
@@ -37,6 +36,5 @@ rule all:
         ),
         expand(
             rules.aln_multiqc.output,
-            ref=config["genome"]["build"],
             outdir=config["outdir"],
         ),

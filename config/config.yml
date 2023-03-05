@@ -2,9 +2,7 @@
 samples: config/single_donor.tsv
 outdir: /raidixshare_logg01/mcuoco/internal/BSMN
 
-genome:
-  build: hs38DH # options: <hs37d5|hs38DH|chm13v2>
-  region: all # for chromosome 22: use "22" for hs37d5, use "chr22" for hs38DH and chm13v2
+region: all
 
 KNRGL:
   dbVar:

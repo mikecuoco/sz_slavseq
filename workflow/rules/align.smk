@@ -1,54 +1,46 @@
 rule bwa_index:
     input:
-        rules.gen_ref.output[0],
+        bwakit=rules.install_bwakit.output,
+        fa=rules.gen_ref.output[0],
     output:
-        idx=multiext(
-            f"{{outdir}}/resources/{{ref}}/{{ref}}{region_name}",
-            ".amb",
-            ".ann",
-            ".bwt",
-            ".pac",
-            ".sa",
+        idx=protected(
+            multiext(
+                f"{{outdir}}/resources/hs38DH{region_name}.fa",
+                ".amb",
+                ".ann",
+                ".bwt",
+                ".pac",
+                ".sa",
+            )
         ),
     log:
-        "{outdir}/resources/{ref}/bwa_index.log",
-    cache: True
-    params:
-        algorithm="bwtsw",
-    wrapper:
-        "v1.18.0/bio/bwa/index"
+        "{outdir}/resources/bwa_index.log",
+    shell:
+        "{input.bwakit}/bwa index {input.fa} > {log} 2>&1"
 
 
 rule bwa_mem:
     input:
-        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
+        bwakit=rules.install_bwakit.output,
         idx=rules.bwa_index.output.idx,
+        fa=rules.gen_ref.output[0],
+        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
-        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.bam",
-    log:
-        "{outdir}/results/align/bwa_mem/{ref}/{donor}/{dna_type}/{sample}.log",
-    params:
-        extra="-T 19",  # Don’t output alignment with score lower than 19.
+        "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
     threads: 4
-    cache: True
-    wrapper:
-        "v1.19.2/bio/bwa/mem"
-
-
-rule rmdup:
-    input:
-        rules.bwa_mem.output,
-    output:
-        "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.bam",
-    log:
-        "{outdir}/results/align/rmdup/{ref}/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/align.yml"
-    shadow:
-        "shallow"
     shell:
         """
-        workflow/scripts/slavseq_rmdup_hts.pl {input} {output} > {log} 2>&1
+        prefix="$(dirname {output})/$(basename {output} .aln.bam)"
+        idxbase="$(dirname {input.idx[0]})/$(basename {input.idx[0]} .amb)"
+
+        # -s sort option doesn't work
+        {input.bwakit}/run-bwamem \
+            -R "@RG\\tID:{wildcards.donor}\\tSM:{wildcards.sample}\\tPL:ILLUMINA" \
+            -d \
+            -t {threads} \
+            -o $prefix \
+            $idxbase \
+            {input.reads} | bash
         """
 
 
@@ -74,13 +66,13 @@ rule install_gapafim:
 
 rule tags:
     input:
-        bam=rules.rmdup.output,
+        bam=rules.bwa_mem.output,
         fa=rules.gen_ref.output[0],
         gapafim=rules.install_gapafim.output,
     output:
-        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.bam",
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.bam",
     log:
-        "{outdir}/results/align/tags/{ref}/{donor}/{dna_type}/{sample}.err",
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.err",
     conda:
         "../envs/align.yml"
     params:
@@ -110,16 +102,15 @@ rule tabix:
     input:
         rules.tags.output,
     output:
-        bgz="{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz",
-        tbi="{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.bgz.tbi",
+        bgz="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz",
+        tbi="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz.tbi",
     log:
-        "{outdir}/results/align/tabix/{ref}/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.log",
     conda:
         "../envs/align.yml"
     shell:
         """
-        samtools view {input} | \
-            workflow/scripts/sam_to_tabix.py | \
+        workflow/scripts/sam_to_tabix.py {input} | \
             sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
             bgzip -c > {output.bgz} 2> {log} 
 
