@@ -3,15 +3,13 @@ rule bwa_index:
         bwakit=rules.install_bwakit.output,
         fa=rules.gen_ref.output[0],
     output:
-        idx=protected(
-            multiext(
-                f"{{outdir}}/resources/hs38DH{region_name}.fa",
-                ".amb",
-                ".ann",
-                ".bwt",
-                ".pac",
-                ".sa",
-            )
+        idx=multiext(
+            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            ".amb",
+            ".ann",
+            ".bwt",
+            ".pac",
+            ".sa",
         ),
     log:
         "{outdir}/resources/bwa_index.log",
@@ -83,7 +81,7 @@ rule tags:
         soft_clip_length_threshold=5,
     shell:
         """
-        touch {log} && exec 2>{log} 
+        touch {log} && exec 2>{log}
 
         (samtools sort -n {input.bam} | \
             samtools view -h | \
@@ -94,7 +92,7 @@ rule tags:
                 --r1_flank_length {params.r1_flank_length} \
                 --r2_flank_length {params.r2_flank_length} \
                 --soft_clip_length_threshold {params.soft_clip_length_threshold} | \
-                samtools view -S -b - > {output}) 
+                samtools view -S -b - > {output})
         """
 
 
@@ -112,7 +110,7 @@ rule tabix:
         """
         workflow/scripts/sam_to_tabix.py {input} | \
             sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
-            bgzip -c > {output.bgz} 2> {log} 
+            bgzip -c > {output.bgz} 2> {log}
 
         tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
         """
