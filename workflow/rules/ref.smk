@@ -101,12 +101,10 @@ rule run_rmsk:
         fa=rules.gen_ref.output[0],
         lib=rules.make_dfam_lib.output,
     output:
-        protected(
-            multiext(
-                f"{{outdir}}/resources/hs38DH{region_name}.fa",
-                ".out",
-                ".masked",
-            )
+        multiext(
+            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            ".out",
+            ".masked",
         ),
     log:
         "{outdir}/resources/run_rmsk.log",
