@@ -28,9 +28,8 @@ FTP = FTP.RemoteProvider()
 # generate hg38 reference with decoy and alt contigs
 rule gen_ref:
     input:
-        bwakit=rules.install_bwakit.output,
         fa=FTP.remote(
-            "ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_full_analysis_set.fna.gz",
+            "ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa",
             keep_local=True,
             static=True,
         ),
@@ -56,16 +55,12 @@ rule gen_ref:
         # start logging
         touch {log} && exec 2>{log}
 
-        # decompress reference, allow unexpected EOF
-        gzip -dc {input.fa} > hs38DH.fa
-        cat {input.bwakit}/resource-GRCh38/hs38DH-extra.fa >> hs38DH.fa
-
         # filter for the region if specified
         if [ "{params.region}" != "all" ]; then
-            samtools faidx hs38DH.fa {params.region} > {output[0]}
-            rm -f hs38DH.fa
+            samtools faidx {input} {params.region} > {output[0]}
+            rm -f {input}
         else
-            mv hs38DH.fa {output[0]}
+            mv {input} {output[0]}
         fi
 
         # index
@@ -164,7 +159,7 @@ rule get_dbvar:
             grep "INS:ME:LINE1" | \
             uniq -u | \
             sed -e 's/^/chr/' | \
-            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed} 
+            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed}
         """
 
 
