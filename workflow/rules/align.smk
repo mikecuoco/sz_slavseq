@@ -96,21 +96,29 @@ rule tags:
         """
 
 
-rule tabix:
+rule sambamba_sort:
     input:
         rules.tags.output,
     output:
-        bgz="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz",
-        tbi="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz.tbi",
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.sorted.bam",
     log:
-        "{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/align.yml"
-    shell:
-        """
-        workflow/scripts/sam_to_tabix.py {input} | \
-            sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
-            bgzip -c > {output.bgz} 2> {log}
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}_sort.log",
+    params:
+        extra="",  # this must be preset
+    threads: 4
+    wrapper:
+        "v1.23.5/bio/sambamba/sort"
 
-        tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
-        """
+
+rule sambamba_index:
+    input:
+        rules.sambamba_sort.output,
+    output:
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.sorted.bam.bai",
+    log:
+        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}_index.log",
+    params:
+        extra="",  # this must be preset
+    threads: 4
+    wrapper:
+        "v1.23.5/bio/sambamba/index"
