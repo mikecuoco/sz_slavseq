@@ -52,11 +52,11 @@ rule gen_ref:
 
          # filter for the region if specified
         if [ "{params.region}" != "all" ]; then
-            gunzip {input}
+            gunzip -f {input}
             fa=$(dirname {input})/$(basename {input} .gz)
             samtools faidx $fa {params.region} > {output.fa}
         else
-            gunzip -c {input} > {output.fa}
+            gunzip -fc {input} > {output.fa}
         fi
 
         # index
