@@ -36,8 +36,9 @@ rule gen_ref:
     output:
         fa=f"{{outdir}}/resources/hs38d1{region_name}.fa",
         fai=f"{{outdir}}/resources/hs38d1{region_name}.fa.fai",
+        chromsizes=f"{{outdir}}/resources/hs38d1{region_name}.chrom.sizes",
     log:
-        "{{outdir}}/resources/gen_ref.log",
+        "{outdir}/resources/gen_ref.log",
     conda:
         "../envs/ref.yml"
     params:
@@ -60,6 +61,7 @@ rule gen_ref:
 
         # index
         samtools faidx {output.fa}
+        cut -f 1,2 {output.fai} > {output.chromsizes}
         """
 
 
@@ -92,7 +94,7 @@ rule make_dfam_lib:
 
 rule run_rmsk:
     input:
-        fa=rules.gen_ref.output[0],
+        fa=rules.gen_ref.output.fa,
         lib=rules.make_dfam_lib.output,
     output:
         multiext(

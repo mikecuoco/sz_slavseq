@@ -2,8 +2,8 @@ rule get_features:
     input:
         bgz=rules.tabix.output.bgz,
         tbi=rules.tabix.output.tbi,
-        fa=rules.gen_ref.output[0],
-        chromsizes=rules.gen_ref.output[2],
+        fa=rules.gen_ref.output.fa,
+        chromsizes=rules.gen_ref.output.chromsizes,
     params:
         **config["get_features"],
     output:
@@ -19,10 +19,10 @@ rule get_features:
 def get_non_ref_l1(wildcards):
     KNRGL_build = get_KNRGL_build(wildcards)
     if "38" in KNRGL_build:
-        return f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_insertions.bed"
+        return f"{wildcards.outdir}/resources/{wildcards.db}/hs38d1_insertions.bed"
     else:
         return (
-            f"{wildcards.outdir}/resources/{wildcards.db}/hs38DH_lifted_insertions.bed"
+            f"{wildcards.outdir}/resources/{wildcards.db}/hs38d1_lifted_insertions.bed"
         )
 
 
@@ -161,6 +161,6 @@ rule render_reports:
     shell:
         """
         touch {log} && exec > {log} 2>&1
-        jupyter nbconvert --to html --execute {input.features} --output $(basename {output.features}) 
-        jupyter nbconvert --to html --execute {input.model} --output $(basename {output.model}) 
+        jupyter nbconvert --to html --execute {input.features} --output $(basename {output.features})
+        jupyter nbconvert --to html --execute {input.model} --output $(basename {output.model})
         """

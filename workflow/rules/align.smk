@@ -1,7 +1,7 @@
 rule bwa_index:
     input:
         bwakit=rules.install_bwakit.output,
-        fa=rules.gen_ref.output[0],
+        fa=rules.gen_ref.output.fa,
     output:
         idx=multiext(
             f"{{outdir}}/resources/hs38d1{region_name}.fa",
@@ -21,7 +21,7 @@ rule bwa_mem:
     input:
         bwakit=rules.install_bwakit.output,
         idx=rules.bwa_index.output.idx,
-        fa=rules.gen_ref.output[0],
+        fa=rules.gen_ref.output.fa,
         reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
         "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
