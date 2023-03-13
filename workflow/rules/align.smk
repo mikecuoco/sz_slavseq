@@ -4,7 +4,7 @@ rule bwa_index:
         fa=rules.gen_ref.output[0],
     output:
         idx=multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            f"{{outdir}}/resources/hs38d1{region_name}.fa",
             ".amb",
             ".ann",
             ".bwt",

@@ -28,44 +28,38 @@ FTP = FTP.RemoteProvider()
 # generate hg38 reference with decoy and alt contigs
 rule gen_ref:
     input:
-        fa=FTP.remote(
-            "ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa",
+        FTP.remote(
+            "ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.gz",
             keep_local=True,
             static=True,
         ),
     output:
-        multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}",
-            ".fa",
-            ".fa.fai",
-            ".genome",
-        ),
+        fa=f"{{outdir}}/resources/hs38d1{region_name}.fa",
+        fai=f"{{outdir}}/resources/hs38d1{region_name}.fa.fai",
     log:
-        "{outdir}/resources/gen_ref.log",
+        "{{outdir}}/resources/gen_ref.log",
     conda:
         "../envs/ref.yml"
     params:
         region=" ".join(config["region"])
         if isinstance(config["region"], list)
         else config["region"],
-    shadow:
-        "shallow"
     shell:
         """
         # start logging
         touch {log} && exec 2>{log}
 
-        # filter for the region if specified
+         # filter for the region if specified
         if [ "{params.region}" != "all" ]; then
-            samtools faidx {input} {params.region} > {output[0]}
-            rm -f {input}
+            gunzip {input}
+            fa=$(dirname {input})/$(basename {input} .gz)
+            samtools faidx $fa {params.region} > {output.fa}
         else
-            mv {input} {output[0]}
+            gunzip -c {input} > {output.fa}
         fi
 
         # index
-        samtools faidx {output[0]}
-        cut -f 1,2 {output[1]} > {output[2]}
+        samtools faidx {output.fa}
         """
 
 
@@ -102,7 +96,7 @@ rule run_rmsk:
         lib=rules.make_dfam_lib.output,
     output:
         multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            f"{{outdir}}/resources/hs38d1{region_name}.fa",
             ".out",
             ".masked",
         ),
@@ -142,7 +136,7 @@ rule get_dbvar:
     output:
         vcf="{outdir}/resources/dbVar/GRCh38.variant_call.all.vcf.gz",
         tbi="{outdir}/resources/dbVar/GRCh38.variant_call.all.vcf.gz.tbi",
-        bed="{outdir}/resources/dbVar/hs38DH_insertions.bed",
+        bed="{outdir}/resources/dbVar/hs38d1_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
