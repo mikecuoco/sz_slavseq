@@ -13,7 +13,7 @@ properties:
     type: string
 
   region:
-    type: string
+    type: [string, array]
 
   adapters:
     type: object

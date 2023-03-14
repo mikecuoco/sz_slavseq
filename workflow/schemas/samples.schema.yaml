@@ -3,7 +3,7 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 description: an entry in the sample sheet
 
 properties:
-  sample:
+  sample_id:
     type: string
     description: sample identifier
   tissue_id:

@@ -74,7 +74,7 @@ rule feature_report:
     input:
         expand(
             rules.get_labels.output.mda,
-            donor=set(samples["donor"]),
+            donor=donors["donor_id"],
             allow_missing=True,
         ),
     output:
@@ -91,7 +91,7 @@ rule folds:
     input:
         expand(
             rules.get_labels.output.mda,
-            donor=set(samples["donor"]),
+            donor=donors["donor_id"],
             allow_missing=True,
         ),
     params:
@@ -161,6 +161,6 @@ rule render_reports:
     shell:
         """
         touch {log} && exec > {log} 2>&1
-        jupyter nbconvert --to html --execute {input.features} --output $(basename {output.features}) 
-        jupyter nbconvert --to html --execute {input.model} --output $(basename {output.model}) 
+        jupyter nbconvert --to html --execute {input.features} --output $(basename {output.features})
+        jupyter nbconvert --to html --execute {input.model} --output $(basename {output.model})
         """
