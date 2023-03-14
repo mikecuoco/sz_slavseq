@@ -32,6 +32,7 @@ rule gen_ref:
             "ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa",
             keep_local=True,
             static=True,
+            immediate_close=True,
         ),
     output:
         multiext(
@@ -125,61 +126,16 @@ rule run_rmsk:
         """
 
 
-rule get_eul1db:
+rule get_donor_knrgl:
     input:
-        "resources/eul1db_SRIP.txt",
+        lambda wc: donors.loc[wc.donor]["KNRGL"],
     output:
-        "{outdir}/resources/eul1db/hg19_insertions.bed",
+        "{outdir}/resources/{donor}_insertions.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "{outdir}/resources/get_eul1db.log",
-    script:
-        "../scripts/get_eul1db.py"
-
-
-rule get_dbvar:
-    output:
-        vcf="{outdir}/resources/dbVar/GRCh38.variant_call.all.vcf.gz",
-        tbi="{outdir}/resources/dbVar/GRCh38.variant_call.all.vcf.gz.tbi",
-        bed="{outdir}/resources/dbVar/hs38DH_insertions.bed",
-    conda:
-        "../envs/ref.yml"
-    log:
-        "{outdir}/resources/get_dbvar.log",
+        "{outdir}/resources/{donor}/get_vcf.log",
     shell:
         """
-        touch {log} && exec 1>{log} 2>&1
-        curl -s https://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz > {output.vcf}
-        curl -s https://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_assembly/GRCh38/vcf/GRCh38.variant_call.all.vcf.gz.tbi > {output.tbi}
-
-        bcftools query -f "%CHROM\t%POS\t%END\t%ALT\n" {output.vcf} | \
-            grep "INS:ME:LINE1" | \
-            uniq -u | \
-            sed -e 's/^/chr/' | \
-            awk -v OFS='\t' '{{print $1,$2,$3}}' > {output.bed}
+        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4}}' > {output}
         """
-
-
-def get_KNRGL_build(wildcards):
-    return config["KNRGL"][wildcards.db]["build"]
-
-
-def get_liftover_input(wildcards):
-    KNRGL_build = get_KNRGL_build(wildcards)
-    return f"{wildcards.outdir}/resources/{wildcards.db}/{KNRGL_build}_insertions.bed"
-
-
-rule liftover:
-    input:
-        get_liftover_input,
-    output:
-        "{outdir}/resources/{db}/{target}_lifted_insertions.bed",
-    log:
-        "{outdir}/resources/{db}/{target}_liftover.log",
-    conda:
-        "../envs/ref.yml"
-    params:
-        source=get_KNRGL_build,
-    script:
-        "../scripts/liftover_bed.sh"

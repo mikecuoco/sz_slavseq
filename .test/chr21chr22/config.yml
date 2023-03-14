@@ -1,4 +1,5 @@
 samples: .test/chr21chr22/samples.tsv
+donors: .test/chr21chr22/donors.tsv
 outdir: .test
 
 region: [chr21, chr22]
