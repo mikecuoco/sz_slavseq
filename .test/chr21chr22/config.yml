@@ -4,12 +4,6 @@ outdir: .test
 
 region: [chr21, chr22]
 
-KNRGL:
-  dbVar:
-    build: hs38DH
-  eul1db:
-    build: hg19
-
 folds:
   split_by: "donor_id"
   num_folds: 2
