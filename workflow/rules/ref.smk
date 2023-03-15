@@ -14,29 +14,26 @@ rule install_bwakit:
 
 # handle specified region
 region = (
-    "".join(config["region"])
-    if isinstance(config["region"], list)
-    else config["region"]
+    "".join(config["genome"]["region"])
+    if isinstance(config["genome"]["region"], list)
+    else config["genome"]["region"]
 )
 region_name = f"_{region}" if region != "all" else ""
-
-from snakemake.remote import FTP
-
-FTP = FTP.RemoteProvider()
+genome_name = config["genome"]["name"] + region_name
 
 
 # generate hg38 reference with decoy and alt contigs
 rule gen_ref:
     input:
         fa=FTP.remote(
-            "ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa",
+            config["genome"]["ftp"],
             keep_local=True,
             static=True,
             immediate_close=True,
         ),
     output:
         multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}",
+            f"{{outdir}}/resources/{genome_name}",
             ".fa",
             ".fa.fai",
             ".genome",
@@ -46,9 +43,9 @@ rule gen_ref:
     conda:
         "../envs/ref.yml"
     params:
-        region=" ".join(config["region"])
-        if isinstance(config["region"], list)
-        else config["region"],
+        region=" ".join(config["genome"]["region"])
+        if isinstance(config["genome"]["region"], list)
+        else config["genome"]["region"],
     shadow:
         "shallow"
     shell:
@@ -103,7 +100,7 @@ rule run_rmsk:
         lib=rules.make_dfam_lib.output,
     output:
         multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            f"{{outdir}}/resources/{genome_name}.fa",
             ".out",
             ".masked",
         ),
@@ -116,7 +113,7 @@ rule run_rmsk:
         # empty string is default
         # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
         # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
-        speed="-s" if config["region"] == "all" else "-qq",
+        speed="-s" if config["genome"]["region"] == "all" else "-qq",
     shadow:
         "shallow"
     threads: 24

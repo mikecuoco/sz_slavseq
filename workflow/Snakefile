@@ -1,8 +1,11 @@
 from snakemake.utils import min_version
+from snakemake.remote import FTP
+
+FTP = FTP.RemoteProvider()
 
 
 ##### set minimum snakemake version #####
-min_version("7.16.0")
+min_version("7.22.0")
 
 
 wildcard_constraints:
