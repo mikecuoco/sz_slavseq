@@ -24,7 +24,9 @@ rule bwa_mem:
         fa=rules.gen_ref.output[0],
         reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
-        "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
+        "{outdir}/results/align/{donor}/{dna_type}/{sample}.aln.bam",
+    log:
+        "{outdir}/results/align/{donor}/{dna_type}/{sample}.log.bwamem",
     threads: 4
     shell:
         """
@@ -68,9 +70,9 @@ rule tags:
         fa=rules.gen_ref.output[0],
         gapafim=rules.install_gapafim.output,
     output:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.bam",
+        rules.bwa_mem.output[0].replace(".bam", ".tagged.bam"),
     log:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.err",
+        rules.bwa_mem.log[0].replace(".bwamem", ".tags"),
     conda:
         "../envs/align.yml"
     params:
@@ -100,9 +102,9 @@ rule sambamba_sort:
     input:
         rules.tags.output,
     output:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.sorted.bam",
+        rules.tags.output[0].replace(".bam", ".sorted.bam"),
     log:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}_sort.log",
+        rules.tags.log[0].replace(".tags", ".sort"),
     params:
         extra="",  # this must be preset
     threads: 4
@@ -114,9 +116,9 @@ rule sambamba_index:
     input:
         rules.sambamba_sort.output,
     output:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.sorted.bam.bai",
+        rules.sambamba_sort.output[0] + ".bai",
     log:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}_index.log",
+        rules.sambamba_sort.log[0].replace(".sort", ".index"),
     params:
         extra="",  # this must be preset
     threads: 4
