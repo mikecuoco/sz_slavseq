@@ -1,13 +1,8 @@
 samples: .test/chr21chr22/samples.tsv
+donors: .test/chr21chr22/donors.tsv
 outdir: .test
 
 region: [chr21, chr22]
-
-KNRGL:
-  dbVar:
-    build: hs38DH
-  eul1db:
-    build: hg19
 
 folds:
   split_by: "donor_id"

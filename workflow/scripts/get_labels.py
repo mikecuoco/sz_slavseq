@@ -91,9 +91,16 @@ def read_non_ref_db():
         snakemake.input.non_ref_l1,
         sep="\t",
         header=None,
-        names=["chrom", "start", "end"],
+        names=["chrom", "start", "end", "strand"],
         dtype={"chrom": str, "start": int, "end": int},
     )
+    df["start"] = df.apply(
+        lambda x: x["start"] - 750 if x["strand"] == "-" else x["start"], axis=1
+    )
+    df["end"] = df.apply(
+        lambda x: x["end"] + 750 if x["strand"] == "+" else x["end"], axis=1
+    )
+    df.drop(columns=["strand"], inplace=True)
     df = make_l1_windows(
         df,
         snakemake.input.chromsizes,
@@ -167,7 +174,6 @@ if __name__ == "__main__":
     germline_df.with_columns(
         [
             pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label"),
-            pl.lit(snakemake.wildcards.db).alias("db"),
         ]
     ).drop(["in_NRdb", "in_rmsk"]).write_csv(snakemake.output.bulk)
 
@@ -186,9 +192,6 @@ if __name__ == "__main__":
 
     if snakemake.params.rmL1:
         df = df.filter(pl.col("label") != "RL1")
-
-    # add db and build columns
-    df = df.with_column(pl.lit(snakemake.wildcards.db).alias("db"))
 
     # save
     df.write_parquet(snakemake.output.mda)

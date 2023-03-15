@@ -27,7 +27,6 @@ rule all:
     input:
         expand(
             rules.render_reports.output,
-            db=list(config["KNRGL"].keys()),
             outdir=config["outdir"],
         ),
         expand(
