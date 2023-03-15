@@ -12,8 +12,15 @@ properties:
   donors:
     type: string
 
-  region:
-    type: [string, array]
+  genome:
+    type: object
+    properties:
+      ftp:
+        type: string
+      name:
+        type: string
+      region:
+        type: [string, array]
 
   adapters:
     type: object
@@ -65,7 +72,7 @@ properties:
 
 required:
   - outdir
-  - region
+  - genome
   - samples
   - donors
   - adapters
