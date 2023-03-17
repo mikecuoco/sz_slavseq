@@ -2,7 +2,10 @@
 samples: config/single_donor.tsv
 outdir: /raidixshare_logg01/mcuoco/internal/BSMN
 
-region: all
+genome:
+  url: ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa
+  name: hs38DH
+  region: all
 
 KNRGL:
   dbVar:
@@ -16,17 +19,11 @@ adapters:
 get_features:
   window_size: 750
   window_step: 250
-  min_mapq: 40
-  min_ya: 20
-  max_yg: 15
-  min_secondary_mapq: 20
-  library_3_or_5: 3
-  rmL1: True
+  min_reads: 3
 
 folds:
   split_by: "cell_id"
   num_folds: 4
-  min_reads: 5
   test_sampling_strategy: "auto"
 
 # Do not set n_jobs > 8

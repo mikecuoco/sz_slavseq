@@ -11,7 +11,7 @@ import sys
 def reads(bam, contig):
     """Yield reads from a bam file for a given contig."""
     for r in bam.fetch(contig, multiple_iterators=True):
-        if not r.is_duplicate:
+        if not r.is_duplicate and not r.is_unmapped:
             yield r
 
 
@@ -134,12 +134,19 @@ if __name__ == "__main__":
     # make windows and get features
     df = []
 
+    WINDOW_SIZE = snakemake.params["window_size"]
+    STEP_SIZE = snakemake.params["window_step"]
+    BG_WINDOW_SIZE = int(snakemake.params["window_size"] * 10)
+    BG_STEP_SIZE = int(snakemake.params["window_step"] / 10)
+
     for contig in bam.references:
 
         reflen = bam.get_reference_length(contig)
 
         # make generator for background windows (10kb)
-        bg_windows = windows(bam, contig, window_size=10000, step_size=25)
+        bg_windows = windows(
+            bam, contig, window_size=BG_WINDOW_SIZE, step_size=BG_STEP_SIZE
+        )
 
         # get first window
         try:
@@ -149,7 +156,7 @@ if __name__ == "__main__":
             continue
 
         # iterate over windows
-        for w in windows(bam, contig, window_size=750, step_size=250):
+        for w in windows(bam, contig, window_size=WINDOW_SIZE, step_size=STEP_SIZE):
             f = window_features(w)
             if not window_filter(f):
                 continue
