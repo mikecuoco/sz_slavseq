@@ -4,9 +4,6 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.8
-  - pip
   - pysam>=0.19.1
   - pandas
-  - polars
-  - pyarrow
-  - gawk
+  - fastparquet

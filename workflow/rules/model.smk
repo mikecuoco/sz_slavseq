@@ -1,7 +1,7 @@
 rule get_features:
     input:
-        bgz=rules.tabix.output.bgz,
-        tbi=rules.tabix.output.tbi,
+        bam=rules.sambamba_sort.output[0],
+        bai=rules.sambamba_index.output[0],
         fa=rules.gen_ref.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
@@ -19,19 +19,13 @@ rule get_features:
 def get_labels_input(wildcards):
     donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
     return {
-        "bgz": expand(
-            rules.tabix.output.bgz,
+        "bulk": expand(
+            rules.get_features.output,
             sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample_id"],
             dna_type="bulk",
             allow_missing=True,
         ),
-        "tbi": expand(
-            rules.tabix.output.tbi,
-            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample_id"],
-            dna_type="bulk",
-            allow_missing=True,
-        ),
-        "features": expand(
+        "mda": expand(
             rules.get_features.output,
             sample=donor_samples.loc[samples["dna_type"] == "mda"]["sample_id"],
             dna_type="mda",
