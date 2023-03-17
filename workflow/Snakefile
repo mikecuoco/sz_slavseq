@@ -12,6 +12,7 @@ wildcard_constraints:
     dna_type="\w+",
     label_config="\w+",
     db="\w+",
+    sample="[^.]",
 
 
 configfile: "config/config.yml"
