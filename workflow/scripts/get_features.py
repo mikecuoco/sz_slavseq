@@ -4,7 +4,7 @@ __author__ = "Michael Cuoco"
 
 import pysam
 import pandas as pd
-from collections import deque, namedtuple
+from collections import deque, namedtuple, defaultdict
 import sys
 
 
@@ -60,59 +60,43 @@ def windows(bam, contig, window_size=750, step_size=250):
 def window_features(window):
     """Compute features of a window."""
 
-    r1_mean_mapq = 0
-    r2_mean_mapq = 0
-    r1_total = 0
-    r2_total = 0
-    yg_mean = 0
-    yg_reads = 0
-    ya_mean = 0
-    ya_reads = 0
-    ys_mean = 0
-    ys_reads = 0
+    f = defaultdict(int)
 
     for r in window.reads:
         if r.is_read1:
-            r1_mean_mapq += r.mapping_quality
-            r1_total += 1
+            f["r1_mean_mapq"] += r.mapping_quality
+            f["r1_total"] += 1
         else:
-            r2_mean_mapq += r.mapping_quality
-            r2_total += 1
+            f["r2_mean_mapq"] += r.mapping_quality
+            f["r2_total"] += 1
 
         if r.has_tag("YG"):
-            yg_mean += r.get_tag("YG")
-            yg_reads += 1
+            f["yg_mean"] += r.get_tag("YG")
+            f["yg_reads"] += 1
         if r.has_tag("YA"):
-            ya_mean += r.get_tag("YA")
-            ya_reads += 1
+            f["ya_mean"] += r.get_tag("YA")
+            f["ya_reads"] += 1
         if r.has_tag("YS"):
-            ys_mean += r.get_tag("YS")
-            ys_reads += 1
+            f["ys_mean"] += r.get_tag("YS")
+            f["ys_reads"] += 1
 
-    if r1_total:
-        r1_mean_mapq /= r1_total
-    if r2_total:
-        r2_mean_mapq /= r2_total
-    if yg_reads:
-        yg_mean /= yg_reads
-    if ya_reads:
-        ya_mean /= ya_reads
-    if ys_reads:
-        ys_mean /= ys_reads
+    if f["r1_total"]:
+        f["r1_mean_mapq"] /= f["r1_total"]
+    if f["r2_total"]:
+        f["r2_mean_mapq"] /= f["r2_total"]
+    if f["yg_reads"]:
+        f["yg_mean"] /= f["yg_reads"]
+    if f["ya_reads"]:
+        f["ya_mean"] /= f["ya_reads"]
+    if f["ys_reads"]:
+        f["ys_mean"] /= f["ys_reads"]
 
-    return {
-        "chr": window.chr,
-        "start": window.start,
-        "end": window.end,
-        "total_reads": r1_total + r2_total,
-        "r1_total": r1_total,
-        "r2_total": r2_total,
-        "r1_mean_mapq": r1_mean_mapq,
-        "r2_mean_mapq": r2_mean_mapq,
-        "yg_mean": yg_mean,
-        "ya_mean": ya_mean,
-        "ys_mean": ys_mean,
-    }
+    f["chr"] = window.chr
+    f["start"] = window.start
+    f["end"] = window.end
+    f["total_reads"] = f["r1_total"] + f["r2_total"]
+
+    return f
 
 
 def window_filter(window):
@@ -187,7 +171,11 @@ if __name__ == "__main__":
 
             df.append(f)
 
-    df = pd.DataFrame(df)
+    df = pd.DataFrame(df).fillna(0)
+    df.rename(
+        {"chr": "Chromosome", "start": "Start", "end": "End"}, axis=1, inplace=True
+    )
+    df.drop(["chr_bg", "start_bg", "end_bg"], axis=1, inplace=True)
 
     # add cell_id and donor_id columns
     df["cell_id"] = snakemake.wildcards.sample
