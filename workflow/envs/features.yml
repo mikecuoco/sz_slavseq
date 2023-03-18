@@ -7,3 +7,4 @@ dependencies:
   - pysam>=0.19.1
   - pandas
   - fastparquet
+  - pyranges

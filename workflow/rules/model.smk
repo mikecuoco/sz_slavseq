@@ -7,9 +7,9 @@ rule get_features:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/model/get_features/{donor}/{dna_type}/{sample}.pqt",
+        "{outdir}/results/model/get_features/{donor}/{sample}.pqt",
     log:
-        "{outdir}/results/model/get_features/{donor}/{dna_type}/{sample}.log",
+        "{outdir}/results/model/get_features/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
     script:
@@ -17,34 +17,25 @@ rule get_features:
 
 
 def get_labels_input(wildcards):
-    donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
-    return {
-        "bulk": expand(
-            rules.get_features.output,
-            sample=donor_samples.loc[samples["dna_type"] == "bulk"]["sample_id"],
-            dna_type="bulk",
-            allow_missing=True,
-        ),
-        "mda": expand(
-            rules.get_features.output,
-            sample=donor_samples.loc[samples["dna_type"] == "mda"]["sample_id"],
-            dna_type="mda",
-            allow_missing=True,
-        ),
-    }
+    sample_ids = samples.loc[samples["donor_id"] == wildcards.donor]["sample_id"].values
+    inputs = expand(
+        rules.get_features.output,
+        sample=sample_ids,
+        allow_missing=True,
+    )
+    return inputs
 
 
 rule get_labels:
     input:
-        unpack(get_labels_input),
-        non_ref_l1=rules.get_donor_knrgl.output[0],
-        ref_l1=rules.run_rmsk.output[0],
+        features=get_labels_input,
+        knrgl=rules.get_donor_knrgl.output[0],
+        rmsk=rules.run_rmsk.output[0],
         chromsizes=rules.gen_ref.output[2],
     params:
         **config["get_features"],
     output:
-        bulk="{outdir}/results/model/get_labels/{donor}_bulk.bed",
-        mda="{outdir}/results/model/get_labels/{donor}_mda.pqt",
+        "{outdir}/results/model/get_labels/{donor}.pqt",
     log:
         "{outdir}/results/model/get_labels/{donor}.log",
     conda:
@@ -57,7 +48,7 @@ rule get_labels:
 rule feature_report:
     input:
         expand(
-            rules.get_labels.output.mda,
+            rules.get_labels.output,
             donor=donors["donor_id"],
             allow_missing=True,
         ),
@@ -74,7 +65,7 @@ rule feature_report:
 rule folds:
     input:
         expand(
-            rules.get_labels.output.mda,
+            rules.get_labels.output,
             donor=donors["donor_id"],
             allow_missing=True,
         ),
