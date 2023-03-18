@@ -24,9 +24,9 @@ rule bwa_mem:
         fa=rules.gen_ref.output[0],
         reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
-        "{outdir}/results/align/{donor}/{dna_type}/{sample}.aln.bam",
+        "{outdir}/results/align/{donor}/{sample}.aln.bam",
     log:
-        "{outdir}/results/align/{donor}/{dna_type}/{sample}.log.bwamem",
+        "{outdir}/results/align/{donor}/{sample}.log.bwamem",
     threads: 4
     shell:
         """
