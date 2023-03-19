@@ -2,8 +2,6 @@ rule get_features:
     input:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
-        fa=rules.gen_ref.output[0],
-        chromsizes=rules.gen_ref.output[2],
     params:
         **config["get_features"],
     output:
@@ -31,7 +29,6 @@ rule get_labels:
         features=get_labels_input,
         knrgl=rules.get_donor_knrgl.output[0],
         rmsk=rules.run_rmsk.output[0],
-        chromsizes=rules.gen_ref.output[2],
     params:
         **config["get_features"],
     output:

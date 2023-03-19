@@ -1,10 +1,24 @@
+rule install_bwakit:
+    output:
+        directory("resources/bwa.kit"),
+    conda:
+        "../envs/ref.yml"
+    log:
+        "resources/install_bwakit.log",
+    shell:
+        """
+        mkdir -p $(dirname {output}) && cd $(dirname {output})
+        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
+        """
+
+
 rule bwa_index:
     input:
         bwakit=rules.install_bwakit.output,
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
     output:
         idx=multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            f"{{outdir}}/resources/{genome_name}.fa",
             ".amb",
             ".ann",
             ".bwt",
@@ -21,7 +35,7 @@ rule bwa_mem:
     input:
         bwakit=rules.install_bwakit.output,
         idx=rules.bwa_index.output.idx,
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
         reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
         "{outdir}/results/align/{donor}/{sample}.aln.bam",
@@ -67,7 +81,7 @@ rule install_gapafim:
 rule tags:
     input:
         bam=rules.bwa_mem.output,
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
         gapafim=rules.install_gapafim.output,
     output:
         rules.bwa_mem.output[0].replace(".bam", ".tagged.bam"),

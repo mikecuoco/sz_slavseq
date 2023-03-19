@@ -1,17 +1,3 @@
-rule install_bwakit:
-    output:
-        directory("resources/bwa.kit"),
-    conda:
-        "../envs/ref.yml"
-    log:
-        "resources/install_bwakit.log",
-    shell:
-        """
-        mkdir -p $(dirname {output}) && cd $(dirname {output})
-        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
-        """
-
-
 # handle specified region
 region = (
     "".join(config["genome"]["region"])
@@ -22,8 +8,7 @@ region_name = f"_{region}" if region != "all" else ""
 genome_name = config["genome"]["name"] + region_name
 
 
-# generate hg38 reference with decoy and alt contigs
-rule gen_ref:
+rule get_genome:
     input:
         fa=FTP.remote(
             config["genome"]["ftp"],
@@ -32,39 +17,14 @@ rule gen_ref:
             immediate_close=True,
         ),
     output:
-        multiext(
-            f"{{outdir}}/resources/{genome_name}",
-            ".fa",
-            ".fa.fai",
-            ".genome",
-        ),
+        fa=f"{{outdir}}/resources/{genome_name}.fa",
+        fai=f"{{outdir}}/resources/{genome_name}.fa.fai",
     log:
         "{outdir}/resources/gen_ref.log",
     conda:
         "../envs/ref.yml"
-    params:
-        region=" ".join(config["genome"]["region"])
-        if isinstance(config["genome"]["region"], list)
-        else config["genome"]["region"],
-    shadow:
-        "shallow"
-    shell:
-        """
-        # start logging
-        touch {log} && exec 2>{log}
-
-        # filter for the region if specified
-        if [ "{params.region}" != "all" ]; then
-            samtools faidx {input} {params.region} > {output[0]}
-            rm -f {input}
-        else
-            mv {input} {output[0]}
-        fi
-
-        # index
-        samtools faidx {output[0]}
-        cut -f 1,2 {output[1]} > {output[2]}
-        """
+    script:
+        "../scripts/get_genome.py"
 
 
 rule make_dfam_lib:
@@ -96,7 +56,7 @@ rule make_dfam_lib:
 
 rule run_rmsk:
     input:
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
         lib=rules.make_dfam_lib.output,
     output:
         multiext(
