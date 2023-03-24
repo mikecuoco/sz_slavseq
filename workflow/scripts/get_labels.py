@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 __author__ = "Rohini Gadde", "Michael Cuoco"
 
-import pdb
 import functools, sys
 import numpy as np
 import pandas as pd
@@ -59,6 +58,7 @@ def read_knrgl(knrgl_bedfile):
         names=["Chromosome", "Start", "End", "Strand"],
         dtype={"Chromosome": str, "Start": int, "End": int},
     )
+
     df["Start"] = df.apply(
         lambda x: x["Start"] - 1000 if x["Strand"] == "-" else x["Start"], axis=1
     )
@@ -70,8 +70,9 @@ def read_knrgl(knrgl_bedfile):
 
 
 def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, label: str):
-    assert type(df) == pd.DataFrame
-    assert type(other_df) == pd.DataFrame
+    assert type(df) == pd.DataFrame, "df must be a pandas DataFrame"
+    assert type(other_df) == pd.DataFrame, "other_df must be a pandas DataFrame"
+    assert label not in df.columns, f"{label} already in df.columns"
 
     # convert to pyranges
     pr_df = pr.PyRanges(df)
@@ -81,11 +82,12 @@ def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, label: str):
     overlapping = pr_df.overlap(pr_other_df).df
 
     # set the index to the chromosome, start, and end
+    # TODO: check if reads are in same orientation as repeats
     df.set_index(["Chromosome", "Start", "End"], inplace=True)
     overlapping.set_index(["Chromosome", "Start", "End"], inplace=True)
 
     # label the windows that overlap
-    df[f"in_{label}"] = df.index.isin(overlapping.index)
+    df[label] = df.index.isin(overlapping.index)
 
     # reset the index
     df.reset_index(inplace=True)
@@ -107,11 +109,28 @@ if __name__ == "__main__":
     # label the windows
     df = label_windows(df, rmsk_df, "rmsk")
     df = label_windows(df, knrgl_df, "knrgl")
-    df["label"] = df.apply(
-        lambda x: "RMSK" if x["in_rmsk"] else "KNRGL" if x["in_knrgl"] else "OTHER",
-        axis=1,
-    )
-    df.drop(["in_rmsk", "in_knrgl"], axis=1, inplace=True)
+
+    # label the windows in 10kb flanking the repeats
+    rmsk_df["Start"] = rmsk_df["Start"] - 1e4
+    rmsk_df["End"] = rmsk_df["End"] + 1e4
+    knrgl_df["Start"] = knrgl_df["Start"] - 1e4
+    knrgl_df["End"] = knrgl_df["End"] + 1e4
+    df = label_windows(df, rmsk_df, "flank_rmsk")
+    df = label_windows(df, knrgl_df, "flank_knrgl")
+
+    label = []
+    for row in df.itertuples():
+        if row.rmsk:
+            label.append("RMSK")
+        elif row.knrgl:
+            label.append("KNRGL")
+        elif row.flank_rmsk or row.flank_knrgl:
+            label.append("FLANK")
+        else:
+            label.append("OTHER")
+
+    df.drop(["rmsk", "knrgl", "flank_rmsk", "flank_knrgl"], axis=1, inplace=True)
+    df["label"] = label
 
     # save
     df.to_parquet(snakemake.output[0], index=False)
