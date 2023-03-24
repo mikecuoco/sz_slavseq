@@ -11,7 +11,7 @@ import sys
 def reads(bam, contig):
     """Yield reads from a bam file for a given contig."""
     for r in bam.fetch(contig, multiple_iterators=True):
-        if not r.is_duplicate and not r.is_unmapped:
+        if not r.is_duplicate and not r.is_unmapped and r.mapping_quality > 0:
             yield r
 
 
@@ -65,10 +65,16 @@ def window_features(window):
     for r in window.reads:
         if r.is_read1:
             f["r1_mean_mapq"] += r.mapping_quality
-            f["r1_total"] += 1
+            if r.is_reverse:
+                f["r1_rev"] += 1
+            else:
+                f["r1_fwd"] += 1
         else:
             f["r2_mean_mapq"] += r.mapping_quality
-            f["r2_total"] += 1
+            if r.is_reverse:
+                f["r2_rev"] += 1
+            else:
+                f["r2_fwd"] += 1
 
         if r.has_tag("YG"):
             f["yg_mean"] += r.get_tag("YG")
@@ -80,9 +86,11 @@ def window_features(window):
             f["ys_mean"] += r.get_tag("YS")
             f["ys_reads"] += 1
 
-    if f["r1_total"]:
+    f["r1_total"] = f["r1_rev"] + f["r1_fwd"]
+    if f["r1_total"] > 0:
         f["r1_mean_mapq"] /= f["r1_total"]
-    if f["r2_total"]:
+    f["r2_total"] = f["r2_rev"] + f["r2_fwd"]
+    if f["r2_total"] > 0:
         f["r2_mean_mapq"] /= f["r2_total"]
     if f["yg_reads"]:
         f["yg_mean"] /= f["yg_reads"]
@@ -102,7 +110,8 @@ def window_features(window):
 def window_filter(window):
     """Only yield windows that pass filter."""
 
-    if window["total_reads"] >= 3 and window["ya_mean"] > window["yg_mean"]:
+    # if window["total_reads"] >= 3 and window["ya_mean"] > window["yg_mean"]:
+    if window["total_reads"] >= 3:
         return True
     else:
         return False
@@ -126,7 +135,6 @@ if __name__ == "__main__":
     for contig in bam.references:
 
         reflen = bam.get_reference_length(contig)
-
         # make generator for background windows (10kb)
         bg_windows = windows(
             bam, contig, window_size=BG_WINDOW_SIZE, step_size=BG_STEP_SIZE
@@ -150,7 +158,10 @@ if __name__ == "__main__":
                 if (
                     (w_center == bg_center)
                     or (w_center < bg_center and bg.start == 0)
-                    or (w_center > bg_center and bg.end == reflen)
+                    or (
+                        w_center > bg_center
+                        and bg.start > reflen - BG_WINDOW_SIZE - BG_STEP_SIZE
+                    )
                 ):
                     ff = window_features(bg)
                     for k in ff.keys():
@@ -162,6 +173,10 @@ if __name__ == "__main__":
                         bg_center = bg.start + (bg.end - bg.start) / 2
                     except StopIteration:
                         break
+
+            # if "chr_bg" not in f:
+            #     import pdb
+            #     pdb.set_trace()
 
             assert (
                 "chr_bg" in f
