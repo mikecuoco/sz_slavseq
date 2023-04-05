@@ -4,6 +4,8 @@ __author__ = "Michael Cuoco"
 
 import pysam
 import pandas as pd
+import numpy as np
+from scipy.stats import entropy
 from collections import deque, namedtuple, defaultdict
 import sys
 
@@ -11,7 +13,7 @@ import sys
 def reads(bam, contig):
     """Yield reads from a bam file for a given contig."""
     for r in bam.fetch(contig, multiple_iterators=True):
-        if not r.is_duplicate and not r.is_unmapped and r.mapping_quality > 0:
+        if not r.is_duplicate and not r.is_unmapped:
             yield r
 
 
@@ -57,52 +59,81 @@ def windows(bam, contig, window_size=750, step_size=250):
         yield Window(contig, start, end, read_queue)
 
 
+def gini(array):
+    """Calculate the Gini coefficient of a numpy array."""
+    # based on bottom eq: http://www.statsdirect.com/help/content/image/stat0206_wmf.gif
+    # from: http://www.statsdirect.com/help/default.htm#nonparametric_methods/gini.htm
+    array = array.flatten()  # all values are treated equally, arrays must be 1d
+    if np.amin(array) < 0:
+        array -= np.amin(array)  # values cannot be negative
+    array += 0.0000001  # values cannot be 0
+    array = np.sort(array)  # values must be sorted
+    index = np.arange(1, array.shape[0] + 1)  # index per array element
+    n = array.shape[0]  # number of array elements
+    return (np.sum((2 * index - n - 1) * array)) / (
+        n * np.sum(array)
+    )  # Gini coefficient
+
+
 def window_features(window):
     """Compute features of a window."""
 
-    f = defaultdict(int)
+    l = defaultdict(list)
+    f = defaultdict(float)
 
     for r in window.reads:
         if r.is_read1:
-            f["r1_mean_mapq"] += r.mapping_quality
+            l["r1_mapq"].append(r.mapping_quality)
+            l["r1_starts"].append(float(r.reference_start))
+            l["template_lengths"].append(r.template_length)
             if r.is_reverse:
                 f["r1_rev"] += 1
             else:
                 f["r1_fwd"] += 1
+
+            for tag in ["YG", "YA", "YS"]:
+                if r.has_tag(tag):
+                    l[tag].append(r.get_tag(tag))
+                    f[tag + "_reads"] += 1
+
         else:
-            f["r2_mean_mapq"] += r.mapping_quality
+            l["r2_mapq"].append(r.mapping_quality)
+            l["r2_starts"].append(float(r.reference_start))
             if r.is_reverse:
                 f["r2_rev"] += 1
             else:
                 f["r2_fwd"] += 1
 
-        if r.has_tag("YG"):
-            f["yg_mean"] += r.get_tag("YG")
-            f["yg_reads"] += 1
-        if r.has_tag("YA"):
-            f["ya_mean"] += r.get_tag("YA")
-            f["ya_reads"] += 1
-        if r.has_tag("YS"):
-            f["ys_mean"] += r.get_tag("YS")
-            f["ys_reads"] += 1
+    f["r1_reads"] = f["r1_fwd"] + f["r1_rev"]
+    f["r2_reads"] = f["r2_fwd"] + f["r2_rev"]
+    f["total_reads"] = f["r1_reads"] + f["r2_reads"]
 
-    f["r1_total"] = f["r1_rev"] + f["r1_fwd"]
-    if f["r1_total"] > 0:
-        f["r1_mean_mapq"] /= f["r1_total"]
-    f["r2_total"] = f["r2_rev"] + f["r2_fwd"]
-    if f["r2_total"] > 0:
-        f["r2_mean_mapq"] /= f["r2_total"]
-    if f["yg_reads"]:
-        f["yg_mean"] /= f["yg_reads"]
-    if f["ya_reads"]:
-        f["ya_mean"] /= f["ya_reads"]
-    if f["ys_reads"]:
-        f["ys_mean"] /= f["ys_reads"]
+    if f["r1_reads"] > 0:
+        f["frac_r1_fwd"] = f["r1_fwd"] / f["r1_reads"]
+        f["r1_orientation_entropy"] = entropy(
+            [f["frac_r1_fwd"], 1 - f["frac_r1_fwd"]], base=2
+        )
+        f["r1_mean_mapq"] = np.mean(l["r1_mapq"])
+        f["r1_sd_mapq"] = np.std(l["r1_mapq"])
+        f["r1_starts_gini"] = gini(np.array(l["r1_starts"]))
+        f["mean_template_length"] = np.mean(l["template_lengths"])
+        f["sd_template_length"] = np.std(l["template_lengths"])
+        for tag in ["YG", "YA", "YS"]:
+            if f[tag + "_reads"] > 0:
+                f[tag + "_mean"] = np.mean(l[tag])
+        f["YA_YG_ratio"] = f["YA_mean"] / (f["YG_mean"] + 0.01)
+    if f["r2_reads"] > 0:
+        f["frac_r2_fwd"] = f["r2_fwd"] / f["r2_reads"]
+        f["r2_orientation_entropy"] = entropy(
+            [f["frac_r2_fwd"], 1 - f["frac_r2_fwd"]], base=2
+        )
+        f["r2_mean_mapq"] = np.mean(l["r2_mapq"])
+        f["r2_sd_mapq"] = np.std(l["r2_mapq"])
+        f["r2_starts_gini"] = gini(np.array(l["r2_starts"]))
 
     f["chr"] = window.chr
     f["start"] = window.start
     f["end"] = window.end
-    f["total_reads"] = f["r1_total"] + f["r2_total"]
 
     return f
 
@@ -111,7 +142,8 @@ def window_filter(window):
     """Only yield windows that pass filter."""
 
     # if window["total_reads"] >= 3 and window["ya_mean"] > window["yg_mean"]:
-    if window["total_reads"] >= 3:
+    # if window["r1_fwd"] >= 3 or window["r2_fwd"] >= 3:
+    if window["total_reads"] >= 1:
         return True
     else:
         return False
