@@ -16,7 +16,7 @@ validate(donors, schema="../schemas/donors.schema.yaml")
 
 # merge sample sheets
 samples = samples.merge(donors, on=["donor_id"]).set_index(
-    ["sample_id", "donor_id"], drop=False
+    ["donor_id", "sample_id"], drop=False
 )
 
 # create donor sheet

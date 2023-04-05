@@ -15,7 +15,7 @@ rule get_features:
 
 
 def get_labels_input(wildcards):
-    sample_ids = samples.loc[samples["donor_id"] == wildcards.donor]["sample_id"].values
+    sample_ids = samples.loc[wildcards.donor]["sample_id"].values
     inputs = expand(
         rules.get_features.output,
         sample=sample_ids,

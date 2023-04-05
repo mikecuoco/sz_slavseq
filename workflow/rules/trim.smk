@@ -2,17 +2,11 @@ from Bio.Seq import Seq
 
 
 def get_cutadapt_input(wildcards):
-    sample = samples.loc[wildcards.sample, wildcards.donor]
+    sample = samples.loc[wildcards.donor, wildcards.sample]
 
-    if "R1" in sample:
-        return [sample["R1"], sample["R2"]]
-    else:
-        accession = sample["sra"]
-        return expand(
-            "results/fastq/{accession}_{read}.fastq.gz",
-            accession=accession,
-            read=[1, 2],
-        )
+    # for debugging
+    # print("{} {} {}".format(wildcards.sample, sample["R1"], sample["R2"]))
+    return [sample["R1"], sample["R2"]]
 
 
 rule cutadapt:
