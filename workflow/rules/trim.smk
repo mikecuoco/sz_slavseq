@@ -27,7 +27,7 @@ rule cutadapt:
         extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4",
     log:
         "{outdir}/results/trim/{donor}/{sample}.log",
-    threads: 2
+    threads: 8
     conda:
         "../envs/trim.yml"
     shell:
@@ -38,12 +38,12 @@ rule cutadapt:
 
         cutadapt -j {threads} {params.extra} \
             --front={params.r1_front} --adapter={params.r1_end} \
-            --paired-output $tmpdir/tmp.2.fq -o $tmpdir/tmp.1.fq \
+            --paired-output $tmpdir/tmp.2.fq.gz -o $tmpdir/tmp.1.fq.gz \
             {input[0]} {input[1]} > {output.r1_qc}
         cutadapt -j {threads} {params.extra} \
             --front={params.r2_front} --adapter={params.r2_end} \
             --paired-output {output.fastq1} -o {output.fastq2} \
-            $tmpdir/tmp.2.fq $tmpdir/tmp.1.fq > {output.r2_qc}
+            $tmpdir/tmp.2.fq.gz $tmpdir/tmp.1.fq.gz > {output.r2_qc}
 
         rm -rf $tmpdir
         """
