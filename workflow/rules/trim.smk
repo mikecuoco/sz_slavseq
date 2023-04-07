@@ -30,20 +30,20 @@ rule cutadapt:
     threads: 2
     conda:
         "../envs/trim.yml"
-    shadow:
-        "shallow"
     shell:
         """
         touch {log} && exec > {log} 2>&1
 
+        tmpdir=$(mktemp -d)
+
         cutadapt -j {threads} {params.extra} \
             --front={params.r1_front} --adapter={params.r1_end} \
-            --paired-output tmp.2.{wildcards.sample}.fastq -o tmp.1.{wildcards.sample}.fastq \
+            --paired-output $tmpdir/tmp.2.fq -o $tmpdir/tmp.1.fq \
             {input[0]} {input[1]} > {output.r1_qc}
         cutadapt -j {threads} {params.extra} \
             --front={params.r2_front} --adapter={params.r2_end} \
             --paired-output {output.fastq1} -o {output.fastq2} \
-            tmp.2.{wildcards.sample}.fastq tmp.1.{wildcards.sample}.fastq > {output.r2_qc}
+            $tmpdir/tmp.2.fq $tmpdir/tmp.1.fq > {output.r2_qc}
 
-        rm -f tmp.2.{wildcards.sample}.fastq tmp.1.{wildcards.sample}.fastq
+        rm -rf $tmpdir
         """
