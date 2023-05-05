@@ -6,6 +6,9 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 genome_name = config["genome"]["name"] + region_name
+assert (
+    "38" in genome_name
+), "Only GRCh38 is supported due to segdup and blacklist regions used from 10x genomics"
 
 
 rule get_genome:
@@ -83,6 +86,7 @@ rule run_rmsk:
         """
 
 
+# get vcf, convert to bed, remove orphan insertions (higher FP rate and won't be detected in SLAV-seq)
 rule get_donor_knrgl:
     input:
         lambda wc: donors.loc[wc.donor]["KNRGL"],
@@ -94,5 +98,8 @@ rule get_donor_knrgl:
         "{outdir}/resources/{donor}/get_vcf.log",
     shell:
         """
-        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4}}' > {output}
+        # remove orphan_or_sibling_transduction
+        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\t%SVLEN\t%TSD\t%TSDLEN\t%SUBTYPE\t%TD_SRC\n" {input} | \
+            awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5,$6,$7,$8,$9}}' | \
+            awk '$8 !~ /orphan_or_sibling_transduction/' > {output}
         """

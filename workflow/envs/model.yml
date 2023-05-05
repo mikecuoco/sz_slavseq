@@ -10,10 +10,10 @@ dependencies:
   - pyarrow
   - scikit-learn=1
   - jupyter
+  - pyranges
   - jupyterlab_code_formatter
   - nbconvert
   - seaborn
   - xgboost
   - numpy=1.18
-  - pip:
-      - deep-forest>=0.1.7
+  - flaml

@@ -57,6 +57,7 @@ def read_knrgl(knrgl_bedfile):
         header=None,
         names=["Chromosome", "Start", "End", "Strand"],
         dtype={"Chromosome": str, "Start": int, "End": int},
+        usecols=[0, 1, 2, 3],
     )
 
     df["Start"] = df.apply(
@@ -95,41 +96,50 @@ def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, label: str):
     return df
 
 
-if __name__ == "__main__":
+def filter_windows(df: pd.DataFrame, sv_blacklist: pd.DataFrame, segdups: pd.DataFrame):
+    # label the windows
+    df = label_windows(df, sv_blacklist, "sv_blacklist")
+    df = label_windows(df, segdups, "segdups")
 
+    # setup the filters
+    min_r1_5 = (df["r1_fwd"] >= 5) | (df["r1_rev"] >= 5)
+    high_ya_low_yg = (df["YA_mean"] > 20) & (df["YG_mean"] < 10)
+    no_blacklist = (df["sv_blacklist"] == False) & (df["segdups"] == False)
+
+    # apply the filters
+    df = df.loc[(min_r1_5) & (high_ya_low_yg) & (no_blacklist)].reset_index(drop=True)
+
+    df.drop(["sv_blacklist", "segdups"], axis=1, inplace=True)
+
+    return df
+
+
+if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
 
     # get features all the cells from this donor
     df = pd.concat([pd.read_parquet(f) for f in snakemake.input.features])
 
-    # read in the repeatmasker and knrgl files
+    # read in the repeatmasker, knrgl, and blacklist files
     rmsk_df = read_rmsk(snakemake.input.rmsk)
     knrgl_df = read_knrgl(snakemake.input.knrgl)
+    sv_blacklist = pr.read_bed(snakemake.input.sv_blacklist[0]).df
+    segdups = pr.read_bed(snakemake.input.segdups[0]).df
 
-    # label the windows
-    df = label_windows(df, rmsk_df, "rmsk")
+    # remove windows that dont pass the filters
+    df = filter_windows(df, sv_blacklist, segdups)
+
+    # label the windows for classification
     df = label_windows(df, knrgl_df, "knrgl")
-
-    # label the windows in 10kb flanking the repeats
-    rmsk_df["Start"] = rmsk_df["Start"] - 1e4
-    rmsk_df["End"] = rmsk_df["End"] + 1e4
-    knrgl_df["Start"] = knrgl_df["Start"] - 1e4
-    knrgl_df["End"] = knrgl_df["End"] + 1e4
-    df = label_windows(df, rmsk_df, "flank_rmsk")
-    df = label_windows(df, knrgl_df, "flank_knrgl")
 
     label = []
     for row in df.itertuples():
-        if row.rmsk:
-            label.append("RMSK")
-        elif row.knrgl:
+        if row.knrgl:
             label.append("KNRGL")
-        elif row.flank_rmsk or row.flank_knrgl:
-            label.append("FLANK")
         else:
             label.append("OTHER")
 
-    df.drop(["rmsk", "knrgl", "flank_rmsk", "flank_knrgl"], axis=1, inplace=True)
+    df.drop("knrgl", axis=1, inplace=True)
     df["label"] = label
 
     # save
