@@ -13,3 +13,5 @@ workflow/envs/src/**
 prep_genomes/
 .test/results
 .test/resources
+cf.10xgenomics.com/**
+config/*tsv
