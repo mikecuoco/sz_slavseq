@@ -48,11 +48,4 @@ jobs:
       - name: Install snakemake
         run: mamba install python=3.9 snakemake==7.16 biopython
       - name: Run workflow
-        run: snakemake all --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/config/config.yml
-
-    # - name: Test report
-    #   uses: snakemake/snakemake-github-action@v1.24.0
-    #   with:
-    #     directory: .test
-    #     snakefile: workflow/Snakefile
-    #     args: "--report report.zip"
+        run: snakemake map --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/config/config.yml

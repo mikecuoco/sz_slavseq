@@ -35,6 +35,16 @@ rule map:
             rules.aln_multiqc.output,
             outdir=config["outdir"],
         ),
+        expand(
+            expand(
+                rules.get_features.output,
+                zip,
+                sample=samples["sample_id"],
+                donor=samples["donor_id"],
+                allow_missing=True,
+            ),
+            outdir=config["outdir"],
+        ),
 
 
 rule train:
