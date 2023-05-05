@@ -99,7 +99,7 @@ rule get_donor_knrgl:
     shell:
         """
         # remove orphan_or_sibling_transduction
-        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\t%SVLEN\t%TSD\t%TSDLEN\t%SUBTYPE\t%TD_SRC\n" {input} | \
-            awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5,$6,$7,$8,$9}}' | \
-            awk '$8 !~ /orphan_or_sibling_transduction/' > {output}
+        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\t%AF\t%SVLEN\t%TSD\t%TSDLEN\t%SUBTYPE\t%TD_SRC\t%REF_REP\n" {input} | \
+            awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5,$6,$7,$8,$9,$10,$11}}' | \
+            awk '$9 !~ /orphan_or_sibling_transduction/' > {output}
         """

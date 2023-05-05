@@ -35,14 +35,13 @@ rule map:
             rules.aln_multiqc.output,
             outdir=config["outdir"],
         ),
+
+
+rule label:
+    input:
         expand(
-            expand(
-                rules.get_features.output,
-                zip,
-                sample=samples["sample_id"],
-                donor=samples["donor_id"],
-                allow_missing=True,
-            ),
+            rules.get_labels.output,
+            donor=donors.loc[~donors["KNRGL"].isnull(), "donor_id"],
             outdir=config["outdir"],
         ),
 
