@@ -20,13 +20,26 @@ rule fastqc:
 
 rule flagstat:
     input:
-        rules.bwa_mem.output,
+        rules.sambamba_sort.output,
     output:
-        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{sample}.flagstat",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{sample}.flagstat.log",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
+
+
+rule depth:
+    input:
+        bams=rules.sambamba_sort.output,
+    output:
+        "{outdir}/results/qc/depth/{donor}/{sample}.depth.txt",
+    log:
+        "{outdir}/results/qc/depth/{donor}/{sample}.depth.log",
+    params:
+        extra=" ",  # optional additional parameters as string
+    wrapper:
+        "v1.28.0/bio/samtools/depth"
 
 
 rule reads_multiqc:
@@ -65,6 +78,16 @@ rule aln_multiqc:
         expand(
             expand(
                 rules.flagstat.output,
+                allow_missing=True,
+            ),
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+            allow_missing=True,
+        ),
+        expand(
+            expand(
+                rules.depth.output,
                 allow_missing=True,
             ),
             zip,
