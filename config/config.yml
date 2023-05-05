@@ -1,15 +1,12 @@
 # path or URL to sample sheet (TSV format, columns: donor, sample, dna_type,...)
-samples: config/single_donor.tsv
-outdir: /raidixshare_logg01/mcuoco/internal/BSMN
+samples: config/all_samples.tsv
+donors: config/all_donors.tsv
+outdir: /iblm/netapp/data4/mcuoco/sz_slavseq
 
 genome:
-  url: ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa
-  name: hs38DH
+  ftp: ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.gz
+  name: hs38d1
   region: all
-
-KNRGL:
-  dbVar:
-    build: hs38DH
 
 adapters:
   r1_adapter: "AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT"
@@ -19,18 +16,3 @@ adapters:
 get_features:
   window_size: 750
   window_step: 250
-  min_reads: 3
-
-folds:
-  split_by: "cell_id"
-  num_folds: 4
-  test_sampling_strategy: "auto"
-
-# Do not set n_jobs > 8
-models:
-  RFC10:
-    name: "RandomForestClassifier"
-    train_sampling_strategy: "auto"
-    params:
-      n_estimators: 10
-      random_state: 1
