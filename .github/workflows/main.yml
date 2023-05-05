@@ -46,6 +46,6 @@ jobs:
           channels: conda-forge,bioconda,nodefaults
           channel-priority: strict
       - name: Install snakemake
-        run: mamba install python=3.9 snakemake==7.16 biopython
+        run: mamba install python=3.9 snakemake==7.22 biopython
       - name: Run workflow
         run: snakemake map --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --configfile .test/config/config.yml
