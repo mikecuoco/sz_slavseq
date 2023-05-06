@@ -1,7 +1,8 @@
 from snakemake.utils import min_version
-from snakemake.remote import FTP
+from snakemake.remote import FTP, HTTP
 
 FTP = FTP.RemoteProvider()
+HTTP = HTTP.RemoteProvider()
 
 
 ##### set minimum snakemake version #####
@@ -9,9 +10,7 @@ min_version("7.22.0")
 
 
 wildcard_constraints:
-    dna_type="\w+",
-    label_config="\w+",
-    db="\w+",
+    sample="\w+",
 
 
 configfile: "config/config.yml"
@@ -26,17 +25,46 @@ include: "rules/model.smk"
 include: "rules/qc.smk"
 
 
-rule all:
+rule map:
     input:
-        expand(
-            rules.render_reports.output,
-            outdir=config["outdir"],
-        ),
         expand(
             rules.reads_multiqc.output,
             outdir=config["outdir"],
         ),
         expand(
             rules.aln_multiqc.output,
+            outdir=config["outdir"],
+        ),
+
+
+rule label:
+    input:
+        expand(
+            rules.get_labels.output,
+            donor=donors.loc[~donors["KNRGL"].isnull(), "donor_id"],
+            outdir=config["outdir"],
+        ),
+
+
+rule train:
+    input:
+        expand(
+            rules.fit.output,
+            outdir=config["outdir"],
+        ),
+
+
+rule call:
+    input:
+        expand(
+            expand(
+                rules.predict.output,
+                zip,
+                sample=samples.loc[samples["donor_id"] != "CommonBrain", :][
+                    "sample_id"
+                ],
+                donor=samples.loc[samples["donor_id"] != "CommonBrain", :]["donor_id"],
+                allow_missing=True,
+            ),
             outdir=config["outdir"],
         ),

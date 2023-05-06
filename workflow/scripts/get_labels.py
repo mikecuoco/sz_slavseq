@@ -1,30 +1,24 @@
 #!/usr/bin/env python
 __author__ = "Rohini Gadde", "Michael Cuoco"
 
-import functools, sys, os
-import polars as pl
+import functools, sys
+import numpy as np
 import pandas as pd
-
-# get access to the src directory
-sys.path.append((os.path.abspath("workflow")))
-from src.genome.Genome import Genome
-from src.genome import interval_generator as ig
-from src.features.occupied_windows import occupied_windows_in_genome
-from src.genome.Interval import Interval
-
-os.environ["POLARS_MAX_THREADS"] = str(snakemake.threads)
+import pyranges as pr
 
 
+@functools.lru_cache()
 def read_rmsk(rmsk_outfile):
     """
     Read the repeatmasker output table and return locations of L1HS and L1PA2-6
     """
     # read the rmsk file
-    df0 = pd.read_csv(
+    df = pd.read_csv(
         rmsk_outfile,
         skiprows=3,
         delim_whitespace=True,
-        names=["chrom", "start", "end", "strand", "repeat"],
+        names=["Chromosome", "Start", "End", "Strand", "repeat"],
+        dtype={"Chromosome": str, "Start": int, "End": int},
         usecols=[4, 5, 6, 8, 9],
     )
 
@@ -37,162 +31,118 @@ def read_rmsk(rmsk_outfile):
         "L1PA5_3end",
         "L1PA6_3end",
     ]
-    # logging.info(f"Filtering for rep_names: {rep_names}")
-    df0 = df0[df0["repeat"].isin(rep_names)]
+
+    df = df[df["repeat"].isin(rep_names)]
 
     # save to new dataframe
-    df1 = pd.DataFrame()
-    df1["chrom"] = df0["chrom"].astype(str)
-    # set start positions depending on strand
-    df1["start"] = df0.apply(
-        lambda x: x["end"] if x["strand"] != "+" else x["start"], axis=1
+    df["Strand"] = df["Strand"].str.replace("C", "-")
+    df["Start"] -= 1  # make zero-based
+
+    # extend the repeats by 1000 bp
+    df["Start"] = df.apply(
+        lambda x: x["Start"] - 1000 if x["Strand"] == "-" else x["Start"], axis=1
     )
-    df1["end"] = df1["start"]
-    df1["start"] -= 1  # make zero-based
-
-    return df1
-
-
-def make_l1_windows(df, chromsizes, field, window_size, window_step):
-    l1_pos = set()
-
-    for (_, chrom, start, end) in df[["chrom", "start", "end"]].itertuples():
-        l1_pos.update([Interval(chrom, start, end)])
-
-    genome = Genome(chromsizes)
-    xx = list(
-        ig.windows_overlapping_intervals(genome, l1_pos, window_size, window_step)
-    )
-
-    l1_df = pd.DataFrame.from_records(
-        (x.as_tuple() for x in xx), columns=["chrom", "start", "end"]
-    ).set_index(["chrom", "start", "end"])
-    l1_df[field] = True
-
-    return l1_df
-
-
-@functools.lru_cache()
-def read_reference_l1():
-    df = read_rmsk(snakemake.input.ref_l1)
-    df = make_l1_windows(
-        df,
-        snakemake.input.chromsizes,
-        "in_rmsk",
-        snakemake.params.window_size,
-        snakemake.params.window_step,
-    )
-    return pl.DataFrame(df.reset_index())
-
-
-@functools.lru_cache()
-def read_non_ref_db():
-    df = pd.read_csv(
-        snakemake.input.non_ref_l1,
-        sep="\t",
-        header=None,
-        names=["chrom", "start", "end", "strand"],
-        dtype={"chrom": str, "start": int, "end": int},
-    )
-    df["start"] = df.apply(
-        lambda x: x["start"] - 750 if x["strand"] == "-" else x["start"], axis=1
-    )
-    df["end"] = df.apply(
-        lambda x: x["end"] + 750 if x["strand"] == "+" else x["end"], axis=1
-    )
-    df.drop(columns=["strand"], inplace=True)
-    df = make_l1_windows(
-        df,
-        snakemake.input.chromsizes,
-        "in_NRdb",
-        snakemake.params.window_size,
-        snakemake.params.window_step,
-    )
-    return pl.DataFrame(df.reset_index())
-
-
-def label(x):
-    if x["in_rmsk"]:
-        return "RL1"
-    elif x["in_NRdb"]:
-        return "KNRGL"
-    else:
-        return "OTHER"
-
-
-def get_germline_l1(
-    tbx_fn: str,
-    genome: Genome,
-    window_size: int,
-    window_step: int,
-):
-
-    # create the windows
-    windows = occupied_windows_in_genome(genome, window_size, window_step, tbx_fn)
-
-    w_list = []
-    for w in windows:
-        if w is None:
-            continue
-        w_list.append(w.as_tuple())
-    df = pl.DataFrame(w_list, schema=["chrom", "start", "end"])
-
-    # merge ref and nonref l1
-    df = (
-        df.join(read_non_ref_db(), on=["chrom", "start", "end"], how="left")
-        .join(read_reference_l1(), on=["chrom", "start", "end"], how="left")
-        .fill_null(False)
-    )
-
-    # only keep windows with L1 in either the reference or nonref database
-    df = df.filter(pl.col("in_NRdb") | pl.col("in_rmsk"))
-
-    # if ref and nonref l1 are present at the same site, set nonref to false
-    df = df.with_column(
-        pl.when(pl.col("in_rmsk") & pl.col("in_NRdb"))
-        .then(False)
-        .otherwise(pl.col("in_NRdb"))
-        .alias("in_NRdb")
+    df["End"] = df.apply(
+        lambda x: x["End"] + 1000 if x["Strand"] == "+" else x["End"], axis=1
     )
 
     return df
 
 
-if __name__ == "__main__":
-
-    sys.stderr = open(snakemake.log[0], "w")
-
-    # get germline L1 from bulk data
-    germline_df = get_germline_l1(
-        snakemake.input.bgz[0],
-        Genome(snakemake.input.chromsizes),
-        snakemake.params.window_size,
-        snakemake.params.window_step,
+@functools.lru_cache()
+def read_knrgl(knrgl_bedfile):
+    df = pd.read_csv(
+        knrgl_bedfile,
+        sep="\t",
+        header=None,
+        names=["Chromosome", "Start", "End", "Strand"],
+        dtype={"Chromosome": str, "Start": int, "End": int},
+        usecols=[0, 1, 2, 3],
     )
 
+    df["Start"] = df.apply(
+        lambda x: x["Start"] - 1000 if x["Strand"] == "-" else x["Start"], axis=1
+    )
+    df["End"] = df.apply(
+        lambda x: x["End"] + 1000 if x["Strand"] == "+" else x["End"], axis=1
+    )
+
+    return df
+
+
+def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, label: str):
+    assert type(df) == pd.DataFrame, "df must be a pandas DataFrame"
+    assert type(other_df) == pd.DataFrame, "other_df must be a pandas DataFrame"
+    assert label not in df.columns, f"{label} already in df.columns"
+
+    # convert to pyranges
+    pr_df = pr.PyRanges(df)
+    pr_other_df = pr.PyRanges(other_df)
+
+    # get the windows that overlap with the other_df
+    overlapping = pr_df.overlap(pr_other_df).df
+
+    # set the index to the chromosome, start, and end
+    # TODO: check if reads are in same orientation as repeats
+    df.set_index(["Chromosome", "Start", "End"], inplace=True)
+    overlapping.set_index(["Chromosome", "Start", "End"], inplace=True)
+
+    # label the windows that overlap
+    df[label] = df.index.isin(overlapping.index)
+
+    # reset the index
+    df.reset_index(inplace=True)
+
+    return df
+
+
+def filter_windows(df: pd.DataFrame, sv_blacklist: pd.DataFrame, segdups: pd.DataFrame):
+    # label the windows
+    df = label_windows(df, sv_blacklist, "sv_blacklist")
+    df = label_windows(df, segdups, "segdups")
+
+    # setup the filters
+    min_r1_5 = (df["r1_fwd"] >= 5) | (df["r1_rev"] >= 5)
+    high_ya_low_yg = (df["YA_mean"] > 20) & (df["YG_mean"] < 10)
+    no_blacklist = (df["sv_blacklist"] == False) & (df["segdups"] == False)
+
+    # apply the filters
+    df = df.loc[(min_r1_5) & (high_ya_low_yg) & (no_blacklist)].reset_index(drop=True)
+
+    df.drop(["sv_blacklist", "segdups"], axis=1, inplace=True)
+
+    return df
+
+
+if __name__ == "__main__":
+    sys.stderr = open(snakemake.log[0], "w")
+
+    # get features all the cells from this donor
+    df = pd.concat([pd.read_parquet(f) for f in snakemake.input.features])
+
+    # read in the repeatmasker, knrgl, and blacklist files
+    rmsk_df = read_rmsk(snakemake.input.rmsk)
+    knrgl_df = read_knrgl(snakemake.input.knrgl)
+    sv_blacklist = pr.read_bed(snakemake.input.sv_blacklist[0]).df
+    segdups = pr.read_bed(snakemake.input.segdups[0]).df
+
+    # remove windows that dont pass the filters
+    df = filter_windows(df, sv_blacklist, segdups)
+
+    # label the windows for classification
+    df = label_windows(df, knrgl_df, "knrgl")
+
+    label = []
+    for row in df.itertuples():
+        if row.knrgl:
+            label.append("KNRGL")
+        else:
+            label.append("OTHER")
+
+    df.drop("knrgl", axis=1, inplace=True)
+    df["label"] = label
+
     # save
-    germline_df.with_columns(
-        [
-            pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label"),
-        ]
-    ).drop(["in_NRdb", "in_rmsk"]).write_csv(snakemake.output.bulk)
+    df.to_parquet(snakemake.output[0], index=False)
 
-    # get features from single cell data
-    features_df = pl.concat([pl.read_parquet(f) for f in snakemake.input.features])
-
-    # merge
-    df = features_df.join(
-        germline_df, on=["chrom", "start", "end"], how="left"
-    ).fill_null(False)
-
-    # collapse to single column
-    df = df.with_column(
-        pl.struct(pl.col(["in_NRdb", "in_rmsk"])).apply(label).alias("label")
-    ).drop(["in_NRdb", "in_rmsk"])
-
-    if snakemake.params.rmL1:
-        df = df.filter(pl.col("label") != "RL1")
-
-    # save
-    df.write_parquet(snakemake.output.mda)
     sys.stderr.close()

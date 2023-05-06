@@ -13,3 +13,8 @@ workflow/envs/src/**
 prep_genomes/
 .test/results
 .test/resources
+cf.10xgenomics.com/**
+hgdownload.soe.ucsc.edu/**
+ftp.ncbi.nlm.nih.gov/**
+*nbconvert.ipynb
+config/*tsv

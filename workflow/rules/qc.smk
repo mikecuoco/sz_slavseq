@@ -10,23 +10,36 @@ rule fastqc:
     input:
         get_fastqc_input,
     output:
-        html="{outdir}/results/qc/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.html",
-        zip="{outdir}/results/qc/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}_fastqc.zip",
+        html="{outdir}/results/qc/fastqc/{donor}/{sample}_{trim}_{read}.html",
+        zip="{outdir}/results/qc/fastqc/{donor}/{sample}_{trim}_{read}_fastqc.zip",
     log:
-        "{outdir}/results/qc/fastqc/{donor}/{dna_type}/{sample}_{trim}_{read}.log",
+        "{outdir}/results/qc/fastqc/{donor}/{sample}_{trim}_{read}.log",
     wrapper:
         "v1.21.0/bio/fastqc"
 
 
 rule flagstat:
     input:
-        rules.bwa_mem.output,
+        rules.sambamba_sort.output,
     output:
-        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/bwa_mem/{donor}/{dna_type}/{sample}.flagstat.log",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
+
+
+rule depth:
+    input:
+        bams=rules.sambamba_sort.output,
+    output:
+        "{outdir}/results/qc/depth/{donor}/{sample}.depth.txt",
+    log:
+        "{outdir}/results/qc/depth/{donor}/{sample}.depth.log",
+    params:
+        extra=" ",  # optional additional parameters as string
+    wrapper:
+        "v1.28.0/bio/samtools/depth"
 
 
 rule reads_multiqc:
@@ -41,7 +54,6 @@ rule reads_multiqc:
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
-            dna_type=samples["dna_type"],
             allow_missing=True,
         ),
         expand(
@@ -49,7 +61,6 @@ rule reads_multiqc:
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
-            dna_type=samples["dna_type"],
             allow_missing=True,
         ),
     output:
@@ -72,7 +83,16 @@ rule aln_multiqc:
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
-            dna_type=samples["dna_type"],
+            allow_missing=True,
+        ),
+        expand(
+            expand(
+                rules.depth.output,
+                allow_missing=True,
+            ),
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
             allow_missing=True,
         ),
     output:

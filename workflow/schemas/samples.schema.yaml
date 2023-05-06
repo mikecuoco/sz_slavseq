@@ -29,5 +29,4 @@ required:
   - sample_id
   - tissue_id
   - donor_id
-  - dna_type
 # Add necessity for R1/R2 or sra

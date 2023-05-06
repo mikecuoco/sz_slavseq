@@ -52,23 +52,6 @@ properties:
       type: integer
     min_secondary_mapq:
       type: integer
-    library_3_or_5:
-      type: integer
-      enum: [3, 5]
-
-  folds:
-    type: object
-    split_by:
-      type: string
-    num_folds:
-      type: integer
-    downsample_train:
-      type: boolean
-    downsample_test:
-      type: boolean
-
-  models:
-    type: object
 
 required:
   - outdir
@@ -77,5 +60,3 @@ required:
   - donors
   - adapters
   - get_features
-  - folds
-  - models

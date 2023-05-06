@@ -1,17 +1,3 @@
-rule install_bwakit:
-    output:
-        directory("resources/bwa.kit"),
-    conda:
-        "../envs/ref.yml"
-    log:
-        "resources/install_bwakit.log",
-    shell:
-        """
-        mkdir -p $(dirname {output}) && cd $(dirname {output})
-        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
-        """
-
-
 # handle specified region
 region = (
     "".join(config["genome"]["region"])
@@ -20,10 +6,12 @@ region = (
 )
 region_name = f"_{region}" if region != "all" else ""
 genome_name = config["genome"]["name"] + region_name
+assert (
+    "38" in genome_name
+), "Only GRCh38 is supported due to segdup and blacklist regions used from 10x genomics"
 
 
-# generate hg38 reference with decoy and alt contigs
-rule gen_ref:
+rule get_genome:
     input:
         fa=FTP.remote(
             config["genome"]["ftp"],
@@ -32,39 +20,14 @@ rule gen_ref:
             immediate_close=True,
         ),
     output:
-        multiext(
-            f"{{outdir}}/resources/{genome_name}",
-            ".fa",
-            ".fa.fai",
-            ".genome",
-        ),
+        fa=f"{{outdir}}/resources/{genome_name}.fa",
+        fai=f"{{outdir}}/resources/{genome_name}.fa.fai",
     log:
         "{outdir}/resources/gen_ref.log",
     conda:
         "../envs/ref.yml"
-    params:
-        region=" ".join(config["genome"]["region"])
-        if isinstance(config["genome"]["region"], list)
-        else config["genome"]["region"],
-    shadow:
-        "shallow"
-    shell:
-        """
-        # start logging
-        touch {log} && exec 2>{log}
-
-        # filter for the region if specified
-        if [ "{params.region}" != "all" ]; then
-            samtools faidx {input} {params.region} > {output[0]}
-            rm -f {input}
-        else
-            mv {input} {output[0]}
-        fi
-
-        # index
-        samtools faidx {output[0]}
-        cut -f 1,2 {output[1]} > {output[2]}
-        """
+    script:
+        "../scripts/get_genome.py"
 
 
 rule make_dfam_lib:
@@ -96,7 +59,7 @@ rule make_dfam_lib:
 
 rule run_rmsk:
     input:
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
         lib=rules.make_dfam_lib.output,
     output:
         multiext(
@@ -123,6 +86,7 @@ rule run_rmsk:
         """
 
 
+# get vcf, convert to bed, remove orphan insertions (higher FP rate and won't be detected in SLAV-seq)
 rule get_donor_knrgl:
     input:
         lambda wc: donors.loc[wc.donor]["KNRGL"],
@@ -134,5 +98,8 @@ rule get_donor_knrgl:
         "{outdir}/resources/{donor}/get_vcf.log",
     shell:
         """
-        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\n" {input} | awk -v OFS='\t' '{{print $1,$2-1,$3,$4}}' > {output}
+        # remove orphan_or_sibling_transduction
+        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\t%AF\t%SVLEN\t%TSD\t%TSDLEN\t%SUBTYPE\t%TD_SRC\t%REF_REP\n" {input} | \
+            awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5,$6,$7,$8,$9,$10,$11}}' | \
+            awk '$9 !~ /orphan_or_sibling_transduction/' > {output}
         """

@@ -1,10 +1,24 @@
+rule install_bwakit:
+    output:
+        directory("resources/bwa.kit"),
+    conda:
+        "../envs/ref.yml"
+    log:
+        "resources/install_bwakit.log",
+    shell:
+        """
+        mkdir -p $(dirname {output}) && cd $(dirname {output})
+        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
+        """
+
+
 rule bwa_index:
     input:
         bwakit=rules.install_bwakit.output,
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
     output:
         idx=multiext(
-            f"{{outdir}}/resources/hs38DH{region_name}.fa",
+            f"{{outdir}}/resources/{genome_name}.fa",
             ".amb",
             ".ann",
             ".bwt",
@@ -21,10 +35,12 @@ rule bwa_mem:
     input:
         bwakit=rules.install_bwakit.output,
         idx=rules.bwa_index.output.idx,
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
         reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
     output:
-        "{outdir}/results/align/bwa_mem/{donor}/{dna_type}/{sample}.aln.bam",
+        "{outdir}/results/align/{donor}/{sample}.aln.bam",
+    log:
+        "{outdir}/results/align/{donor}/{sample}.log.bwamem",
     threads: 4
     shell:
         """
@@ -65,12 +81,12 @@ rule install_gapafim:
 rule tags:
     input:
         bam=rules.bwa_mem.output,
-        fa=rules.gen_ref.output[0],
+        fa=rules.get_genome.output.fa,
         gapafim=rules.install_gapafim.output,
     output:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.bam",
+        rules.bwa_mem.output[0].replace(".bam", ".tagged.bam"),
     log:
-        "{outdir}/results/align/tags/{donor}/{dna_type}/{sample}.err",
+        rules.bwa_mem.log[0].replace(".bwamem", ".tags"),
     conda:
         "../envs/align.yml"
     params:
@@ -96,21 +112,29 @@ rule tags:
         """
 
 
-rule tabix:
+rule sambamba_sort:
     input:
         rules.tags.output,
     output:
-        bgz="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz",
-        tbi="{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.bgz.tbi",
+        rules.tags.output[0].replace(".bam", ".sorted.bam"),
     log:
-        "{outdir}/results/align/tabix/{donor}/{dna_type}/{sample}.log",
-    conda:
-        "../envs/align.yml"
-    shell:
-        """
-        workflow/scripts/sam_to_tabix.py {input} | \
-            sort --temporary-directory=results/tabix/{wildcards.sample} --buffer-size=10G -k1,1 -k2,2n -k3,3n | \
-            bgzip -c > {output.bgz} 2> {log}
+        rules.tags.log[0].replace(".tags", ".sort"),
+    params:
+        extra="",  # this must be preset
+    threads: 4
+    wrapper:
+        "v1.23.5/bio/sambamba/sort"
 
-        tabix -s 1 -b 2 -e 3 -0 {output.bgz} >> {log} 2>&1
-        """
+
+rule sambamba_index:
+    input:
+        rules.sambamba_sort.output,
+    output:
+        rules.sambamba_sort.output[0] + ".bai",
+    log:
+        rules.sambamba_sort.log[0].replace(".sort", ".index"),
+    params:
+        extra="",  # this must be preset
+    threads: 4
+    wrapper:
+        "v1.23.5/bio/sambamba/index"
