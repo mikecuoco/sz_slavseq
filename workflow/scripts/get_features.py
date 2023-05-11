@@ -5,7 +5,6 @@ __author__ = "Michael Cuoco"
 import pysam
 import pandas as pd
 import numpy as np
-from scipy.stats import entropy
 from collections import deque, namedtuple, defaultdict
 import sys
 from collections.abc import Callable
