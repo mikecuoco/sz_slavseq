@@ -31,14 +31,6 @@ def read_filter(read: pysam.AlignedSegment):
     return not (read.is_duplicate or read.is_unmapped)
 
 
-def window_filter(window):
-    """Only yield windows that pass filter."""
-
-    # if window["total_reads"] >= 3 and window["ya_mean"] > window["yg_mean"]:
-    # if window["r1_fwd"] >= 3 or window["r2_fwd"] >= 3:
-    return window["total_reads"] >= 1
-
-
 # define named tuple class to hold window information
 Window = namedtuple("Window", ["chr", "start", "end", "reads"])
 
@@ -50,19 +42,18 @@ class BamWindows:
         window_size: int,
         step_size: int,
         read_filter: Callable = read_filter,
-        window_filter: Callable = window_filter,
     ) -> None:
         self.bam = pysam.AlignmentFile(bam, "rb")
         self.read_filter = read_filter
-        self.window_filter = window_filter
         self.window_size = window_size
         self.step_size = step_size
 
     def reads(self, contig: str) -> pysam.AlignedSegment:
         """Yield reads from a bam file for a given contig that pass the filter."""
-        for r in self.bam.fetch(contig, multiple_iterators=True):
-            if self.read_filter(r):
-                yield r
+        for r in filter(
+            self.read_filter, self.bam.fetch(contig, multiple_iterators=True)
+        ):
+            yield r
 
     def windows(self, contig: str, window_size: int, step_size: int) -> Window:
         """
@@ -109,48 +100,30 @@ class BamWindows:
 
         for r in window.reads:
             if r.is_read1:
-                l["r1_mapq"].append(r.mapping_quality)
-                l["r1_starts"].append(float(r.reference_start))
+                l["mapq"].append(r.mapping_quality)
+                l["starts"].append(float(r.reference_start))
                 l["template_lengths"].append(r.template_length)
                 if r.is_reverse:
-                    f["r1_rev"] += 1
+                    f["rev"] += 1
                 else:
-                    f["r1_fwd"] += 1
+                    f["fwd"] += 1
 
-                for tag in ["YG", "YA", "YS"]:
-                    if r.has_tag(tag):
-                        l[tag].append(r.get_tag(tag))
-                        f[tag + "_reads"] += 1
+                for tag in ["ML", "MG", "MS", "MA"]:
+                    l[tag].append(r.get_tag(tag))
 
-            else:
-                l["r2_mapq"].append(r.mapping_quality)
-                l["r2_starts"].append(float(r.reference_start))
-                if r.is_reverse:
-                    f["r2_rev"] += 1
-                else:
-                    f["r2_fwd"] += 1
+        f["nreads"] = f["fwd"] + f["rev"]
 
-        f["r1_reads"] = f["r1_fwd"] + f["r1_rev"]
-        f["r2_reads"] = f["r2_fwd"] + f["r2_rev"]
-        f["total_reads"] = f["r1_reads"] + f["r2_reads"]
+        f["frac_fwd"] = f["fwd"] / f["nreads"]
+        f["orientation_bias"] = max([f["frac_fwd"], 1 - f["frac_fwd"]])
 
-        if f["r1_reads"] > 0:
-            f["r1_orientation_bias"] = max([f["frac_r1_fwd"], 1 - f["frac_r1_fwd"]])
-            f["r1_mean_mapq"] = np.mean(l["r1_mapq"])
-            f["r1_sd_mapq"] = np.std(l["r1_mapq"])
-            f["r1_starts_gini"] = gini(np.array(l["r1_starts"]))
-            f["mean_template_length"] = np.mean(l["template_lengths"])
-            f["sd_template_length"] = np.std(l["template_lengths"])
-            for tag in ["YG", "YA", "YS"]:
-                if f[tag + "_reads"] > 0:
-                    f[tag + "_mean"] = np.mean(l[tag])
-            f["YA_YG_ratio"] = f["YA_mean"] / (f["YG_mean"] + 0.01)
-        if f["r2_reads"] > 0:
-            f["r2_orientation_bias"] = max([f["frac_r2_fwd"], 1 - f["frac_r2_fwd"]])
-            f["r2_mean_mapq"] = np.mean(l["r2_mapq"])
-            f["r2_sd_mapq"] = np.std(l["r2_mapq"])
-            f["r2_starts_gini"] = gini(np.array(l["r2_starts"]))
+        f["starts_gini"] = gini(np.array(l["starts"]))
+        f["mean_template_length"] = np.mean(l["template_lengths"])
+        f["sd_template_length"] = np.std(l["template_lengths"])
 
+        for tag in ["ML", "MG", "MS", "MA"]:
+            f[tag + "_mean"] = np.mean(l[tag])
+
+        # add coordinates
         f["chr"] = window.chr
         f["start"] = window.start
         f["end"] = window.end
@@ -166,9 +139,10 @@ class BamWindows:
         bg_step_size = int(self.step_size / 10)
 
         df = []
+        # iterate over contigs
         for contig in self.bam.references:
             reflen = self.bam.get_reference_length(contig)
-            # make generator for background windows (10kb)
+            # make generator for background windows
             bg_windows = self.windows(contig, bg_window_size, bg_step_size)
 
             # get first window
@@ -179,14 +153,15 @@ class BamWindows:
                 continue
 
             # iterate over windows
-            for w in self.windows(
-                contig,
-                self.window_size,
-                self.step_size,
+            for w in filter(
+                lambda w: len(w.reads) > 0,
+                self.windows(
+                    contig,
+                    self.window_size,
+                    self.step_size,
+                ),
             ):
                 f = self.window_features(w)
-                if not self.window_filter(f):
-                    continue
 
                 w_center = w.start + (w.end - w.start) / 2
                 while True:
