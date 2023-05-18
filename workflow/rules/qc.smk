@@ -68,7 +68,7 @@ rule reads_multiqc:
     log:
         "{outdir}/results/qc/multiqc_reads.log",
     params:
-        extra='--config config/multiqc_config.yml --title "SLAV-seq reads" --no-data-dir',
+        extra='--config config/multiqc_config.yml --title "SLAV-seq fastQC and cutadapt QC" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"
 
@@ -98,6 +98,6 @@ rule aln_multiqc:
     log:
         "{outdir}/results/qc/multiqc.log",
     params:
-        extra='--config config/multiqc_config.yml --title "SLAV-seq" --no-data-dir',
+        extra='--config config/multiqc_config.yml --title "SLAV-seq alignment QC" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"
