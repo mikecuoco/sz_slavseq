@@ -96,24 +96,6 @@ def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, label: str):
     return df
 
 
-def filter_windows(df: pd.DataFrame, sv_blacklist: pd.DataFrame, segdups: pd.DataFrame):
-    # label the windows
-    df = label_windows(df, sv_blacklist, "sv_blacklist")
-    df = label_windows(df, segdups, "segdups")
-
-    # setup the filters
-    min_r1_5 = (df["r1_fwd"] >= 5) | (df["r1_rev"] >= 5)
-    high_ya_low_yg = (df["YA_mean"] > 20) & (df["YG_mean"] < 10)
-    no_blacklist = (df["sv_blacklist"] == False) & (df["segdups"] == False)
-
-    # apply the filters
-    df = df.loc[(min_r1_5) & (high_ya_low_yg) & (no_blacklist)].reset_index(drop=True)
-
-    df.drop(["sv_blacklist", "segdups"], axis=1, inplace=True)
-
-    return df
-
-
 if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
 
@@ -123,23 +105,21 @@ if __name__ == "__main__":
     # read in the repeatmasker, knrgl, and blacklist files
     rmsk_df = read_rmsk(snakemake.input.rmsk)
     knrgl_df = read_knrgl(snakemake.input.knrgl)
-    sv_blacklist = pr.read_bed(snakemake.input.sv_blacklist[0]).df
-    segdups = pr.read_bed(snakemake.input.segdups[0]).df
-
-    # remove windows that dont pass the filters
-    df = filter_windows(df, sv_blacklist, segdups)
 
     # label the windows for classification
     df = label_windows(df, knrgl_df, "knrgl")
+    df = label_windows(df, rmsk_df, "rmsk")
 
     label = []
     for row in df.itertuples():
-        if row.knrgl:
+        if row.rmsk:
+            label.append("RMSK")
+        elif row.knrgl:
             label.append("KNRGL")
         else:
             label.append("OTHER")
 
-    df.drop("knrgl", axis=1, inplace=True)
+    df.drop(["knrgl", "rmsk"], axis=1, inplace=True)
     df["label"] = label
 
     # save
