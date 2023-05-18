@@ -8,6 +8,8 @@ rule get_features:
         "{outdir}/results/model/get_features/{donor}/{sample}.pqt",
     log:
         "{outdir}/results/model/get_features/{donor}/{sample}.log",
+    params:
+        **config["get_features"],
     conda:
         "../envs/features.yml"
     script:

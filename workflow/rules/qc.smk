@@ -20,11 +20,11 @@ rule fastqc:
 
 rule flagstat:
     input:
-        rules.sambamba_sort.output,
+        "{outdir}/results/align/{donor}/{sample}.{ref}.bam",
     output:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.{ref}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat.log",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.{ref}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
@@ -78,6 +78,7 @@ rule aln_multiqc:
         expand(
             expand(
                 rules.flagstat.output,
+                ref=["genome", "line1"],
                 allow_missing=True,
             ),
             zip,
@@ -86,10 +87,7 @@ rule aln_multiqc:
             allow_missing=True,
         ),
         expand(
-            expand(
-                rules.depth.output,
-                allow_missing=True,
-            ),
+            rules.depth.output,
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
@@ -100,6 +98,6 @@ rule aln_multiqc:
     log:
         "{outdir}/results/qc/multiqc.log",
     params:
-        extra=lambda wildcards: f'--config config/multiqc_config.yml --title "SLAV-seq" --no-data-dir',
+        extra='--config config/multiqc_config.yml --title "SLAV-seq" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"

@@ -1,24 +1,9 @@
-rule install_bwakit:
-    output:
-        directory("resources/bwa.kit"),
-    conda:
-        "../envs/ref.yml"
-    log:
-        "resources/install_bwakit.log",
-    shell:
-        """
-        mkdir -p $(dirname {output}) && cd $(dirname {output})
-        wget -O- -q --no-config https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2 | tar xfj -
-        """
-
-
 rule bwa_index:
     input:
-        bwakit=rules.install_bwakit.output,
-        fa=rules.get_genome.output.fa,
+        fa="{outdir}/resources/{ref}.fa",
     output:
         idx=multiext(
-            f"{{outdir}}/resources/{genome_name}.fa",
+            "{outdir}/resources/{ref}.fa",
             ".amb",
             ".ann",
             ".bwt",
@@ -26,115 +11,95 @@ rule bwa_index:
             ".sa",
         ),
     log:
-        "{outdir}/resources/bwa_index.log",
-    shell:
-        "{input.bwakit}/bwa index {input.fa} > {log} 2>&1"
-
-
-rule bwa_mem:
-    input:
-        bwakit=rules.install_bwakit.output,
-        idx=rules.bwa_index.output.idx,
-        fa=rules.get_genome.output.fa,
-        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
-    output:
-        "{outdir}/results/align/{donor}/{sample}.aln.bam",
-    log:
-        "{outdir}/results/align/{donor}/{sample}.log.bwamem",
-    threads: 4
-    shell:
-        """
-        prefix="$(dirname {output})/$(basename {output} .aln.bam)"
-        idxbase="$(dirname {input.idx[0]})/$(basename {input.idx[0]} .amb)"
-
-        # -s sort option doesn't work
-        {input.bwakit}/run-bwamem \
-            -R "@RG\\tID:{wildcards.donor}\\tSM:{wildcards.sample}\\tPL:ILLUMINA" \
-            -d \
-            -t {threads} \
-            -o $prefix \
-            $idxbase \
-            {input.reads} | bash
-        """
-
-
-rule install_gapafim:
-    output:
-        directory("{outdir}/resources/gapafim"),
-    conda:
-        "../envs/align.yml"
-    log:
-        "{outdir}/resources/install_gapafim.log",
-    shell:
-        """
-        touch {log} && exec 1>{log} 2>&1
-
-        mkdir -p $(dirname {output}) && cd $(dirname {output})
-        git clone https://github.com/apuapaquola/gapafim.git
-        cd gapafim/Gapafim
-        perl Makefile.PL
-        make
-        make install
-        """
-
-
-rule tags:
-    input:
-        bam=rules.bwa_mem.output,
-        fa=rules.get_genome.output.fa,
-        gapafim=rules.install_gapafim.output,
-    output:
-        rules.bwa_mem.output[0].replace(".bam", ".tagged.bam"),
-    log:
-        rules.bwa_mem.log[0].replace(".bwamem", ".tags"),
+        "{outdir}/resources/{ref}.bwa_index.log",
     conda:
         "../envs/align.yml"
     params:
-        consensus="ATGTACCCTAAAACTTAGAGTATAATAAA",
-        prefix_length=len("ATGTACCCTAAAACTTAGAGTATAATAAA") + 2,
-        r1_flank_length=750,
-        r2_flank_length=len("ATGTACCCTAAAACTTAGAGTATAATAAA") + 2,
-        soft_clip_length_threshold=5,
+        algorithm=lambda wc: "is" if "LINE" in wc.ref else "bwtsw",
     shell:
         """
-        touch {log} && exec 2>{log}
-
-        (samtools sort -n {input.bam} | \
-            samtools view -h | \
-            workflow/scripts/add_tags_hts.pl \
-                --genome_fasta_file {input.fa} \
-                --prefix_length {params.prefix_length} \
-                --consensus {params.consensus} \
-                --r1_flank_length {params.r1_flank_length} \
-                --r2_flank_length {params.r2_flank_length} \
-                --soft_clip_length_threshold {params.soft_clip_length_threshold} | \
-                samtools view -S -b - > {output})
+        bwa index -a {params.algorithm} {input.fa} > {log} 2>&1
         """
+
+
+rule bwa_mem_genome:
+    input:
+        idx=expand(rules.bwa_index.output.idx, ref=genome_name, allow_missing=True),
+        fa=rules.get_genome.output.fa,
+        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
+    output:
+        "{outdir}/results/align/{donor}/{sample}.genome.bam",
+    log:
+        bwa="{outdir}/results/align/{donor}/{sample}.bwa_genome.log",
+        samblaster="{outdir}/results/align/{donor}/{sample}.samblaster_genome.log",
+    threads: 4
+    conda:
+        "../envs/align.yml"
+    params:
+        min_as=19,  # minimum alignment score
+    shell:
+        """
+        bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log.bwa} \
+        | samblaster --addMateTags 2> {log.samblaster} \
+        | samtools view -Sb - > {output}
+        """
+
+
+rule bwa_mem_line1:
+    input:
+        idx=expand(rules.bwa_index.output.idx, ref="LINE1_lib", allow_missing=True),
+        fa=rules.make_dfam_lib.output,
+        reads=rules.cutadapt.output.fastq2,
+    output:
+        rules.bwa_mem_genome.output[0].replace("genome", "line1"),
+    log:
+        rules.bwa_mem_genome.log.bwa.replace("genome", "line1"),
+    threads: 4
+    conda:
+        "../envs/align.yml"
+    params:
+        min_as=19,  # minimum alignment score
+    shell:
+        """
+        bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log} > {output}
+        """
+
+
+rule tag_reads:
+    input:
+        genome_bam=rules.bwa_mem_genome.output[0],
+        line1_bam=rules.bwa_mem_line1.output[0],
+    output:
+        rules.bwa_mem_genome.output[0].replace("genome", "tagged"),
+    log:
+        rules.bwa_mem_genome.log.bwa.replace("bwa_genome", "tag_reads"),
+    conda:
+        "../envs/align.yml"
+    script:
+        "../scripts/tag_reads.py"
 
 
 rule sambamba_sort:
     input:
-        rules.tags.output,
+        rules.tag_reads.output,
     output:
-        rules.tags.output[0].replace(".bam", ".sorted.bam"),
+        rules.tag_reads.output[0].replace("tagged", "tagged.sorted"),
     log:
-        rules.tags.log[0].replace(".tags", ".sort"),
-    params:
-        extra="",  # this must be preset
-    threads: 4
+        rules.bwa_mem_genome.log.bwa.replace("bwa_genome", "sort"),
+    threads: 1
     wrapper:
-        "v1.23.5/bio/sambamba/sort"
+        "v1.31.1/bio/sambamba/sort"
 
 
 rule sambamba_index:
     input:
         rules.sambamba_sort.output,
     output:
-        rules.sambamba_sort.output[0] + ".bai",
-    log:
-        rules.sambamba_sort.log[0].replace(".sort", ".index"),
+        rules.sambamba_sort.output[0].replace("bam", "bam.bai"),
     params:
-        extra="",  # this must be preset
-    threads: 4
+        extra="",  # optional parameters
+    log:
+        rules.sambamba_sort.log[0].replace("sort", "index"),
+    threads: 1
     wrapper:
-        "v1.23.5/bio/sambamba/index"
+        "v1.31.1/bio/sambamba/index"
