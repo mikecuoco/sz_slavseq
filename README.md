@@ -36,6 +36,8 @@ snakemake \
 
 - [ ] Get left and right bg windows in feature table in `./workflow/scripts/get_features.py`
 - [ ] Write read2 in `./workflow/scripts/tag_reads.py` if it uniquely maps or is in proper pair
-- [ ] Only consider reads with at least one mate having MAPQ = 60
+- [ ] Only consider read pairs with at least one mate having MAPQ = 60
 - [ ] Call germline L1 from bulk SLAV-seq data, validate with WGS
 - [ ] Remove mean template length, instead count # of discordant and concordant reads
+- [ ] switch back to T2T-CHM13
+- [ ] Try peak calling again
