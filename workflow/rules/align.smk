@@ -26,7 +26,7 @@ rule bwa_mem_genome:
     input:
         idx=expand(rules.bwa_index.output.idx, ref=genome_name, allow_missing=True),
         fa=rules.get_genome.output.fa,
-        reads=[rules.cutadapt.output.fastq1, rules.cutadapt.output.fastq2],
+        reads=[rules.filter_read2.output.fastq1, rules.filter_read2.output.fastq2],
     output:
         "{outdir}/results/align/{donor}/{sample}.genome.bam",
     log:
@@ -49,7 +49,7 @@ rule bwa_mem_line1:
     input:
         idx=expand(rules.bwa_index.output.idx, ref="LINE1_lib", allow_missing=True),
         fa=rules.make_dfam_lib.output,
-        reads=rules.cutadapt.output.fastq2,
+        reads=rules.filter_read2.output.fastq2,
     output:
         rules.bwa_mem_genome.output[0].replace("genome", "line1"),
     log:

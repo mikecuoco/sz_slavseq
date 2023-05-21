@@ -1,8 +1,15 @@
 def get_fastqc_input(wildcards):
-    if wildcards.trim == "none":
-        reads = get_cutadapt_input(wildcards)
-    if wildcards.trim == "cutadapt":
-        reads = rules.cutadapt.output
+    if wildcards.fastq == "raw":
+        reads = (
+            lambda wc: [
+                samples.loc[wc.donor, wc.sample]["R1"],
+                samples.loc[wc.donor, wc.sample]["R2"],
+            ],
+        )
+    elif wildcards.fastq == "trimmed":
+        reads = rules.trim_adapters.output
+    elif wildcards.fastq == "filtered":
+        reads = rules.filter_read2.output
     return reads[0] if wildcards.read == "R1" else reads[1]
 
 
@@ -47,7 +54,7 @@ rule reads_multiqc:
         expand(
             expand(
                 rules.fastqc.output.html,
-                trim=["none", "cutadapt"],
+                trim=["raw", "trimmed", "filtered"],
                 read=["R1", "R2"],
                 allow_missing=True,
             ),
@@ -57,7 +64,14 @@ rule reads_multiqc:
             allow_missing=True,
         ),
         expand(
-            rules.cutadapt.output,
+            rules.trim_adapters.output,
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+            allow_missing=True,
+        ),
+        expand(
+            rules.filter_read2.output,
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
