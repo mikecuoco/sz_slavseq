@@ -1,49 +1,51 @@
 from Bio.Seq import Seq
 
 
-def get_cutadapt_input(wildcards):
-    sample = samples.loc[wildcards.donor, wildcards.sample]
-
-    # for debugging
-    # print("{} {} {}".format(wildcards.sample, sample["R1"], sample["R2"]))
-    return [sample["R1"], sample["R2"]]
-
-
-rule cutadapt:
+# remove adapters and low quality reads
+rule trim_adapters:
     input:
-        get_cutadapt_input,
+        lambda wc: [
+            samples.loc[wc.donor, wc.sample]["R1"],
+            samples.loc[wc.donor, wc.sample]["R2"],
+        ],
     output:
-        fastq1="{outdir}/results/trim/{donor}/{sample}_R1.fastq.gz",
-        fastq2="{outdir}/results/trim/{donor}/{sample}_R2.fastq.gz",
-        r1_qc="{outdir}/results/trim/{donor}/{sample}_R1.qc.txt",
-        r2_qc="{outdir}/results/trim/{donor}/{sample}_R2.qc.txt",
+        fastq1="{outdir}/results/fastq/{donor}/{sample}_R1.trimmed.fastq.gz",
+        fastq2="{outdir}/results/fastq/{donor}/{sample}_R2.trimmed.fastq.gz",
+        qc="{outdir}/results/fastq/{donor}/{sample}.trimmed.qc.txt",
     params:
-        r1_front=config["adapters"]["r1_adapter"],
-        r2_front=config["adapters"]["r2_adapter"] + config["adapters"]["nested_primer"],
-        r1_end=Seq(
-            config["adapters"]["r2_adapter"] + config["adapters"]["nested_primer"]
-        ).reverse_complement(),
-        r2_end=Seq(config["adapters"]["r1_adapter"]).reverse_complement(),
-        extra="--minimum-length=36 --quality-base=33 --quality-cutoff=28 --overlap=5 --times=4",
+        adapters="-a "
+        + config["adapters"]["r1_adapter"]
+        + " -A "
+        + config["adapters"]["r2_adapter"]
+        + " -g "
+        + Seq(config["adapters"]["r2_adapter"]).reverse_complement()
+        + " -G "
+        + Seq(config["adapters"]["r1_adapter"]).reverse_complement(),
+        extra="--minimum-length 36 --overlap 5 --times 4",
     log:
-        "{outdir}/results/trim/{donor}/{sample}.log",
-    threads: 8
-    conda:
-        "../envs/trim.yml"
-    shell:
-        """
-        touch {log} && exec > {log} 2>&1
+        "{outdir}/results/fastqc/{donor}/{sample}.trim_adapters.log",
+    threads: 4
+    wrapper:
+        "v1.31.1/bio/cutadapt/pe"
 
-        tmpdir=$(mktemp -d)
 
-        cutadapt -j {threads} {params.extra} \
-            --front={params.r1_front} --adapter={params.r1_end} \
-            --paired-output $tmpdir/tmp.2.fq.gz -o $tmpdir/tmp.1.fq.gz \
-            {input[0]} {input[1]} > {output.r1_qc}
-        cutadapt -j {threads} {params.extra} \
-            --front={params.r2_front} --adapter={params.r2_end} \
-            --paired-output {output.fastq1} -o {output.fastq2} \
-            $tmpdir/tmp.2.fq.gz $tmpdir/tmp.1.fq.gz > {output.r2_qc}
-
-        rm -rf $tmpdir
-        """
+# filter out read pairs where read2 doesn't contain the nested primer (that binds to LINE1)
+rule filter_read2:
+    input:
+        [rules.trim_adapters.output.fastq1, rules.trim_adapters.output.fastq2],
+    output:
+        fastq1=rules.trim_adapters.output.fastq1.replace("trimmed", "filtered"),
+        fastq2=rules.trim_adapters.output.fastq2.replace("trimmed", "filtered"),
+        qc=rules.trim_adapters.output.qc.replace("trimmed", "filtered"),
+    params:
+        # https://cutadapt.readthedocs.io/en/stable/guide.html#adapter-types
+        adapters="-G " + config["adapters"]["L1oligo_downstream"],
+        # https://cutadapt.readthedocs.io/en/stable/guide.html#
+        # --action=none --discard-untrimmed, don't trim, just filter
+        # --times 2, try to remove adapter twice
+        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 20 --overlap 15 --times 2",
+    log:
+        rules.trim_adapters.log[0].replace("trim_adapters", "filter_read2"),
+    threads: 4
+    wrapper:
+        "v1.31.1/bio/cutadapt/pe"
