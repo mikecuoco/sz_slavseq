@@ -39,7 +39,7 @@ rule filter_read2:
         qc=rules.trim_adapters.output.qc.replace("trimmed", "filtered"),
     params:
         # https://cutadapt.readthedocs.io/en/stable/guide.html#adapter-types
-        adapters="-G " + config["adapters"]["nested_primer"],
+        adapters="-G " + config["adapters"]["L1oligo_downstream"],
         # https://cutadapt.readthedocs.io/en/stable/guide.html#
         extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 20 --overlap 15",
     log:

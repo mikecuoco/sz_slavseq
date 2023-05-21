@@ -34,7 +34,7 @@ properties:
     required:
       - r1_adapter
       - r2_adapter
-      - nested_primer
+      - L1oligo_downstream
 
   get_features:
     type: object
