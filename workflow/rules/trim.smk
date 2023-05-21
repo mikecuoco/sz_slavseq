@@ -41,7 +41,9 @@ rule filter_read2:
         # https://cutadapt.readthedocs.io/en/stable/guide.html#adapter-types
         adapters="-G " + config["adapters"]["L1oligo_downstream"],
         # https://cutadapt.readthedocs.io/en/stable/guide.html#
-        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 20 --overlap 15",
+        # --action=none --discard-untrimmed, don't trim, just filter
+        # --times 2, try to remove adapter twice
+        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 20 --overlap 15 --times 2",
     log:
         rules.trim_adapters.log[0].replace("trim_adapters", "filter_read2"),
     threads: 4
