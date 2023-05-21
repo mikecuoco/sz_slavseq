@@ -1,26 +1,24 @@
-def get_fastqc_input(wildcards):
-    if wildcards.fastq == "raw":
-        reads = (
-            lambda wc: [
-                samples.loc[wc.donor, wc.sample]["R1"],
-                samples.loc[wc.donor, wc.sample]["R2"],
-            ],
-        )
-    elif wildcards.fastq == "trimmed":
-        reads = rules.trim_adapters.output
-    elif wildcards.fastq == "filtered":
-        reads = rules.filter_read2.output
-    return reads[0] if wildcards.read == "R1" else reads[1]
+def get_fastqc_input(wc):
+    if wc.fastq == "raw":
+        reads = [
+            samples.loc[wc.donor, wc.sample][["R1"]],
+            samples.loc[wc.donor, wc.sample][["R2"]],
+        ]
+    elif wc.fastq == "trimmed":
+        reads = [rules.trim_adapters.output.fastq1, rules.trim_adapters.output.fastq2]
+    elif wc.fastq == "filtered":
+        reads = [rules.filter_read2.output.fastq1, rules.filter_read2.output.fastq2]
+    return reads[0] if wc.read == "R1" else reads[1]
 
 
 rule fastqc:
     input:
         get_fastqc_input,
     output:
-        html="{outdir}/results/qc/fastqc/{donor}/{sample}_{trim}_{read}.html",
-        zip="{outdir}/results/qc/fastqc/{donor}/{sample}_{trim}_{read}_fastqc.zip",
+        html="{outdir}/results/qc/fastqc/{donor}/{sample}_{read}.{fastq}.html",
+        zip="{outdir}/results/qc/fastqc/{donor}/{sample}_{read}.{fastq}.fastqc.zip",
     log:
-        "{outdir}/results/qc/fastqc/{donor}/{sample}_{trim}_{read}.log",
+        "{outdir}/results/qc/fastqc/{donor}/{sample}_{read}.{fastq}.log",
     wrapper:
         "v1.21.0/bio/fastqc"
 
@@ -54,7 +52,7 @@ rule reads_multiqc:
         expand(
             expand(
                 rules.fastqc.output.html,
-                trim=["raw", "trimmed", "filtered"],
+                fastq=["raw", "trimmed", "filtered"],
                 read=["R1", "R2"],
                 allow_missing=True,
             ),
@@ -82,7 +80,7 @@ rule reads_multiqc:
     log:
         "{outdir}/results/qc/multiqc_reads.log",
     params:
-        extra='--config config/multiqc_config.yml --title "SLAV-seq fastQC and cutadapt QC" --no-data-dir',
+        extra='--title "SLAV-seq fastQC and cutadapt QC" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"
 
@@ -112,6 +110,6 @@ rule aln_multiqc:
     log:
         "{outdir}/results/qc/multiqc.log",
     params:
-        extra='--config config/multiqc_config.yml --title "SLAV-seq alignment QC" --no-data-dir',
+        extra='--title "SLAV-seq alignment QC" --no-data-dir',
     wrapper:
         "v1.21.0/bio/multiqc"
