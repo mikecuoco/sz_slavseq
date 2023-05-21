@@ -41,7 +41,7 @@ rule filter_read2:
         # https://cutadapt.readthedocs.io/en/stable/guide.html#adapter-types
         adapters="-G " + config["adapters"]["nested_primer"],
         # https://cutadapt.readthedocs.io/en/stable/guide.html#
-        extra="--discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 28 --overlap 15 --no-indels",
+        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 20 --overlap 15",
     log:
         rules.trim_adapters.log[0].replace("trim_adapters", "filter_read2"),
     threads: 4
