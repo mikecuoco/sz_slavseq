@@ -24,17 +24,6 @@ properties:
 
   adapters:
     type: object
-    properties:
-      r1_adapter:
-        type: string
-      r2_adapter:
-        type: string
-      nested_primer:
-        type: string
-    required:
-      - r1_adapter
-      - r2_adapter
-      - L1oligo_downstream
 
   get_features:
     type: object

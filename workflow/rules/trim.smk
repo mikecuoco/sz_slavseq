@@ -1,7 +1,9 @@
 from Bio.Seq import Seq
 
 
-# remove adapters and low quality reads
+# Remove adapters from read through in short fragments
+# If r1 is trimmed, it has read through LINE1 into the r2 adapter
+# Use --minimum-length 80:20 to ensure r1 is still long enough to map uniquely
 rule trim_adapters:
     input:
         lambda wc: [
@@ -14,16 +16,12 @@ rule trim_adapters:
         qc="{outdir}/results/fastq/{donor}/{sample}.trimmed.qc.txt",
     params:
         adapters="-a "
-        + config["adapters"]["r1_adapter"]
+        + Seq(config["adapters"]["r2"]).reverse_complement()
         + " -A "
-        + config["adapters"]["r2_adapter"]
-        + " -g "
-        + Seq(config["adapters"]["r2_adapter"]).reverse_complement()
-        + " -G "
-        + Seq(config["adapters"]["r1_adapter"]).reverse_complement(),
-        extra="--minimum-length 36 --overlap 5 --times 4",
+        + Seq(config["adapters"]["r1"]).reverse_complement(),
+        extra="--minimum-length 80:20",
     log:
-        "{outdir}/results/fastqc/{donor}/{sample}.trim_adapters.log",
+        "{outdir}/results/fastq/{donor}/{sample}.trim_adapters.log",
     threads: 4
     wrapper:
         "v1.31.1/bio/cutadapt/pe"
@@ -39,11 +37,13 @@ rule filter_read2:
         qc=rules.trim_adapters.output.qc.replace("trimmed", "filtered"),
     params:
         # https://cutadapt.readthedocs.io/en/stable/guide.html#adapter-types
-        adapters="-G " + config["adapters"]["L1oligo_downstream"],
+        adapters="-G "
+        + config["adapters"]["L1_nested"]
+        + config["adapters"]["L1_downstream"],
         # https://cutadapt.readthedocs.io/en/stable/guide.html#
         # --action=none --discard-untrimmed, don't trim, just filter
         # --times 2, try to remove adapter twice
-        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 36 --quality-cutoff 20 --overlap 15 --times 2",
+        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 80:20 --quality-cutoff 20 --overlap 15 --times 2",
     log:
         rules.trim_adapters.log[0].replace("trim_adapters", "filter_read2"),
     threads: 4
