@@ -25,11 +25,11 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/align/{donor}/{sample}.{ref}.bam",
+        rules.bwa_mem.output,
     output:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.{ref}.flagstat",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.{ref}.flagstat.log",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
@@ -37,6 +37,7 @@ rule flagstat:
 rule depth:
     input:
         bams=rules.sambamba_sort.output,
+        bai=rules.sambamba_index.output,
     output:
         "{outdir}/results/qc/depth/{donor}/{sample}.depth.txt",
     log:
@@ -88,11 +89,7 @@ rule reads_multiqc:
 rule aln_multiqc:
     input:
         expand(
-            expand(
-                rules.flagstat.output,
-                ref=["genome", "line1"],
-                allow_missing=True,
-            ),
+            rules.flagstat.output,
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
