@@ -36,11 +36,11 @@ rule bwa_mem_genome:
     conda:
         "../envs/align.yml"
     params:
-        min_as=19,  # minimum alignment score
+        min_as=30,  # minimum alignment score (default = 30)
     shell:
         """
         bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log.bwa} \
-        | samblaster --addMateTags --removeDups 2> {log.samblaster} \
+        | samblaster --addMateTags 2> {log.samblaster} \
         | samtools view -Sb - > {output}
         """
 
@@ -58,7 +58,7 @@ rule bwa_mem_line1:
     conda:
         "../envs/align.yml"
     params:
-        min_as=19,  # minimum alignment score
+        min_as=30,  # minimum alignment score (default = 30)
     shell:
         """
         bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log} > {output}
