@@ -40,7 +40,7 @@ rule bwa_mem_genome:
     shell:
         """
         bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log.bwa} \
-        | samblaster --addMateTags 2> {log.samblaster} \
+        | samblaster --addMateTags --removeDups 2> {log.samblaster} \
         | samtools view -Sb - > {output}
         """
 

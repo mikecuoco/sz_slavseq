@@ -37,6 +37,7 @@ rule flagstat:
 rule depth:
     input:
         bams=rules.sambamba_sort.output,
+        bai=rules.sambamba_index.output,
     output:
         "{outdir}/results/qc/depth/{donor}/{sample}.depth.txt",
     log:

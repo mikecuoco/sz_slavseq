@@ -19,7 +19,7 @@ rule trim_adapters:
         + Seq(config["adapters"]["r2"]).reverse_complement()
         + " -A "
         + Seq(config["adapters"]["r1"]).reverse_complement(),
-        extra="--minimum-length 80:20",
+        extra="--minimum-length 80 --quality-cutoff 30",
     log:
         "{outdir}/results/fastq/{donor}/{sample}.trim_adapters.log",
     threads: 4
@@ -43,7 +43,7 @@ rule filter_read2:
         # https://cutadapt.readthedocs.io/en/stable/guide.html#
         # --action=none --discard-untrimmed, don't trim, just filter
         # --times 2, try to remove adapter twice
-        extra="--action=none --discard-untrimmed --pair-filter both --minimum-length 80:20 --quality-cutoff 20 --overlap 15 --times 2",
+        extra="--action=none --discard-untrimmed --pair-filter both --overlap 50 --times 2",
     log:
         rules.trim_adapters.log[0].replace("trim_adapters", "filter_read2"),
     threads: 4
