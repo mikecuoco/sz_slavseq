@@ -14,7 +14,7 @@ assert (
 rule get_genome:
     input:
         fa=FTP.remote(
-            config["genome"]["ftp"],
+            config["genome"]["fasta"],
             keep_local=True,
             static=True,
             immediate_close=True,
@@ -57,49 +57,37 @@ rule make_dfam_lib:
         """
 
 
-rule run_rmsk:
+rule rmsk_to_bed:
     input:
-        fa=rules.get_genome.output.fa,
-        lib=rules.make_dfam_lib.output,
-    output:
-        multiext(
-            f"{{outdir}}/resources/{genome_name}.fa",
-            ".out",
-            ".masked",
+        FTP.remote(
+            config["genome"]["rmsk"],
+            keep_local=True,
+            static=True,
+            immediate_close=True,
         ),
+    output:
+        rmsk="{outdir}/resources/rmsk.bed",
+        rmsk_1kb_3end="{outdir}/resources/rmsk_1kb_3end.bed",
+        rmsk_20kb="{outdir}/resources/rmsk_20kb.bed",
     log:
-        "{outdir}/resources/run_rmsk.log",
+        "{outdir}/resources/rmsk_to_bed.log",
     conda:
-        "../envs/ref.yml"
-    params:
-        # -s Slow search; 0-5% more sensitive, 2-3 times slower than default;
-        # empty string is default
-        # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
-        # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
-        speed="-s" if config["genome"]["region"] == "all" else "-qq",
-    shadow:
-        "shallow"
-    threads: 24
-    shell:
-        """
-        RepeatMasker -pa {threads} {params.speed} -lib {input.lib} -no_is -dir $(dirname {input.fa}) {input.fa} > {log} 2>&1
-        """
+        "../envs/features.yml"
+    script:
+        "../scripts/rmsk_to_bed.py"
 
 
 # get vcf, convert to bed, remove orphan insertions (higher FP rate and won't be detected in SLAV-seq)
-rule get_donor_knrgl:
+rule knrgl_to_bed:
     input:
         lambda wc: donors.loc[wc.donor]["KNRGL"],
     output:
-        "{outdir}/resources/{donor}_insertions.bed",
+        knrgl="{outdir}/resources/{donor}_insertions.bed",
+        knrgl_1kb_3end="{outdir}/resources/{donor}_insertions_1kb_3end.bed",
+        knrgl_20kb="{outdir}/resources/{donor}_insertions_20kb.bed",
     conda:
-        "../envs/ref.yml"
+        "../envs/features.yml"
     log:
-        "{outdir}/resources/{donor}/get_vcf.log",
-    shell:
-        """
-        # remove orphan_or_sibling_transduction
-        bcftools query -f "%CHROM\t%POS\t%END\t%STRAND\t%AF\t%SVLEN\t%TSD\t%TSDLEN\t%SUBTYPE\t%TD_SRC\t%REF_REP\n" {input} | \
-            awk -v OFS='\t' '{{print $1,$2-1,$3,$4,$5,$6,$7,$8,$9,$10,$11}}' | \
-            awk '$9 !~ /orphan_or_sibling_transduction/' > {output}
-        """
+        "{outdir}/resources/{donor}_to_bed.log",
+    script:
+        "../scripts/knrgl_to_bed.py"
