@@ -3,7 +3,6 @@ from Bio.Seq import Seq
 
 # Remove adapters from read through in short fragments
 # If r1 is trimmed, it has read through LINE1 into the r2 adapter
-# Use --minimum-length 80:20 to ensure r1 is still long enough to map uniquely
 rule trim_adapters:
     input:
         lambda wc: [
@@ -19,7 +18,7 @@ rule trim_adapters:
         + Seq(config["adapters"]["r2"]).reverse_complement()
         + " -A "
         + Seq(config["adapters"]["r1"]).reverse_complement(),
-        extra="--minimum-length 80 --quality-cutoff 30",
+        extra="--minimum-length 30:90 --quality-cutoff 20",
     log:
         "{outdir}/results/fastq/{donor}/{sample}.trim_adapters.log",
     threads: 4
