@@ -28,20 +28,6 @@ include: "rules/qc.smk"
 rule map:
     input:
         expand(
-            expand(
-                rules.sambamba_index.output,
-                outdir=config["outdir"],
-                allow_missing=True,
-            ),
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
-        ),
-        expand(
-            rules.reads_multiqc.output,
-            outdir=config["outdir"],
-        ),
-        expand(
             rules.aln_multiqc.output,
             outdir=config["outdir"],
         ),
