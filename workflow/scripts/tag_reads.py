@@ -51,11 +51,17 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
                 ), "Read IDs do not match"
 
                 # add tags to read1
-                r1.set_tag("ML", r_l1.get_tag("AS"))
-                r1.set_tag("MG", r2.get_tag("AS"))
-                r1.set_tag("MS", r_l1.reference_start)
-                r1.set_tag("ME", r_l1.reference_end)
-                r1.set_tag("MA", r_l1.query_sequence.count("A"))
+                r1.set_tag("L1", r_l1.get_tag("AS"))  # L1 alignment score
+                r1.set_tag("MS", r2.get_tag("AS"))  # mate alignment score
+                r1.set_tag("LS", r_l1.reference_start)  # L1 start
+                r1.set_tag("LE", r_l1.reference_end)  # L1 end
+                r1.set_tag("LA", r_l1.query_sequence.count("A"))  # L1 A count
+                r1.set_tag(
+                    "ML",
+                    r2.infer_read_length()
+                    if r2.infer_read_length()
+                    else len(r2.query_sequence),
+                )  # mate read length
 
                 # write reads to output bam
                 out_bam.write(r1)
