@@ -10,8 +10,8 @@ rule trim_adapters:
             samples.loc[wc.donor, wc.sample]["R2"],
         ],
     output:
-        fastq1="{outdir}/results/fastq/{donor}/{sample}_R1.trimmed.fastq.gz",
-        fastq2="{outdir}/results/fastq/{donor}/{sample}_R2.trimmed.fastq.gz",
+        fastq1=temp("{outdir}/results/fastq/{donor}/{sample}_R1.trimmed.fastq.gz"),
+        fastq2=temp("{outdir}/results/fastq/{donor}/{sample}_R2.trimmed.fastq.gz"),
         qc="{outdir}/results/fastq/{donor}/{sample}.trimmed.qc.txt",
     params:
         adapters="-a "

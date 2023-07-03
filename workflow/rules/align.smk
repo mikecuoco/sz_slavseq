@@ -28,7 +28,7 @@ rule bwa_mem_genome:
         fa=rules.get_genome.output.fa,
         reads=[rules.filter_read2.output.fastq1, rules.filter_read2.output.fastq2],
     output:
-        "{outdir}/results/align/{donor}/{sample}.genome.bam",
+        temp("{outdir}/results/align/{donor}/{sample}.genome.bam"),
     log:
         bwa="{outdir}/results/align/{donor}/{sample}.bwa_genome.log",
         samblaster="{outdir}/results/align/{donor}/{sample}.samblaster_genome.log",
@@ -51,7 +51,7 @@ rule bwa_mem_line1:
         fa=rules.make_dfam_lib.output,
         reads=rules.filter_read2.output.fastq2,
     output:
-        rules.bwa_mem_genome.output[0].replace("genome", "line1"),
+        temp(rules.bwa_mem_genome.output[0].replace("genome", "line1")),
     log:
         rules.bwa_mem_genome.log.bwa.replace("genome", "line1"),
     threads: 4
@@ -70,7 +70,7 @@ rule tag_reads:
         genome_bam=rules.bwa_mem_genome.output[0],
         line1_bam=rules.bwa_mem_line1.output[0],
     output:
-        rules.bwa_mem_genome.output[0].replace("genome", "tagged"),
+        temp(rules.bwa_mem_genome.output[0].replace("genome", "tagged")),
     log:
         rules.bwa_mem_genome.log.bwa.replace("bwa_genome", "tag_reads"),
     conda:
