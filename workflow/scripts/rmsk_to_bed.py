@@ -15,9 +15,12 @@ def adjust_coordinates(x, adjust=5900):
         if x["repStart"] < adjust:
             x["genoStart"] += adjust - x["repStart"]
 
+    if x["genoEnd"] <= x["genoStart"]:
+        x["genoEnd"] = x["genoStart"] + 1
+
     assert (
-        x["genoStart"] < x["genoEnd"]
-    ), f"genoStart >= genoEnd for {x['genoStart']} >= {x['genoEnd']}"
+        x["genoEnd"] > x["genoStart"]
+    ), f"genoEnd <= genoStart for {x['genoEnd']} <= {x['genoStart']}"
     assert x["genoStart"] >= 0, f"genoStart < 0 for {x['genoStart']} < 0"
     return x
 
@@ -40,40 +43,36 @@ def read_rmsk_L1_3ends(filename: str, min_repend: int = 5900):
             "genoStart": "Start",
             "genoEnd": "End",
             "strand": "Strand",
+            "repName": "Name",
         }
     )
     rmsk = rmsk.loc[
-        (rmsk.Start >= 0) & (rmsk.End >= 0), ["Chromosome", "Start", "End", "Strand"]
+        (rmsk.Start >= 0) & (rmsk.End >= 0),
+        ["Chromosome", "Start", "End", "Strand", "Name"],
     ]
 
     return rmsk
 
 
 if __name__ == "__main__":
-
     sys.stderr = open(snakemake.log[0], "w")
     rmsk = read_rmsk_L1_3ends(snakemake.input[0])
     rmsk["repStart"] = rmsk["Start"]
     rmsk["repEnd"] = rmsk["End"]
+
     # save to BED
     pr.PyRanges(rmsk).to_bed(snakemake.output.rmsk)
 
     # save to BED with 1kb extension of 3end
-    rmsk_1kb_3nd = rmsk.copy()
-    rmsk_1kb_3nd["Start"] = rmsk_1kb_3nd["Start"].apply(
-        lambda x: x["Start"] - 1000 if x["Strand"] == "+" else x["Start"], axis=1
+    rmsk_1kb_3end = rmsk.copy()
+    pr.PyRanges(rmsk_1kb_3end).extend({"3": 1000}).sort().to_bed(
+        snakemake.output.rmsk_1kb_3end
     )
-    rmsk_1kb_3nd["End"] = rmsk_1kb_3nd["End"].apply(
-        lambda x: x["End"] - 1000 if x["Strand"] == "-" else x["End"], axis=1
-    )
-    rmsk_1kb_3nd["Start"] = rmsk_1kb_3nd["Start"].apply(lambda x: 0 if x < 0 else x)
-    pr.PyRanges(rmsk_1kb_3nd).to_bed(snakemake.output.rmsk_1kb_3nd)
 
     # save to BED with 20kb extensions of both ends
     rmsk_20kb = rmsk.copy()
-    rmsk_20kb["Start"] -= 20000
-    rmsk_20kb["End"] += 20000
-    rmsk_20kb["Start"] = rmsk_20kb["Start"].apply(lambda x: 0 if x < 0 else x)
-    pr.PyRanges(rmsk_20kb).to_bed(snakemake.output.rmsk_20kb)
+    pr.PyRanges(rmsk_20kb).extend({"3": 2e4, "5": 2e4}).sort().to_bed(
+        snakemake.output.rmsk_20kb
+    )
 
     sys.stderr.close()
