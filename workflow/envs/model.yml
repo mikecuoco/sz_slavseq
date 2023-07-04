@@ -17,3 +17,5 @@ dependencies:
   - xgboost
   - numpy=1.18
   - flaml
+  - pysam
+  - joblib
