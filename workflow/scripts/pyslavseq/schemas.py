@@ -72,7 +72,6 @@ PEAKS_SCHEMA = {
     "Chromosome": "",
     "Start": np.int64(),
     "End": np.int64(),
-    "donor_id": "",
     "n_ref_reads": np.int64(),
     "n_reads": np.int64(),
     "rpm": np.float64(),
