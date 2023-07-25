@@ -46,27 +46,27 @@ def extend_3end(x, extend=1000):
 if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
 
-    knrgl = read_xtea_vcf(snakemake.input[0])
-    knrgl["repStart"] = knrgl["Start"]
-    knrgl["repEnd"] = knrgl["End"]
+    xtea = read_xtea_vcf(snakemake.input[0])
+    xtea["repStart"] = xtea["Start"]
+    xtea["repEnd"] = xtea["End"]
 
     # save to BED
-    knrgl.to_csv(snakemake.output.knrgl, sep="\t", index=False)
+    xtea.to_csv(snakemake.output.xtea, sep="\t", index=False)
 
     # save to BED with 1kb extension of 3end
-    knrgl_1kb_3end = knrgl.copy()
-    knrgl_1kb_3end = knrgl_1kb_3end.apply(extend_3end, axis=1)
-    pr.PyRanges(knrgl_1kb_3end).sort().df.to_csv(
-        snakemake.output.knrgl_1kb_3end, sep="\t", index=False
+    xtea_1kb_3end = xtea.copy()
+    xtea_1kb_3end = xtea_1kb_3end.apply(extend_3end, axis=1)
+    pr.PyRanges(xtea_1kb_3end).sort().df.to_csv(
+        snakemake.output.xtea_1kb_3end, sep="\t", index=False
     )
 
     # save to BED with 20kb extensions of both ends
-    knrgl_20kb = knrgl.copy()
-    knrgl_20kb["Start"] -= 2e4
-    knrgl_20kb["End"] += 2e4
-    knrgl_20kb.loc[knrgl_20kb["Start"] < 0, "Start"] = 0
-    pr.PyRanges(knrgl_20kb).sort().df.to_csv(
-        snakemake.output.knrgl_20kb, sep="\t", index=False
+    xtea_20kb = xtea.copy()
+    xtea_20kb["Start"] -= 2e4
+    xtea_20kb["End"] += 2e4
+    xtea_20kb.loc[xtea_20kb["Start"] < 0, "Start"] = 0
+    pr.PyRanges(xtea_20kb).sort().df.to_csv(
+        snakemake.output.xtea_20kb, sep="\t", index=False
     )
 
     sys.stderr.close()

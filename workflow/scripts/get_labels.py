@@ -1,128 +1,93 @@
 #!/usr/bin/env python
 __author__ = "Rohini Gadde", "Michael Cuoco"
 
-import functools, sys
-import numpy as np
+import sys, os
+from pathlib import Path
+import pyarrow.parquet as pq
 import pandas as pd
 import pyranges as pr
 
 
-@functools.lru_cache()
-def read_rmsk(rmsk_outfile):
-    """
-    Read the repeatmasker output table and return locations of L1HS and L1PA2-6
-    """
-    # read the rmsk file
-    df = pd.read_csv(
-        rmsk_outfile,
-        skiprows=3,
-        delim_whitespace=True,
-        names=["Chromosome", "Start", "End", "Strand", "repeat"],
-        dtype={"Chromosome": str, "Start": int, "End": int},
-        usecols=[4, 5, 6, 8, 9],
-    )
-
-    # filter for rep_names
-    rep_names = [
-        "L1HS_3end",
-        "L1PA2_3end",
-        "L1PA3_3end",
-        "L1PA4_3end",
-        "L1PA5_3end",
-        "L1PA6_3end",
-    ]
-
-    df = df[df["repeat"].isin(rep_names)]
-
-    # save to new dataframe
-    df["Strand"] = df["Strand"].str.replace("C", "-")
-    df["Start"] -= 1  # make zero-based
-
-    # extend the repeats by 1000 bp
-    df["Start"] = df.apply(
-        lambda x: x["Start"] - 1000 if x["Strand"] == "-" else x["Start"], axis=1
-    )
-    df["End"] = df.apply(
-        lambda x: x["End"] + 1000 if x["Strand"] == "+" else x["End"], axis=1
-    )
-
-    return df
-
-
-@functools.lru_cache()
-def read_knrgl(knrgl_bedfile):
-    df = pd.read_csv(
-        knrgl_bedfile,
-        sep="\t",
-        header=None,
-        names=["Chromosome", "Start", "End", "Strand"],
-        dtype={"Chromosome": str, "Start": int, "End": int},
-        usecols=[0, 1, 2, 3],
-    )
-
-    df["Start"] = df.apply(
-        lambda x: x["Start"] - 1000 if x["Strand"] == "-" else x["Start"], axis=1
-    )
-    df["End"] = df.apply(
-        lambda x: x["End"] + 1000 if x["Strand"] == "+" else x["End"], axis=1
-    )
-
-    return df
-
-
-def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, label: str):
+def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, name: str = "Name"):
     assert type(df) == pd.DataFrame, "df must be a pandas DataFrame"
     assert type(other_df) == pd.DataFrame, "other_df must be a pandas DataFrame"
-    assert label not in df.columns, f"{label} already in df.columns"
 
-    # convert to pyranges
-    pr_df = pr.PyRanges(df)
-    pr_other_df = pr.PyRanges(other_df)
+    # join with pyranges to find overlaps
+    overlap = (
+        pr.PyRanges(df[["Chromosome", "Start", "End"]], int64=True)
+        .join(
+            pr.PyRanges(other_df[["Chromosome", "Start", "End"]], int64=True),
+            how="left",
+        )
+        .df
+    )
+    overlap[name] = overlap["Start_b"] != -1
+    overlap = overlap.drop(columns=["Start_b", "End_b"]).drop_duplicates()
 
-    # get the windows that overlap with the other_df
-    overlapping = pr_df.overlap(pr_other_df).df
+    return df.join(
+        overlap.set_index(["Chromosome", "Start", "End"]),
+        on=["Chromosome", "Start", "End"],
+        how="left",
+    )
 
-    # set the index to the chromosome, start, and end
-    # TODO: check if reads are in same orientation as repeats
-    df.set_index(["Chromosome", "Start", "End"], inplace=True)
-    overlapping.set_index(["Chromosome", "Start", "End"], inplace=True)
 
-    # label the windows that overlap
-    df[label] = df.index.isin(overlapping.index)
+def collate_labels(x):
 
-    # reset the index
-    df.reset_index(inplace=True)
+    if x.blacklist:
+        return "blacklist"
 
-    return df
+    for i in ["", "_1kb_3end"]:
+        for l1 in ["xtea", "L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
+            if x[l1 + i]:
+                return l1 + i
+
+    for l1 in ["xtea", "L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
+        if x[l1 + "_20kb"]:
+            return l1 + "_20kb"
+
+    return "unknown"
 
 
 if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
 
     # get features all the cells from this donor
-    df = pd.concat([pd.read_parquet(f) for f in snakemake.input.features])
+    data = []
+    for f in snakemake.input.features:
+        df = pq.read_table(f).to_pandas()
+        df["cell_id"] = Path(f).stem.rstrip("_windows")
+        df["donor_id"] = snakemake.wildcards.donor
 
-    # read in the repeatmasker, knrgl, and blacklist files
-    rmsk_df = read_rmsk(snakemake.input.rmsk)
-    knrgl_df = read_knrgl(snakemake.input.knrgl)
+    data = pd.concat([data]).sort_values(["Chromosome", "Start", "End"])
 
-    # label the windows for classification
-    df = label_windows(df, knrgl_df, "knrgl")
-    df = label_windows(df, rmsk_df, "rmsk")
+    rmsk = pr.read_bed(snakemake.input.rmsk, as_df=True)
+    rmsk_1kb_3end = pr.read_bed(snakemake.input.rmsk_1kb_3end, as_df=True)
+    rmsk_20kb = pr.read_bed(snakemake.input.rmsk_20kb, as_df=True)
 
-    label = []
-    for row in df.itertuples():
-        if row.rmsk:
-            label.append("RMSK")
-        elif row.knrgl:
-            label.append("KNRGL")
-        else:
-            label.append("OTHER")
+    # label windows with input annotation files
+    anno = {
+        "xtea": pd.read_csv(snakemake.input.xtea, sep="\t"),
+        "xtea_1kb_3end": pd.read_csv(snakemake.input.xtea_1kb_3end, sep="\t"),
+        "xtea_20kb": pd.read_csv(snakemake.input.xtea_20kb, sep="\t"),
+        "bulk_peaks": pq.read_table(snakemake.input.bulk_peaks).to_pandas(),
+    }
 
-    df.drop(["knrgl", "rmsk"], axis=1, inplace=True)
-    df["label"] = label
+    anno["bulk_peaks_20kb"] = anno["bulk_peaks"].copy()
+    anno["bulk_peaks_20kb"]["Start"] -= 2e4
+    anno["bulk_peaks_20kb"]["End"] += 2e4
+
+    for l1 in ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
+        anno[l1] = rmsk[rmsk["Name"] == l1]
+        anno[f"{l1}_1kb_3end"] = rmsk_1kb_3end[rmsk_1kb_3end["Name"] == l1]
+        anno[f"{l1}_20kb"] = rmsk_20kb[rmsk_20kb["Name"] == l1]
+
+    # annotate windows
+    for l in anno.keys():
+        data = label_windows(data, anno[l], l)
+
+    data["label"] = data.apply(collate_labels, axis=1)
 
     # save
-    df.to_parquet(snakemake.output[0], index=False)
+    data.to_parquet(snakemake.output[0], index=False)
 
     sys.stderr.close()

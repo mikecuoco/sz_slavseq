@@ -78,16 +78,16 @@ rule rmsk_to_bed:
 
 
 # get vcf, convert to bed, remove orphan insertions (higher FP rate and won't be detected in SLAV-seq)
-rule knrgl_to_bed:
+rule xtea_to_bed:
     input:
-        lambda wc: donors.loc[wc.donor]["KNRGL"],
+        lambda wc: donors.loc[wc.donor]["xtea"],
     output:
-        knrgl="{outdir}/resources/{donor}_insertions.bed",
-        knrgl_1kb_3end="{outdir}/resources/{donor}_insertions_1kb_3end.bed",
-        knrgl_20kb="{outdir}/resources/{donor}_insertions_20kb.bed",
+        xtea="{outdir}/resources/{donor}_insertions.bed",
+        xtea_1kb_3end="{outdir}/resources/{donor}_insertions_1kb_3end.bed",
+        xtea_20kb="{outdir}/resources/{donor}_insertions_20kb.bed",
     conda:
         "../envs/features.yml"
     log:
         "{outdir}/resources/{donor}_to_bed.log",
     script:
-        "../scripts/knrgl_to_bed.py"
+        "../scripts/xtea_to_bed.py"
