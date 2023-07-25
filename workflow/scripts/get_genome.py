@@ -17,7 +17,6 @@ if Path(snakemake.input[0]).suffix == ".gz":
 
 # get region(s) if specified
 if snakemake.config["genome"]["region"] != "all":
-
     if isinstance(snakemake.config["genome"]["region"], list):
         region = " ".join(snakemake.config["genome"]["region"])
     else:
