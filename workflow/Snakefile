@@ -1,3 +1,6 @@
+import pandas as pd
+from pathlib import Path
+from snakemake.utils import validate
 from snakemake.utils import min_version
 from snakemake.remote import FTP, HTTP
 
@@ -16,7 +19,27 @@ wildcard_constraints:
 configfile: "config/config.yml"
 
 
-include: "rules/common.smk"
+validate(config, schema="schemas/config.schema.yaml")
+
+# read sample sheets
+samples = pd.read_csv(
+    config["samples"],
+    sep="\t",
+    dtype={"sample_id": str, "tissue_id": str, "donor_id": str},
+)
+validate(samples, schema="schemas/samples.schema.yaml")
+donors = pd.read_csv(config["donors"], sep="\t", dtype={"donor_id": str})
+validate(donors, schema="schemas/donors.schema.yaml")
+
+# merge sample sheets
+samples = samples.merge(donors, on=["donor_id"]).set_index(
+    ["donor_id", "sample_id"], drop=False
+)
+
+# create donor sheet
+donors = donors.set_index("donor_id", drop=False)
+
+
 include: "rules/ref.smk"
 include: "rules/download.smk"
 include: "rules/trim.smk"
@@ -25,57 +48,38 @@ include: "rules/model.smk"
 include: "rules/qc.smk"
 
 
-rule map:
-    input:
-        expand(
-            expand(
-                rules.sambamba_index.output,
-                zip,
-                sample=samples.sample_id,
-                donor=samples.donor_id,
-                allow_missing=True,
-            ),
-            outdir=config["outdir"],
-        ),
-
-
-rule qc:
-    input:
-        expand(
-            rules.aln_multiqc.output,
-            outdir=config["outdir"],
-        ),
-        expand(rules.qc_summary.output, outdir=config["outdir"]),
-
-
-rule label:
-    input:
-        expand(
-            rules.get_labels.output,
-            donor=donors.loc[~donors["xtea"].isnull(), "donor_id"],
-            outdir=config["outdir"],
-        ),
-
-
-rule train:
+rule all:
     input:
         expand(
             rules.fit.output,
             outdir=config["outdir"],
         ),
-
-
-# rule call:
-#     input:
-#         expand(
-#             expand(
-#                 rules.predict.output,
-#                 zip,
-#                 sample=samples.loc[samples["donor_id"] != "CommonBrain", :][
-#                     "sample_id"
-#                 ],
-#                 donor=samples.loc[samples["donor_id"] != "CommonBrain", :]["donor_id"],
-#                 allow_missing=True,
-#             ),
-#             outdir=config["outdir"],
-#         ),
+        expand(
+            expand(
+                rules.flagstat.output,
+                stage=["tagged.sorted"],
+                outdir=config["outdir"],
+                allow_missing=True,
+            ),
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+        ),
+        expand(
+            expand(
+                rules.l1_coverage.output.r1,
+                anno=[
+                    "xtea",
+                    "xtea_1kb_3end",
+                    "xtea_20kb",
+                    "rmsk",
+                    "rmsk_1kb_3end",
+                    "rmsk_20kb",
+                ],
+                outdir=config["outdir"],
+                allow_missing=True,
+            ),
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+        ),
