@@ -1,11 +1,28 @@
+def get_bulk_sample(wildcards):
+    donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
+    bulk = donor_samples[donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
+    return {
+        "bam": expand(
+            rules.sambamba_sort.output[0],
+            sample=bulk,
+            allow_missing=True,
+        ),
+        "bai": expand(
+            rules.sambamba_index.output[0],
+            sample=bulk,
+            allow_missing=True,
+        ),
+    }
+
+
 rule call_bulk_peaks:
     input:
-        bam=rules.sambamba_sort.output[0],
-        bai=rules.sambamba_index.output[0],
+        unpack(get_bulk_sample),
     output:
-        peaks="{outdir}/results/bulk_peaks/{donor}/{sample}.bed",
+        pqt="{outdir}/results/bulk_peaks/{donor}.pqt",
+        bed="{outdir}/results/bulk_peaks/{donor}.bed",
     log:
-        "{outdir}/results/bulk_peaks/{donor}/{sample}.log",
+        "{outdir}/results/bulk_peaks/{donor}.log",
     params:
         **config["get_features"],
     conda:
@@ -18,8 +35,6 @@ rule get_features:
     input:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
-    params:
-        **config["get_features"],
     output:
         windows="{outdir}/results/model/get_features/{donor}/{sample}_windows.pqt",
         # peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
@@ -35,22 +50,20 @@ rule get_features:
 
 def get_donor_features(wildcards):
     donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
-
-    bulk = donor_samples[donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
     cells = donor_samples[~donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
 
-    return {
+    res = {
         "features": expand(
             rules.get_features.output.windows,
             sample=cells,
             allow_missing=True,
         ),
-        "bulk_peaks": expand(
-            rules.call_bulk_peaks.output,
-            sample=bulk,
-            allow_missing=True,
-        ),
     }
+    # add bulk peaks if not common brain
+    if wildcards.donor != "CommonBrain":
+        res["bulk_peaks"] = rules.call_bulk_peaks.output.pqt
+
+    return res
 
 
 rule get_labels:
@@ -70,7 +83,7 @@ rule get_labels:
         "{outdir}/results/model/get_labels/{donor}.log",
     conda:
         "../envs/model.yml"
-    threads: 1
+    threads: 16
     script:
         "../scripts/get_labels.py"
 
@@ -79,8 +92,8 @@ rule fit:
     input:
         expand(
             rules.get_labels.output,
-            donor="CommonBrain",
-            allow_missing=True,
+            donor=donors.loc[~donors["xtea"].isnull(), "donor_id"],
+            outdir=config["outdir"],
         ),
     output:
         model="{outdir}/results/model/train/model.pkl",
