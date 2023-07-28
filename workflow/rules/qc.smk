@@ -25,92 +25,133 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/align/{donor}/{sample}.{ref}.bam",
+        "{outdir}/results/align/{donor}/{sample}.{stage}.bam",
     output:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.{ref}.flagstat",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.{stage}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.{ref}.flagstat.log",
+        "{outdir}/results/qc/flagstat/{donor}/{sample}.{stage}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
 
-rule depth:
+def get_l1_coverage_anno(wildcards):
+    if "rmsk" in wildcards.anno:
+        return rules.rmsk_to_bed.output[wildcards.anno]
+    elif "xtea" in wildcards.anno:
+        return rules.xtea_to_bed.output[wildcards.anno]
+    elif "bulk_peaks" in wildcards.anno:
+        return rules.call_bulk_peaks.output[wildcards.anno]
+    else:
+        raise ValueError("Unknown annotation: {}".format(wildcards.anno))
+
+
+rule l1_coverage:
     input:
-        bams=rules.sambamba_sort.output,
+        bam=rules.sambamba_sort.output,
         bai=rules.sambamba_index.output,
+        anno=get_l1_coverage_anno,
     output:
-        "{outdir}/results/qc/depth/{donor}/{sample}.depth.txt",
+        r1="{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.r1.txt",
+        r2="{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.r2.txt",
     log:
-        "{outdir}/results/qc/depth/{donor}/{sample}.depth.log",
+        "{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.log",
     params:
         extra=" ",  # optional additional parameters as string
-    wrapper:
-        "v1.28.0/bio/samtools/depth"
+    shell:
+        """
+        samtools view -b -f 64 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r1} > {log}
+        samtools view -b -f 128 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r2} >> {log}
+        """
 
 
-rule reads_multiqc:
+rule qc_summary:
     input:
-        expand(
+        rmsk_1kb_3end=rules.rmsk_to_bed.output.rmsk_1kb_3end,
+        trim_qc=expand(
+            rules.trim_adapters.output.qc,
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+            allow_missing=True,
+        ),
+        filter_qc=expand(
+            rules.filter_read2.output.qc,
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+            allow_missing=True,
+        ),
+        fastqc_zip=expand(
             expand(
-                rules.fastqc.output.html,
-                fastq=["raw", "trimmed", "filtered"],
-                read=["R1", "R2"],
+                rules.fastqc.output.zip,
+                zip,
+                sample=samples["sample_id"],
+                donor=samples["donor_id"],
                 allow_missing=True,
             ),
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
+            fastq=["trimmed"],
+            read=["R1", "R2"],
             allow_missing=True,
         ),
-        expand(
-            rules.trim_adapters.output,
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
-            allow_missing=True,
-        ),
-        expand(
-            rules.filter_read2.output,
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
-            allow_missing=True,
-        ),
-    output:
-        "{outdir}/results/qc/multiqc_reads.html",
-    log:
-        "{outdir}/results/qc/multiqc_reads.log",
-    params:
-        extra='--title "SLAV-seq fastQC and cutadapt QC" --no-data-dir',
-    wrapper:
-        "v1.21.0/bio/multiqc"
-
-
-rule aln_multiqc:
-    input:
-        expand(
+        flagstat=expand(
             expand(
                 rules.flagstat.output,
-                ref=["genome", "line1"],
+                zip,
+                sample=samples["sample_id"],
+                donor=samples["donor_id"],
                 allow_missing=True,
             ),
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
+            ref=["genome"],
             allow_missing=True,
         ),
-        expand(
-            rules.depth.output,
+        l1_coverage_r1=expand(
+            expand(
+                rules.l1_coverage.output.r1,
+                zip,
+                sample=samples["sample_id"],
+                donor=samples["donor_id"],
+                allow_missing=True,
+            ),
+            anno=[
+                "knrgl",
+                "knrgl_1kb_3end",
+                "knrgl_20kb",
+                "rmsk",
+                "rmsk_1kb_3end",
+                "rmsk_20kb",
+            ],
+            allow_missing=True,
+        ),
+        l1_coverage_r2=expand(
+            expand(
+                rules.l1_coverage.output.r2,
+                zip,
+                sample=samples["sample_id"],
+                donor=samples["donor_id"],
+                allow_missing=True,
+            ),
+            anno=[
+                "knrgl",
+                "knrgl_1kb_3end",
+                "knrgl_20kb",
+                "rmsk",
+                "rmsk_1kb_3end",
+                "rmsk_20kb",
+            ],
+            allow_missing=True,
+        ),
+        bams=expand(
+            rules.sambamba_sort.output,
             zip,
             sample=samples["sample_id"],
             donor=samples["donor_id"],
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/qc/multiqc.html",
+        "{outdir}/results/qc/qc_summary.ipynb",
     log:
-        "{outdir}/results/qc/multiqc.log",
-    params:
-        extra='--title "SLAV-seq alignment QC" --no-data-dir',
-    wrapper:
-        "v1.21.0/bio/multiqc"
+        "{outdir}/results/qc/qc_summary.ipynb",
+    conda:
+        "../envs/model.yml"
+    notebook:
+        "notebooks/qc_summary.py.ipynb"
