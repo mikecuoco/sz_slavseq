@@ -1,21 +1,22 @@
+
 channels:
   - conda-forge
   - bioconda
   - nodefaults
 dependencies:
-  - python=3
+  - python>=3.9
   - pip
   - imbalanced-learn
-  - pandas>=1.4
+  - pandas>=2
   - pyarrow
-  - scikit-learn=1
+  - scikit-learn>=1
   - jupyter
   - pyranges
   - jupyterlab_code_formatter
   - nbconvert
   - seaborn
   - xgboost
-  - numpy=1.18
+  - numpy>=1.18
   - flaml
   - pysam
   - joblib
