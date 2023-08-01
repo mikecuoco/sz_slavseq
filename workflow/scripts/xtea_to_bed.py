@@ -4,7 +4,7 @@ __author__ = "Michael Cuoco"
 
 import sys
 from collections import defaultdict
-
+from .rmsk_to_bed import fix_negative_ends
 import pandas as pd
 import pyranges as pr
 from pysam import VariantFile
@@ -47,26 +47,22 @@ if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
 
     xtea = read_xtea_vcf(snakemake.input[0])
-    xtea["repStart"] = xtea["Start"]
-    xtea["repEnd"] = xtea["End"]
+    xtea = xtea[["Chromosome", "Start", "End", "Strand"]]
 
     # save to BED
-    xtea.to_csv(snakemake.output.xtea, sep="\t", index=False)
+    pr.PyRanges(xtea).to_bed(snakemake.output.xtea)
 
     # save to BED with 1kb extension of 3end
     xtea_1kb_3end = xtea.copy()
-    xtea_1kb_3end = xtea_1kb_3end.apply(extend_3end, axis=1)
-    pr.PyRanges(xtea_1kb_3end).sort().df.to_csv(
-        snakemake.output.xtea_1kb_3end, sep="\t", index=False
-    )
+    xtea_1kb_3end = xtea_1kb_3end.apply(extend_3end, axis=1).df
+    xtea_1kb_3end = fix_negative_ends(xtea_1kb_3end)
+    pr.PyRanges(xtea_1kb_3end).sort().to_bed(snakemake.output.xtea_1kb_3end)
 
     # save to BED with 20kb extensions of both ends
     xtea_20kb = xtea.copy()
     xtea_20kb["Start"] -= 2e4
     xtea_20kb["End"] += 2e4
-    xtea_20kb.loc[xtea_20kb["Start"] < 0, "Start"] = 0
-    pr.PyRanges(xtea_20kb).sort().df.to_csv(
-        snakemake.output.xtea_20kb, sep="\t", index=False
-    )
+    xtea_20kb = fix_negative_ends(xtea_20kb)
+    pr.PyRanges(xtea_20kb).sort().to_bed(snakemake.output.xtea_20kb)
 
     sys.stderr.close()

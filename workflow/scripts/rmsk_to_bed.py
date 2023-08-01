@@ -8,6 +8,8 @@ import pyranges as pr
 
 
 def adjust_coordinates(x, adjust=5900):
+    "Adjust coordinates of L1s to be >= 5900bp from the 3'-end"
+
     if x["strand"] == "-":
         if x["repLeft"] < adjust:
             x["genoEnd"] -= adjust - x["repLeft"]
@@ -26,7 +28,7 @@ def adjust_coordinates(x, adjust=5900):
 
 
 def read_rmsk_L1_3ends(filename: str, min_repend: int = 5900):
-    "Parse RepeatMasker output file and return a DataFrame of L1s intact 3' ends."
+    "Parse RepeatMasker output file and return a DataFrame of L1s with intact 3' ends."
 
     rmsk = read_rmsk(filename)
 
@@ -54,6 +56,13 @@ def read_rmsk_L1_3ends(filename: str, min_repend: int = 5900):
     return rmsk
 
 
+def fix_negative_ends(df):
+    # TODO: take min() of coordinates that are larger than chromosome length
+    df["Start"] = df.Start.apply(lambda x: max(0, x))
+    df["End"] = df.End.apply(lambda x: max(0, x))
+    return df
+
+
 if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
     rmsk = read_rmsk_L1_3ends(snakemake.input[0])
@@ -65,14 +74,14 @@ if __name__ == "__main__":
 
     # save to BED with 1kb extension of 3end
     rmsk_1kb_3end = rmsk.copy()
-    pr.PyRanges(rmsk_1kb_3end).extend({"3": 1000}).sort().to_bed(
-        snakemake.output.rmsk_1kb_3end
-    )
+    rmsk_1kb_3end = pr.PyRanges(rmsk_1kb_3end).extend({"3": 1000}).sort().df
+    rmsk_1kb_3end = fix_negative_ends(rmsk_1kb_3end)
+    pr.PyRanges(rmsk_1kb_3end).to_bed(snakemake.output.rmsk_1kb_3end)
 
     # save to BED with 20kb extensions of both ends
     rmsk_20kb = rmsk.copy()
-    pr.PyRanges(rmsk_20kb).extend({"3": 2e4, "5": 2e4}).sort().to_bed(
-        snakemake.output.rmsk_20kb
-    )
+    rmsk_20kb = pr.PyRanges(rmsk_20kb).extend({"3": 2e4, "5": 2e4}).sort().df
+    rmsk_20kb = fix_negative_ends(rmsk_20kb)
+    pr.PyRanges(rmsk_20kb).to_bed(snakemake.output.rmsk_20kb)
 
     sys.stderr.close()
