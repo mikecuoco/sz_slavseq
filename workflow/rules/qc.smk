@@ -59,8 +59,8 @@ rule l1_coverage:
         extra=" ",  # optional additional parameters as string
     shell:
         """
-        samtools view -b -f 64 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r1} > {log}
-        samtools view -b -f 128 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r2} >> {log}
+        samtools view -b -f 64 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r1} 2> {log}
+        samtools view -b -f 128 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r2} 2>> {log}
         """
 
 
