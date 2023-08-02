@@ -57,7 +57,7 @@ def read_features(file: str, anno: dict) -> pd.DataFrame:
     df = df.loc[df["n_ref_reads"] == 0, :]  # filter out reference windows
     # check if df is empty
     if df.empty:
-        return pd.DataFrame()
+        return df
 
     df["cell_id"] = Path(file).stem.rstrip("_windows")
     for l in anno.keys():
@@ -72,9 +72,9 @@ if __name__ == "__main__":
 
     # read in the annotation files
     anno = {
-        "xtea": pd.read_csv(snakemake.input.xtea, sep="\t"),
-        "xtea_1kb_3end": pd.read_csv(snakemake.input.xtea_1kb_3end, sep="\t"),
-        "xtea_20kb": pd.read_csv(snakemake.input.xtea_20kb, sep="\t"),
+        "xtea": pr.read_bed(snakemake.input.xtea).df,
+        "xtea_1kb_3end": pr.read_bed(snakemake.input.xtea_1kb_3end).df,
+        "xtea_20kb": pr.read_bed(snakemake.input.xtea_20kb).df,
     }
 
     # add bulk peaks if available
