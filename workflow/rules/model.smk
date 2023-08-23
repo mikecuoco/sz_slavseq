@@ -1,3 +1,16 @@
+rule en_motif:
+    input:
+        rules.get_genome.output.fa,
+    output:
+        "{outdir}/resources/en_motif.pqt",
+    log:
+        "{outdir}/resources/en_motif.log",
+    conda:
+        "../envs/features.yml"
+    script:
+        "../scripts/en_motif.py"
+
+
 def get_bulk_sample(wildcards):
     donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
     bulk = donor_samples[donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
@@ -37,7 +50,7 @@ rule get_features:
         bai=rules.sambamba_index.output[0],
     output:
         windows="{outdir}/results/model/get_features/{donor}/{sample}_windows.pqt",
-        # peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
+        peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
     log:
         "{outdir}/results/model/get_features/{donor}/{sample}.log",
     params:
@@ -48,9 +61,16 @@ rule get_features:
         "../scripts/get_features.py"
 
 
+with open("resources/bad_cells.txt", "r") as f:
+    bad_cells = [line.strip() for line in f.readlines()]
+
+
 def get_donor_features(wildcards):
-    donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
-    cells = donor_samples[~donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
+    donor_cells = samples.loc[
+        (samples["donor_id"] == wildcards.donor)
+        & (~samples["sample_id"].str.contains("gDNA"))
+    ]["sample_id"].values
+    cells = [c for c in donor_cells if c not in bad_cells]
 
     res = {
         "features": expand(
@@ -75,10 +95,12 @@ rule get_labels:
         rmsk=rules.rmsk_to_bed.output.rmsk,
         rmsk_1kb_3end=rules.rmsk_to_bed.output.rmsk_1kb_3end,
         rmsk_20kb=rules.rmsk_to_bed.output.rmsk_20kb,
+        en_motif=rules.en_motif.output,
     params:
         **config["get_features"],
     output:
         "{outdir}/results/model/get_labels/{donor}.pqt",
+        "{outdir}/results/model/get_labels/{donor}_nonrefonly.pqt",
     log:
         "{outdir}/results/model/get_labels/{donor}.log",
     conda:
