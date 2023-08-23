@@ -35,46 +35,49 @@ Read = namedtuple(
 # define schema for feature tables
 TAGS = [
     "alignment_score",
+    "alignment_score_normed",
     "L1_alignment_score",
+    "L1_alignment_score_normed",
     "L1_reference_start",
     "L1_reference_end",
     "L1_Acount",
     "mate_alignment_score",
+    "mate_alignment_score_normed",
     "mate_read_length",
     "num_supp_alignments",
 ]
 
 FEATURES_SCHEMA = {
     "Chromosome": "",
-    "Start": np.int64(),
-    "End": np.int64(),
-    "n_fwd": np.int64(),
-    "n_rev": np.int64(),
-    "n_proper_pairs": np.int64(),
-    "n_ref_reads": np.int64(),
-    "3end_gini": np.float64(),
-    "5end_gini": np.float64(),
-    "max_mapq": np.int64(),
-    "n_reads": np.int64(),
+    "Start": np.int32(),
+    "End": np.int32(),
+    "n_fwd": np.int32(),
+    "n_rev": np.int32(),
+    "n_proper_pairs": np.int32(),
+    "n_ref_reads": np.int32(),
+    "3end_gini": np.float32(),
+    "5end_gini": np.float32(),
+    "max_mapq": np.int8(),
+    "n_reads": np.int32(),
     "rpm": np.float64(),
-    "orientation_bias": np.float64(),
-    "frac_proper_pairs": np.float64(),
+    "orientation_bias": np.float32(),
+    "frac_proper_pairs": np.float32(),
 }
 
 for tag in TAGS:
     for q in [0, 0.25, 0.5, 0.75, 1]:
-        FEATURES_SCHEMA[f"{tag}_q{q}"] = np.float64()
-    FEATURES_SCHEMA[f"{tag}_mean"] = np.float64()
+        FEATURES_SCHEMA[f"{tag}_q{q}"] = np.float32()
+    FEATURES_SCHEMA[f"{tag}_mean"] = np.float32()
 
 
 # define schema for peaks
 PEAKS_SCHEMA = {
     "Chromosome": "",
-    "Start": np.int64(),
-    "End": np.int64(),
-    "n_ref_reads": np.int64(),
-    "n_reads": np.int64(),
-    "rpm": np.float64(),
-    "max_mapq": np.int64(),
-    "n_unique_starts": np.int64(),
+    "Start": np.int32(),
+    "End": np.int32(),
+    "n_ref_reads": np.int32(),
+    "n_reads": np.int32(),
+    "rpm": np.float32(),
+    "max_mapq": np.int32(),
+    "n_unique_starts": np.int32(),
 }

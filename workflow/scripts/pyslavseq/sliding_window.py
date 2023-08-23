@@ -16,7 +16,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 
-AUTOSOMES = [f"chr{c}" for c in range(1, 22)]
+AUTOSOMES = [f"chr{c}" for c in range(1, 23)]
 
 
 def isref_read(read: AlignedSegment) -> bool:
@@ -235,16 +235,23 @@ class SlidingWindow(object):
                 f["n_fwd"] += 1
 
             for tag in TAGS:
-                if getattr(r, tag) is not None:  # check if tag exists
-                    if tag in [
-                        "L1_alignment_score",
-                        "mate_alignment_score",
-                    ]:  # adjust alignments scores for read length
-                        l[tag].append(getattr(r, tag) / getattr(r, "mate_read_length"))
-                    elif tag in ["alignment_score"]:
-                        l[tag].append(getattr(r, tag) / getattr(r, "read_length"))
-                    else:
-                        l[tag].append(getattr(r, tag))
+                if "_normed" in tag:
+                    if getattr(r, tag.replace("_normed", "")):
+                        if tag in [
+                            "L1_alignment_score_normed",
+                            "mate_alignment_score_normed",
+                        ]:  # adjust alignments scores for read length
+                            l[tag].append(
+                                getattr(r, tag.replace("_normed", ""))
+                                / getattr(r, "mate_read_length")
+                            )
+                        elif tag in ["alignment_score_normed"]:
+                            l[tag].append(
+                                getattr(r, tag.replace("_normed", ""))
+                                / getattr(r, "read_length")
+                            )
+                elif getattr(r, tag):
+                    l[tag].append(getattr(r, tag))
 
         f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
         f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))

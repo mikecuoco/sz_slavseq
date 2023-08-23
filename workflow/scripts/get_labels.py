@@ -6,100 +6,134 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pandas as pd
 import pyranges as pr
+from pyslavseq.preprocessing import read_cell_features, label
 from joblib import Parallel, delayed
 
 
-def label_windows(df: pd.DataFrame, other_df: pd.DataFrame, name: str = "Name"):
-    assert type(df) == pd.DataFrame, "df must be a pandas DataFrame"
-    assert type(other_df) == pd.DataFrame, "other_df must be a pandas DataFrame"
+sys.stderr = open(snakemake.log[0], "w")
 
-    # join with pyranges to find overlaps
-    overlap = (
-        pr.PyRanges(df[["Chromosome", "Start", "End"]], int64=True)
-        .join(
-            pr.PyRanges(other_df[["Chromosome", "Start", "End"]], int64=True),
-            how="left",
-        )
-        .df
+# check log files of features to make sure they finished
+for f in snakemake.input.features:
+    log = Path(f.rstrip("_windows.pqt")).with_suffix(".log")
+    with open(log, "r") as f:
+        # assert last line contains "Done"
+        assert "Done" in f.readlines()[-1]
+
+# process windows from each cell of this donor in parallel
+data = Parallel(n_jobs=snakemake.threads)(
+    delayed(read_cell_features)(
+        f, cell_id=Path(f).stem.rstrip("_windows"), exclude_ref=False
     )
+    for f in snakemake.input.features
+)
+data = pd.concat(data).sort_values(["Chromosome", "Start", "End"])
 
-    overlap[name] = overlap["Start_b"] != -1
-    overlap = overlap.drop(columns=["Start_b", "End_b"]).drop_duplicates()
+# keep autosomes
+print("Removing non-autosomal windows", file=sys.stderr)
+data = data.loc[data["Chromosome"].isin([f"chr{i}" for i in range(1, 23)])]
 
-    return df.join(
-        overlap.set_index(["Chromosome", "Start", "End"]),
-        on=["Chromosome", "Start", "End"],
-        how="left",
-    )
+# remove blacklist regions
+print("Removing blacklist regions", file=sys.stderr)
+mhc = pd.read_csv(
+    "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.0/GRCh38/OtherDifficult/GRCh38_MHC.bed.gz",
+    sep="\t",
+    header=None,
+    skiprows=1,
+    names=["Chromosome", "Start", "End"],
+)
+kir = pd.read_csv(
+    "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.0/GRCh38/OtherDifficult/GRCh38_KIR.bed.gz",
+    sep="\t",
+    header=None,
+    skiprows=1,
+    names=["Chromosome", "Start", "End"],
+)
+trs = pd.read_csv(
+    "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.0/GRCh38/LowComplexity/GRCh38_AllTandemRepeats_201to10000bp_slop5.bed.gz",
+    sep="\t",
+    header=None,
+    skiprows=1,
+    names=["Chromosome", "Start", "End"],
+)
+segdups = pd.read_csv(
+    "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.0/GRCh38/SegmentalDuplications/GRCh38_segdups.bed.gz",
+    sep="\t",
+    header=None,
+    skiprows=1,
+    names=["Chromosome", "Start", "End"],
+)
+gaps = pd.read_csv(
+    "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.0/GRCh38/OtherDifficult/GRCh38_gaps_slop15kb.bed.gz",
+    sep="\t",
+    header=None,
+    skiprows=1,
+    names=["Chromosome", "Start", "End"],
+)
+false_dup = pd.read_csv(
+    "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.0/GRCh38/OtherDifficult/GRCh38_false_duplications_correct_copy.bed.gz",
+    sep="\t",
+    header=None,
+    skiprows=1,
+    names=["Chromosome", "Start", "End"],
+)
+blacklist = pd.concat([mhc, trs, segdups, gaps, false_dup, kir])
+data = label(data, blacklist, "blacklist")
+data = data.loc[data["blacklist"] == False]
 
+# remove blacklist column
+data = data.drop(columns=["blacklist"])
 
-def collate_labels(x):
+# label knrgls
+print("Labeling knrgls", file=sys.stderr)
 
-    # check if blacklist is in the series
-    if x.isin(["blacklist"]).any() and x["blacklist"]:
-        return "blacklist"
+anno = {
+    "xtea": pr.read_bed(snakemake.input.xtea).df,
+    "xtea_1kb_3end": pr.read_bed(snakemake.input.xtea_1kb_3end).df,
+    "xtea_20kb": pr.read_bed(snakemake.input.xtea_20kb).df,
+}
 
-    for i in ["", "_1kb_3end"]:
-        for l1 in ["xtea", "L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
-            if x[l1 + i]:
-                return l1 + i
+# add bulk peaks if available
+# if snakemake.input.get("bulk_peaks"):
+# 	anno["bulk_peaks"] = pq.read_table(snakemake.input.bulk_peaks).to_pandas()
+# 	anno["bulk_peaks_20kb"] = anno["bulk_peaks"].copy()
+# 	anno["bulk_peaks_20kb"]["End"] += 2e4
 
-    for l1 in ["xtea", "L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
-        if x[l1 + "_20kb"]:
-            return l1 + "_20kb"
+rmsk = pr.read_bed(snakemake.input.rmsk).df
+rmsk_1kb_3end = pr.read_bed(snakemake.input.rmsk_1kb_3end).df
+rmsk_20kb = pr.read_bed(snakemake.input.rmsk_20kb).df
 
-    return "unknown"
+for l1 in ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
+    anno[l1] = rmsk.loc[rmsk["Name"].str.contains(l1), :]
+    anno[l1 + "_1kb_3end"] = rmsk_1kb_3end.loc[
+        rmsk_1kb_3end["Name"].str.contains(l1), :
+    ]
+    anno[l1 + "_20kb"] = rmsk_20kb.loc[rmsk_20kb["Name"].str.contains(l1), :]
 
+for id, df in anno.items():
+    data = label(data, df, id)
 
-def read_features(file: str, anno: dict) -> pd.DataFrame:
+data["donor_id"] = snakemake.wildcards.donor
 
-    df = pq.read_table(file).to_pandas()
-    df = df.loc[df["n_ref_reads"] == 0, :]  # filter out reference windows
-    # check if df is empty
-    if df.empty:
-        return df
+# add motif scores
+en_motif = pd.read_parquet(snakemake.input.en_motif).set_index(
+    ["Chromosome", "Start", "End"]
+)
+data = (
+    data.set_index(["Chromosome", "Start", "End"])
+    .join(en_motif, how="left")
+    .reset_index()
+)
 
-    df["cell_id"] = Path(file).stem.rstrip("_windows")
-    for l in anno.keys():
-        df = label_windows(df, anno[l], l)
-    df["label"] = df.apply(collate_labels, axis=1)
+# check that no rows have been duplicated
+assert (
+    data.shape[0]
+    == data[["Chromosome", "Start", "End", "cell_id"]].drop_duplicates().shape[0]
+), "some rows have been duplicated during labeling!"
 
-    return df
+# save
+data.to_parquet(snakemake.output[0], index=False)
 
+# remove ref
+data[data["n_ref_reads"] == 0].to_parquet(snakemake.output[1], index=False)
 
-if __name__ == "__main__":
-    sys.stderr = open(snakemake.log[0], "w")
-
-    # read in the annotation files
-    anno = {
-        "xtea": pr.read_bed(snakemake.input.xtea).df,
-        "xtea_1kb_3end": pr.read_bed(snakemake.input.xtea_1kb_3end).df,
-        "xtea_20kb": pr.read_bed(snakemake.input.xtea_20kb).df,
-    }
-
-    # add bulk peaks if available
-    if snakemake.input.get("bulk_peaks"):
-        anno["bulk_peaks"] = pq.read_table(snakemake.input.bulk_peaks).to_pandas()
-        anno["bulk_peaks_20kb"] = anno["bulk_peaks"].copy()
-        anno["bulk_peaks_20kb"]["Start"] -= 2e4
-        anno["bulk_peaks_20kb"]["End"] += 2e4
-
-    rmsk = pr.read_bed(snakemake.input.rmsk, as_df=True)
-    rmsk_1kb_3end = pr.read_bed(snakemake.input.rmsk_1kb_3end, as_df=True)
-    rmsk_20kb = pr.read_bed(snakemake.input.rmsk_20kb, as_df=True)
-    for l1 in ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
-        anno[l1] = rmsk[rmsk["Name"] == l1]
-        anno[f"{l1}_1kb_3end"] = rmsk_1kb_3end[rmsk_1kb_3end["Name"] == l1]
-        anno[f"{l1}_20kb"] = rmsk_20kb[rmsk_20kb["Name"] == l1]
-
-    # process windows from each cell of this donor in parallel
-    data = Parallel(n_jobs=snakemake.threads)(
-        delayed(read_features)(f, anno) for f in snakemake.input.features
-    )
-    data = pd.concat(data).sort_values(["Chromosome", "Start", "End"])
-    data["donor_id"] = snakemake.wildcards.donor
-
-    # save
-    data.to_parquet(snakemake.output[0], index=False)
-
-    sys.stderr.close()
+sys.stderr.close()
