@@ -111,6 +111,9 @@ for l1 in ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]:
 
 for id, df in anno.items():
     data = label(data, df, id)
+    assert (
+        data.shape[0] == data[["Chromosome", "Start", "End"]].drop_duplicates().shape[0]
+    ), f"some rows have been duplicated during {id} labeling!"
 
 data["donor_id"] = snakemake.wildcards.donor
 
@@ -124,11 +127,6 @@ data = (
     .reset_index()
 )
 
-# check that no rows have been duplicated
-assert (
-    data.shape[0]
-    == data[["Chromosome", "Start", "End", "cell_id"]].drop_duplicates().shape[0]
-), "some rows have been duplicated during labeling!"
 
 # save
 data.to_parquet(snakemake.output[0], index=False)
