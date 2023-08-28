@@ -109,9 +109,7 @@ class SlidingWindow(object):
             and (x.mapping_quality >= min_mapq)
         )
 
-    def windows(
-        self, reads, size: int = 200, step: int = 1, min_rpm: float = 0
-    ) -> Generator:
+    def windows(self, reads, size: int = 200, step: int = 1) -> Generator:
         "Slide window across contig, yield windows with > min_rpm"
         try:
             r = next(reads)
@@ -138,14 +136,12 @@ class SlidingWindow(object):
                 except StopIteration:
                     break
 
-            # yield the window
-            if (len(w) / self.size_factor) > min_rpm:
-                yield {
-                    "Chromosome": w[0].reference_name,
-                    "Start": start,
-                    "End": end,
-                    "reads": set(w),
-                }
+            yield {
+                "Chromosome": w[0].reference_name,
+                "Start": start,
+                "End": end,
+                "reads": set(w),
+            }
 
     def merge(self, windows: Generator, bandwidth: int = 0) -> Generator:
         """
@@ -336,6 +332,7 @@ class SlidingWindow(object):
             start = time.perf_counter()
 
             # write windows to disk in batches
+            # TODO: make batches chromosomes
             for i, w in enumerate(self.make_windows(**kwargs)):
                 windows.append(w)
                 if (i > 0) and (
