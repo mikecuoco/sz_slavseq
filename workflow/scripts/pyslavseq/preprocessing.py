@@ -2,6 +2,11 @@
 # Created on: Aug 8, 2023 at 1:53:30 PM
 __author__ = "Michael Cuoco"
 
+# configure logging
+import logging
+
+logger = logging.getLogger(__name__)
+
 from pathlib import Path
 import pyarrow.parquet as pq
 import numpy as np
@@ -32,7 +37,9 @@ def read_cell_features(
     return data
 
 
-def label(df: pd.DataFrame, other_df: pd.DataFrame, name: str) -> pd.DataFrame:
+def label(
+    df: pd.DataFrame, other_df: pd.DataFrame, name: str, add_id: bool = False
+) -> pd.DataFrame:
     """
     Label windows in df with whether they overlap with other_df
 
@@ -41,18 +48,28 @@ def label(df: pd.DataFrame, other_df: pd.DataFrame, name: str) -> pd.DataFrame:
     df : pd.DataFrame, windows to label
     other_df : pd.DataFrame, windows to overlap with
     name : str, name of column to add to df
+    add_id : bool, whether to add a column with the id of the overlapping window
     """
+    # assert dfs are not empty
+    assert df.shape[0] > 0, "df is empty!"
+    assert other_df.shape[0] > 0, "other_df is empty!"
 
     # check inputs
     for c in ["Chromosome", "Start", "End"]:
         assert c in df.columns, f"df must have column {c}"
         assert c in other_df.columns, f"other_df must have column {c}"
 
+    if add_id:
+        other_df.loc[:, f"{name}_id"] = other_df.index.values
+        other_df = other_df[[f"{name}_id", "Chromosome", "Start", "End"]]
+    else:
+        other_df = other_df[["Chromosome", "Start", "End"]]
+
     # join with pyranges to find overlaps
     overlap = (
         pr.PyRanges(df[["Chromosome", "Start", "End"]], int64=True)
         .join(
-            pr.PyRanges(other_df[["Chromosome", "Start", "End"]], int64=True),
+            pr.PyRanges(other_df, int64=True),
             how="left",
         )
         .df
