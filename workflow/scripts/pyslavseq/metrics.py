@@ -2,33 +2,65 @@
 # Created on: Aug 7, 2023 at 10:37:48 AM
 __author__ = "Michael Cuoco"
 
+# configure logging
+import logging
+
+logger = logging.getLogger(__name__)
+
 import numpy as np
-import pandas as pd
+import pyranges as pr
+from .preprocessing import label
+from .utilities import count_loci
 
-
+# TODO: add null predictions
+# TODO: how to import .model_selection Model without circular import?
 class Evaluator:
     def __init__(
-        self, data: pd.DataFrame, proba: np.ndarray[float], label_col: str
+        self,
+        mdl,
+        query_str: str,
+        donor_knrgls: dict[str, pr.PyRanges],
     ) -> None:
         """
         Parameters
         ----------
-        data : pd.DataFrame, data to evaluate model performance on
-        proba : np.ndarray, predicted probabilities
-        label_col : str, column with labels
+        model: Model, model to evaluate
+        query_str: str, query string to subset the data to the desired set
+        donor_knrgls: dict[str, pr.PyRanges], dictionary of donor knrgls
         """
-        # check inputs
-        for c in [label_col, f"{label_col}_id", "cell_id"]:
-            assert c in data.columns, f"test must have column {c}"
-        assert (
-            data.shape[0] == proba.shape[0]
-        ), "test and test_proba must have the same number of rows"
-        assert data[label_col].dtype == bool, f"{label_col} must be boolean"
 
-        self.data = data[[label_col, f"{label_col}_id", "cell_id"]].copy()
-        self.proba = proba
-        self.label_col = label_col
+        # get logger from mdl object
+        # import pdb; pdb.set_trace()
+        self.data = mdl.data.query(query_str)  # subset data
+        mdl._validate_inputs(self.data)  # validate inputs
+        self.proba = mdl.clf.predict_proba(self.data[mdl.features])[
+            :, 1
+        ]  # get probabilities
+        self.data = self.data.query(query_str)[
+            [
+                "Chromosome",
+                "Start",
+                "End",
+                mdl.label_col,
+                "cell_id",
+                "tissue_id",
+                "donor_id",
+            ]
+        ]  # remove feature columns
 
+        # set attributes
+        self.label_col = mdl.label_col
+        self.donor_knrgls = donor_knrgls
+
+        # get extra fn
+        raw_pos_windows = mdl.raw_data.query(query_str)[self.label_col].sum()
+        filtered_pos_windows = mdl.data.query(query_str)[self.label_col].sum()
+        self.extra_pos_windows = raw_pos_windows - filtered_pos_windows
+        raw_pos_loci = count_loci(mdl.raw_data.query(query_str), self.donor_knrgls)
+        filtered_pos_loci = count_loci(mdl.data.query(query_str), self.donor_knrgls)
+        self.extra_pos_loci = raw_pos_loci - filtered_pos_loci
+
+        # make data
         self.thresholds = np.linspace(0.01, 0.99, 99)
 
         # make predictions
@@ -78,11 +110,27 @@ class Evaluator:
         ----------
         extra_fn : int, optional, extra false negative loci to add to the denominator
         """
+        self.data["donor_id"] = self.data["donor_id"].astype(str)
+        self.data["cell_id"] = self.data["cell_id"].astype(str)
+        logger.info(
+            f"Computing locus recall on {self.data.cell_id.nunique()} cells from {self.data.donor_id.astype(str).unique()} donors"
+        )
 
-        # get predictions for each threshold, aggregate to locus level
+        # give each locus a unique id
+        data = (
+            self.data.groupby("donor_id")
+            .apply(
+                lambda d: label(
+                    d, self.donor_knrgls[d.name].df, name="label", add_id=True
+                )
+            )
+            .reset_index(drop=True)
+        )
+
+        # get the predicted loci
         locus_pred = (
-            self.data[self.data[f"{self.label_col}_id"] > 0]
-            .groupby([f"{self.label_col}_id", "cell_id"])
+            data[data["label_id"] > 0]
+            .groupby(["label_id", "cell_id"])
             .agg({c: "max" for c in pred_cols})
             .reset_index()
         )
@@ -90,6 +138,9 @@ class Evaluator:
         # compute recall
         tp = locus_pred[pred_cols].sum(axis=0)  # sum across loci for each threshold
         fn = locus_pred.shape[0] - tp
+        recall = tp / (tp + fn)
+        adjusted_recall = tp / (tp + fn + extra_fn)
+
         recall = tp / (tp + fn)
         adjusted_recall = tp / (tp + fn + extra_fn)
 
@@ -125,9 +176,7 @@ class Evaluator:
 
         return precision, recall, adjusted_recall
 
-    def all_metrics(
-        self, extra_pos_windows: int = 0, extra_pos_loci: int = 0
-    ) -> dict[str, np.ndarray]:
+    def all_metrics(self) -> dict[str, np.ndarray]:
         """
         Compute all metrics for each threshold
 
@@ -138,12 +187,16 @@ class Evaluator:
         """
 
         self.clean_pred_cols()
-        precision, recall, adjusted_recall = self.precision_recall_curve(
-            self.pred_cols, extra_fn=extra_pos_windows
+        logger.info(
+            "Calculating precision, recall, and adjusted recall at the window level"
         )
+        precision, recall, adjusted_recall = self.precision_recall_curve(
+            self.pred_cols, extra_fn=self.extra_pos_windows
+        )
+        logger.info("Calculating recall and adjusted recall at the locus level")
         # null_precision, null_recall, null_adjusted_recall = self.precision_recall_curve(self.null_pred_cols, extra_fn=extra_pos_windows)
         locus_recall, adjusted_locus_recall = self.locus_recall(
-            self.pred_cols, extra_fn=extra_pos_loci
+            self.pred_cols, extra_fn=self.extra_pos_loci
         )
         # null_locus_recall, null_adjusted_locus_recall = self.locus_recall(self.null_pred_cols, extra_fn=extra_pos_loci)
 
@@ -158,6 +211,10 @@ class Evaluator:
         ), "precision, recall, adjusted_recall, locus_recall, and adjusted_locus_recall must have the same length"
 
         return {
+            "Chromosomes": self.data["Chromosome"].unique().tolist(),
+            "Donors": self.data["donor_id"].unique().tolist(),
+            "Tissues": self.data["tissue_id"].unique().tolist(),
+            "Cells": self.data["cell_id"].unique().tolist(),
             "threshold": self.thresholds,
             "precision": precision,
             "recall": recall,

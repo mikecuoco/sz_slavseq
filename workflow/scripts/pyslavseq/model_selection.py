@@ -2,14 +2,24 @@
 # Created on: Aug 7, 2023 at 10:37:48 AM
 __author__ = "Michael Cuoco"
 
+# configure logging
+import logging
+
+from matplotlib.pyplot import xlabel
+
+logger = logging.getLogger(__name__)
+
 import json, warnings, tempfile
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import pyranges as pr
 from sklearn.model_selection import KFold, StratifiedGroupKFold
-from .metrics import Evaluator
+import seaborn as sns
 from flaml import AutoML
 from flaml.automl.data import get_output_from_log
+from .metrics import Evaluator
+from .utilities import count_loci
 
 
 class SampleChrSplitter(KFold):
@@ -50,12 +60,13 @@ class SampleChrSplitter(KFold):
             X.shape[0] == self.y.shape[0]
         ), "X and y must have the same number of rows"
 
-        for chr_train, chr_test in StratifiedGroupKFold(
-            n_splits=self.n_chr_splits
-        ).split(X, self.y, groups=self.chr_array):
-            for sample_train, sample_test in StratifiedGroupKFold(
-                n_splits=self.n_sample_splits
-            ).split(X, self.y, groups=self.sample_array):
+        sgkf = StratifiedGroupKFold(n_splits=self.n_chr_splits)
+        chr_split = sgkf.split(X, self.y, groups=self.chr_array)
+        sgkf = StratifiedGroupKFold(n_splits=self.n_sample_splits)
+        s_split = sgkf.split(X, self.y, groups=self.sample_array)
+
+        for chr_train, chr_test in chr_split:
+            for sample_train, sample_test in s_split:
                 train = np.intersect1d(sample_train, chr_train)
                 test = np.intersect1d(sample_test, chr_test)
 
@@ -70,15 +81,13 @@ class SampleChrSplitter(KFold):
         return self.n_splits
 
 
-def count_loci(data: pd.DataFrame, label_col: str) -> int:
-    "Count the number of loci in a dataset"
-    return data.groupby("cell_id")[f"{label_col}_id"].nunique().sum()
-
-
 class NpEncoder(json.JSONEncoder):
     "Encode pandas series and numpy arrays for json output"
 
     def default(self, obj):
+        # convert categorical columns to strings
+        if isinstance(obj, pd.Categorical):
+            return obj.astype(str).tolist()
         if isinstance(obj, pd.Series):
             return obj.to_numpy().tolist()
         if isinstance(obj, np.integer):
@@ -90,28 +99,45 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
-def parse_log(log: dict) -> pd.DataFrame:
-    "Parse Model log file into a dataframe"
-    out = []
-    for f in log.keys():
-        if isinstance(f, int):
-            for s in ["train", "test"]:
-                log[f][s].update(log[f]["model"])
-                log[f][s]["fold"] = f
-                out.append(log[f][s])
-
-    return pd.DataFrame(out)
-
-
-# TODO: get learning curves
 class Model:
+    def _validate_inputs(
+        self,
+        data: pd.DataFrame,
+    ):
+        "Validate inputs to Model class"
+
+        # check inputs
+        for c in [
+            self.label_col,
+            "cell_id",
+            "donor_id",
+            "tissue_id",
+            "Chromosome",
+            "Start",
+            "End",
+        ]:
+            assert c in data.columns, f"data must have column {c}"
+        for f in self.features:
+            assert f in data.columns, f"data must have feature column {f}"
+        assert data[self.label_col].dtype == bool, f"{self.label_col} must be boolean"
+
+        # check we have the right donor IDs
+        assert set(data.donor_id.unique()).issubset(
+            set(self.donor_knrgls.keys())
+        ), "Some donors in data do not have corresponding knrgls"
+
+        # check all donor_knrgls are in pyranges format
+        for f in self.donor_knrgls.values():
+            assert isinstance(f, pr.PyRanges), f"{f} must be a pyranges object"
+
     def __init__(
         self,
         clf: AutoML,
         data: pd.DataFrame,
         features: list,
         label_col: str,
-        rpm_filter: int,
+        donor_knrgls: dict[str : pr.PyRanges],
+        query_str: str,
         outfile: str,
     ) -> None:
         """
@@ -120,55 +146,50 @@ class Model:
         data : pd.DataFrame, data to fit model on
         features : list, feature columns to use for model
         label_col : str, column with labels
-        rpm_filter : int, filter out windows with rpm < rpm_filter
+        donor_knrgls : dict, {donor_id: knrgl bed file in pyranges format}
+        query_str : str, query string to filter data
+        outfile : str, file to save results to
         """
-
-        # check inputs
-        for c in [
-            label_col,
-            f"{label_col}_id",
-            "cell_id",
-            "Chromosome",
-            "Start",
-            "End",
-            "rpm",
-        ]:
-            assert c in data.columns, f"data must have column {c}"
-        for f in features:
-            assert f in data.columns, f"data must have feature column {f}"
-        assert data[label_col].dtype == bool, f"{label_col} must be boolean"
 
         # save attributes
         self.clf = clf
-        self.total_pos_windows = data[label_col].sum()
-        self.total_pos_loci = count_loci(data, label_col)
-        self.data = data.loc[data["rpm"] >= rpm_filter, :].reset_index(drop=True)
-        self.data["proba"] = np.nan  # initialize proba column
-        self.filtered_pos_windows = self.data[label_col].sum()
-        self.filtered_pos_loci = count_loci(self.data, label_col)
+        self.query_str = query_str
         self.features = features
         self.label_col = label_col
-        self.rpm_filter = rpm_filter
+        self.donor_knrgls = donor_knrgls
+        self.raw_data = data
+
+        # validate raw data
+        self._validate_inputs(data)
+
+        # filter data
+        logger.info(f"Keeping windows with {query_str}")
+        self.data = data.query(query_str).copy()
+        # initialize proba columns
+        self.data["train_proba"] = np.nan
+        self.data["test_proba"] = np.nan
+
+        # validate filtered data
+        self._validate_inputs(self.data)
 
         # check outfile
-        assert not Path(
-            outfile
-        ).exists(), f"{outfile} already exists! Please choose a different name or delete the file if you want to overwrite it"
+        assert not Path(outfile).exists(), logger.error(
+            f"{outfile} already exists! Please choose a different name or delete the file if you want to overwrite it"
+        )
         self.outfile = outfile
 
-        self.log = {
+        # save info to log
+        self.out = {
             "Input data": {
-                "Total windows": len(data),
-                "Total positive windows": self.total_pos_windows,
-                "Total positive loci": self.total_pos_loci,
-                "RPM threshold": rpm_filter,
-                "Filtered windows": len(self.data),
-                "Filtered positive windows": self.filtered_pos_windows,
-                "Filtered positive loci": self.filtered_pos_loci,
+                "Number of total windows": len(self.raw_data),
+                "Filter": query_str,
+                "Number of tfiltered windows": len(self.data),
                 "Features": self.features,
                 "Class label": self.label_col,
                 "Number of cells": self.data.cell_id.nunique(),
                 "Cells": self.data.cell_id.unique(),
+                "Number of tissues": self.data.tissue_id.nunique(),
+                "Tissues": self.data.tissue_id.unique(),
                 "Number of donors": self.data.donor_id.nunique(),
                 "Donors": self.data.donor_id.unique(),
             },
@@ -187,18 +208,20 @@ class Model:
         ----------
         train_idx : np.ndarray, indices of training set
         n_hyper_splits : int, number of splits for hyperparameter tuning
+        log_file_name : str, name of log file to save results to
         """
 
         # define train sets
         train = self.data.iloc[train_idx, :].reset_index()
 
-        print(
+        logger.info(
             f"""
 		Tuning model with {len(self.features)} features on {train.shape[0]} windows
-		{train[self.label_col].sum()} positive windows ({count_loci(train, self.label_col)} loci)
+		{train[self.label_col].sum()} positive windows ({count_loci(train, self.donor_knrgls)} loci)
 		{len(train) - train[self.label_col].sum()} negative windows
-		{train.Chromosome.nunique()} Chromosomes: {train.Chromosome.unique()}
-		{train.donor_id.nunique()} Donors: {train.donor_id.unique()}
+		{train.Chromosome.nunique()} Chromosomes: {train.Chromosome.astype(str).unique()}
+		{train.donor_id.nunique()} Donors: {train.donor_id.astype(str).unique()}
+		{train.tissue_id.nunique()} Tissues: {train.tissue_id.astype(str).unique()}
 		{train.cell_id.nunique()} cells
 		"""
         )
@@ -209,67 +232,64 @@ class Model:
             train[self.features],
             train[self.label_col],
             split_type=StratifiedGroupKFold(n_splits=n_hyper_splits),
-            groups=train["Chromosome"],
+            groups=train.Chromosome,
             log_file_name=log_file_name,
         )
+        logger.info("Done tuning")
 
     def pred_eval(
         self, train_idx: np.ndarray, test_idx: np.ndarray
     ) -> dict[str, np.ndarray]:
 
-        # predict and evaluate
-        train = self.data.iloc[train_idx, :].reset_index()
-        test = self.data.iloc[test_idx, :].reset_index()
+        logger.info("Evaluting model")
 
         # make predictions for train and test sets
         result = []
-        for name, df in {"train": train, "test": test}.items():
-            proba = self.clf.predict_proba(df[self.features])[:, 1]
-
-            # get the number of pos windows removed from this split due to rpm filter
-            extra_pos_windows = (self.total_pos_windows - self.filtered_pos_windows) * (
-                df[self.label_col].sum() / self.filtered_pos_windows
-            )
-            extra_pos_loci = (self.total_pos_loci - self.filtered_pos_loci) * (
-                count_loci(df, self.label_col) / self.filtered_pos_loci
-            )
+        for name, idx in {"train": train_idx, "test": test_idx}.items():
+            df = self.data.iloc[idx, :].reset_index()
+            # get all donor knrgls that overlap this split
+            chrs = df["Chromosome"].unique().tolist()
+            donor_knrgls = {
+                k: df[df.Chromosome.isin(chrs)] for k, df in self.donor_knrgls.items()
+            }
 
             # get metrics
-            metrics = Evaluator(df, proba, self.label_col).all_metrics(
-                extra_pos_windows=extra_pos_windows, extra_pos_loci=extra_pos_loci
-            )
+            # for each tissue
+            if df.tissue_id.nunique() > 1:
+                for t, d in df.groupby("tissue_id"):
+                    logger.info(f"Evaluating {name} set for tissue {t}")
+                    metrics = Evaluator(
+                        self, f"tissue_id == '{t}' & Chromosome in {chrs}", donor_knrgls
+                    ).all_metrics()
+                    metrics["stage"] = name
+                    metrics["n_windows"] = len(d)
+                    result.append(metrics.copy())
+
+            # for everything
+            logger.info(f"Evaluating {name} set for tissues {df.tissue_id.unique()}")
+            metrics = Evaluator(
+                self, f"Chromosome in {chrs}", donor_knrgls
+            ).all_metrics()
             metrics["stage"] = name
-            metrics["Chromosomes"] = df["Chromosome"].unique().tolist()
-            metrics["Donors"] = df["donor_id"].unique().tolist()
-            metrics["Cells"] = df["cell_id"].unique().tolist()
             metrics["n_windows"] = len(df)
             result.append(metrics.copy())
 
-            if name == "test":
-                # assign proba to self.data
-                # convert test_idx to boolean
-                # test_idx = np.zeros(len(self.data), dtype=bool)
-                # test_idx[test.index] = True
-                self.data.loc[test_idx, "proba"] = proba
+            # add predictions
+            self.data.iloc[idx].loc[:, f"{name}_proba"] = self.clf.predict_proba(
+                df[self.features]
+            )[:, 1]
 
-        # add feature importances
-        result.append(
-            {
-                "feature_importances": self.clf.feature_importances_,
-                "features": self.clf.feature_names_in_,
-                "best_estimator": self.clf.best_estimator,
-                "best_config": self.clf.best_config,
-                "total_loci_train": count_loci(train, self.label_col),
-            }
-        )
+        logger.info("Done evaluating")
 
         return tuple(result)
 
     def cv(self, n_splits: int) -> None:
-        # TODO: return predictions for each fold!
+        logger.info("Starting cross-validation")
 
         # define splitter from cross-validation
         sgkf = StratifiedGroupKFold(n_splits=n_splits)
+        # convert Chromosome to category for faster grouping
+        self.data["Chromosome"] = self.data["Chromosome"].astype("category")
 
         # setup log file
         with open(self.outfile, "a") as f:
@@ -278,36 +298,187 @@ class Model:
                     self.data, self.data[self.label_col], groups=self.data["Chromosome"]
                 )
             ):
-                print(f"Fold {i+1}/{n_splits}")
-                self.log[i + 1] = {}
+                logger.info(f"Fold {i+1}/{n_splits}")
+                self.out[i + 1] = {}
+                flog = self.out[i + 1]
 
                 # tune model
                 with tempfile.NamedTemporaryFile() as tmp:
                     self.tune(train_idx, n_hyper_splits=5, log_file_name=tmp.name)
+
                     (
                         time_history,
                         best_valid_loss_history,
-                        _,
-                        _,
-                        _,
-                    ) = get_output_from_log(
-                        filename=tmp.name, time_budget=self.clf._settings["time_budget"]
-                    )
+                        valid_loss_history,
+                        config_history,
+                        metric_history,
+                    ) = get_output_from_log(filename=tmp.name, time_budget=1e6)
 
-                # predict and evaluate, saving results to log
-                (
-                    self.log[i + 1]["train"],
-                    self.log[i + 1]["test"],
-                    self.log[i + 1]["model"],
-                ) = self.pred_eval(train_idx, test_idx)
-                self.log[i + 1]["model"]["time_history"] = time_history
-                self.log[i + 1]["model"][
-                    "best_valid_loss_history"
-                ] = best_valid_loss_history
+                # save results
+                flog["train"], flog["test"] = [], []
+                for r in self.pred_eval(train_idx, test_idx):
+                    if r["stage"] == "train":
+                        flog["train"].append(r)
+                    elif r["stage"] == "test":
+                        flog["test"].append(r)
+                    else:
+                        raise ValueError(f"Cannot read result {r}")
+
+                # save model fit info
+                flog.update(
+                    {
+                        "time_history": time_history,
+                        "best_valid_loss_history": best_valid_loss_history,
+                        "feature_importances": self.clf.feature_importances_,
+                        "features": self.clf.feature_names_in_,
+                        "best_estimator": self.clf.best_estimator,
+                        "best_config": self.clf.best_config,
+                        "total_loci_train": count_loci(
+                            self.data.iloc[train_idx], self.donor_knrgls
+                        ),
+                    }
+                )
 
         with open(self.outfile, "w") as f:
-            json.dump(self.log, f, cls=NpEncoder)
+            json.dump(self.out, f, cls=NpEncoder)
 
-    def get_results(self) -> pd.DataFrame:
+        logger.info("Done cross-validation")
+        logger.info(f"Results saved to {self.outfile}")
 
-        return parse_log(self.log)
+    def plot_learning_curve(self):
+        # check if folds are in self.out
+        assert any(
+            [isinstance(i, int) for i in self.out.keys()]
+        ), "Folds not in self.out, please run cv first"
+
+        res = []
+        for k in self.out:
+            if isinstance(k, int):
+                res.append(
+                    {
+                        "fold": k,
+                        "time_budget": self.out[k]["time_history"],
+                        "best_valid_loss_history": self.out[k][
+                            "best_valid_loss_history"
+                        ],
+                    }
+                )
+        res = pd.DataFrame(res).explode(["time_budget", "best_valid_loss_history"])
+
+        g = sns.relplot(
+            res,
+            x="time_budget",
+            y="best_valid_loss_history",
+            hue="fold",
+            kind="line",
+        )
+        loss = self.clf._settings["metric"]
+        g.set(xlabel="Time budget", ylabel=f"Validation Set Loss (1-{loss})")
+
+        return g
+
+    def plot_feature_importances(self):
+        assert any(
+            [isinstance(i, int) for i in self.out.keys()]
+        ), "Folds not in self.out, please run cv first"
+
+        res = []
+        for k in self.out:
+            if isinstance(k, int):
+                res.append(
+                    {
+                        "fold": k,
+                        "features": self.out[k]["features"],
+                        "feature_importances": self.out[k]["feature_importances"],
+                    }
+                )
+
+        res = (
+            pd.DataFrame(res)
+            .explode(["features", "feature_importances"])
+            .pivot_table(index="features", columns="fold", values="feature_importances")
+            .astype(float)
+        )
+
+        # heatmap
+        g = sns.heatmap(
+            res,
+            annot=True,
+            cmap="Blues",
+        )
+        g.set(xlabel="Fold", ylabel="Feature")
+
+        return g
+
+    def plot_precision_recall_curve(self, recall_col: str = "adjusted_locus_recall"):
+        assert any(
+            [isinstance(i, int) for i in self.out.keys()]
+        ), "Folds not in self.out, please run cv first"
+
+        res = []
+        for k in self.out:
+            if isinstance(k, int):
+                for stage in ["train", "test"]:
+                    for r in self.out[k][stage]:
+                        if set(r["Tissues"]) == set(self.data.tissue_id.unique()):
+                            res.append(
+                                {
+                                    "fold": k,
+                                    "stage": stage,
+                                    "precision": r["precision"],
+                                    recall_col: r[recall_col],
+                                }
+                            )
+
+        res = pd.DataFrame(res).explode(["precision", recall_col])
+
+        g = sns.relplot(
+            res,
+            x=recall_col,
+            y="precision",
+            hue="fold",
+            col="stage",
+            kind="line",
+        )
+        g.set(xlim=(0, 1), ylim=(0, 1))
+
+        return g
+
+    def plot_precision_recall_tissues(self, recall_col: str = "adjusted_locus_recall"):
+        # TODO: use plotly to make interactive plot
+        assert any(
+            [isinstance(i, int) for i in self.out.keys()]
+        ), "Folds not in self.out, please run cv first"
+
+        res = []
+        for k in self.out:
+            if isinstance(k, int):
+                for r in self.out[k]["test"]:
+                    if len(r["Tissues"]) == 1:
+                        res.append(
+                            {
+                                "fold": k,
+                                "tissue": r["Tissues"][0],
+                                "precision": r["precision"],
+                                recall_col: r[recall_col],
+                            }
+                        )
+
+        res = (
+            pd.DataFrame(res)
+            .explode(["precision", recall_col])
+            .groupby("tissue")
+            .mean()
+            .reset_index()
+            .drop(columns=["fold"])
+        )
+
+        g = sns.relplot(
+            res,
+            x=recall_col,
+            y="precision",
+            kind="scatter",
+        )
+        g.set(xlim=(0, 1), ylim=(0, 1))
+
+        return g
