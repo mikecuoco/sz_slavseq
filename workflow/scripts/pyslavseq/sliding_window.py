@@ -346,6 +346,12 @@ class SlidingWindow(object):
                     chr = w["Chromosome"]
                 windows.append(w)
 
+            windows = pd.DataFrame(windows)
+            for localbw in [2, 4, 8, 16, 32]:
+                windows[f"localmax_{localbw}"] = (
+                    windows["n_reads"].rolling(localbw, center=True).max()
+                )
+
             # write any remaining windows
             if len(windows) > 0:
                 writer.write_table(
