@@ -78,8 +78,17 @@ def label(
     overlap[name] = overlap["Start_b"] != -1
     overlap = overlap.drop(columns=["Start_b", "End_b"]).drop_duplicates()
 
-    return df.join(
+    # check for duplicated rows
+    df = df.join(
         overlap.set_index(["Chromosome", "Start", "End"]),
         on=["Chromosome", "Start", "End"],
         how="left",
     )
+
+    if (
+        df.shape[0]
+        != df[["Chromosome", "Start", "End", "cell_id"]].drop_duplicates().shape[0]
+    ):
+        logger.warning(f"Some overlaps are duplicated for {name}")
+
+    return df
