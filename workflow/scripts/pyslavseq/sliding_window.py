@@ -3,6 +3,8 @@
 __author__ = "Michael Cuoco"
 
 import re, logging, time
+
+logger = logging.getLogger(__name__)  # configure logging
 from collections import deque
 from typing import Generator
 from pysam import AlignmentFile, AlignedSegment
@@ -97,7 +99,7 @@ class SlidingWindow(object):
 
         total_reads = bam.count(read_callback=self.read_filter)
         self.size_factor = total_reads / 1e6
-        logging.info(f"{total_reads} filtered reads in the bam file")
+        logger.info(f"{total_reads} filtered reads in the bam file")
 
         # reset read filter to include min_mapq
         self.read_filter = (
@@ -295,7 +297,7 @@ class SlidingWindow(object):
             rg = [lambda x: x.is_read1]
 
         for c in self.contigs:
-            logging.info(f"Making windows on {c}")
+            logger.info(f"Making windows on {c}")
             for f in rg:
                 reads = filter(self.read_filter, self.bam.fetch(c))
                 reads = filter(f, reads)
@@ -316,9 +318,7 @@ class SlidingWindow(object):
                             del w["reads"]
                         yield w
 
-    def write_windows(
-        self, outfile: str, schema: pa.Schema, batch_size: int = 1000, **kwargs
-    ) -> None:
+    def write_windows(self, outfile: str, schema: pa.Schema, **kwargs) -> None:
         """
         Generate windows and write to disk
         :param outfile: path to output file
@@ -331,28 +331,27 @@ class SlidingWindow(object):
             windows = []
             start = time.perf_counter()
 
-            # write windows to disk in batches
-            # TODO: make batches chromosomes
-            for i, w in enumerate(self.make_windows(**kwargs)):
-                windows.append(w)
-                if (i > 0) and (
-                    i % batch_size == 0
-                ):  # write to disk every 1000 windows
+            # write windows to disk in batches by chromosome
+            chr = "chr1"
+            for w in self.make_windows(**kwargs):
+                if w["Chromosome"] != chr:
                     writer.write_table(
                         pa.Table.from_pandas(pd.DataFrame(windows), schema=schema)
                     )
-                    logging.info(
-                        f"Processed {batch_size} windows in {time.perf_counter() - start:.2f} seconds"
+                    logger.info(
+                        f"Processed {len(windows)} windows in {time.perf_counter() - start:.2f} seconds"
                     )
                     windows = []
                     start = time.perf_counter()
+                    chr = w["Chromosome"]
+                windows.append(w)
 
-            # write remaining windows
+            # write any remaining windows
             if len(windows) > 0:
                 writer.write_table(
                     pa.Table.from_pandas(pd.DataFrame(windows), schema=schema)
                 )
-                logging.info(
+                logger.info(
                     f"Processed {len(windows)} windows in {time.perf_counter() - start:.2f} seconds"
                 )
 
