@@ -8,9 +8,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 import numpy as np
+import pandas as pd
 import pyranges as pr
 from .preprocessing import label
 from .utilities import count_loci
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # TODO: add null predictions
 # TODO: how to import .model_selection Model without circular import?
@@ -227,3 +230,222 @@ class Evaluator:
             # 	"null_locus_recall": null_locus_recall,
             # 	"null_adjusted_locus_recall": null_adjusted_locus_recall,
         }
+
+
+class Visualizer:
+    def __init__(self, results: dict) -> None:
+        self.results = results
+        return None
+
+    def learning_curve(self) -> pd.DataFrame:
+
+        res = []
+        for k in self.results:
+            if isinstance(k, int):
+                res.append(
+                    {
+                        "fold": k,
+                        "time_budget": self.results[k]["time_history"],
+                        "best_valid_loss_history": self.results[k][
+                            "best_valid_loss_history"
+                        ],
+                    }
+                )
+        res = pd.DataFrame(res).explode(["time_budget", "best_valid_loss_history"])
+
+        g = sns.relplot(
+            res,
+            x="time_budget",
+            y="best_valid_loss_history",
+            hue="fold",
+            kind="line",
+        )
+        g.set(xlabel="Time budget", ylabel="Best Validation Set Loss")
+
+        return res
+
+    def tuning_curve(self) -> pd.DataFrame:
+
+        res = []
+        for k in self.results:
+            if isinstance(k, int):
+                res.append(
+                    {
+                        "fold": k,
+                        "time_budget": self.results[k]["time_history"],
+                        "valid_loss_history": self.results[k]["valid_loss_history"],
+                        "config_history": self.results[k]["config_history"],
+                    }
+                )
+        res = pd.DataFrame(res).explode(
+            ["time_budget", "valid_loss_history", "config_history"]
+        )
+        res = pd.concat(
+            [
+                res.drop("config_history", axis=1),
+                res["config_history"].apply(pd.Series),
+            ],
+            axis=1,
+        )
+        res = pd.concat(
+            [
+                res.drop("Current Hyper-parameters", axis=1),
+                res["Current Hyper-parameters"].apply(pd.Series),
+            ],
+            axis=1,
+        )
+        res = res.drop(
+            columns=[
+                "Best Hyper-parameters",
+                "Best Learner",
+                "Current Learner",
+                "Current Sample",
+            ]
+        ).melt(id_vars=["time_budget", "valid_loss_history", "fold"])
+
+        g = sns.relplot(
+            data=res,
+            x="value",
+            y="valid_loss_history",
+            hue="fold",
+            col="variable",
+            col_wrap=5,
+            kind="line",
+            facet_kws={"sharex": False},
+        )
+        g.set(xlabel="Value", ylabel="Validation Set Loss")
+
+        return res
+
+    def feature_importances(self) -> pd.DataFrame:
+
+        res = []
+        for k in self.results:
+            if isinstance(k, int):
+                res.append(
+                    {
+                        "fold": k,
+                        "features": self.results[k]["features"],
+                        "feature_importances": self.results[k]["feature_importances"],
+                    }
+                )
+
+        res = (
+            pd.DataFrame(res)
+            .explode(["features", "feature_importances"])
+            .pivot_table(index="features", columns="fold", values="feature_importances")
+            .astype(float)
+        )
+
+        # heatmap
+        g = sns.heatmap(
+            res,
+            annot=True,
+            cmap="Blues",
+        )
+        g.set(xlabel="Fold", ylabel="Feature")
+
+        return res
+
+    def precision_recall_curve(
+        self, recall_col: str = "adjusted_locus_recall", summarize_folds: bool = True
+    ) -> pd.DataFrame:
+
+        res = []
+        for k in self.results:
+            if isinstance(k, int):
+                for stage in ["train", "test"]:
+                    for r in self.results[k][stage]:
+                        if set(r["Tissues"]) == set(self.data.tissue_id.unique()):
+                            res.append(
+                                {
+                                    "fold": k,
+                                    "stage": stage,
+                                    "precision": r["precision"],
+                                    recall_col: r[recall_col],
+                                    "threshold": r["threshold"],
+                                }
+                            )
+
+        res = pd.DataFrame(res).explode(["precision", recall_col, "threshold"])
+
+        if summarize_folds:
+            # get mean and std across folds for each threshold
+            df = (
+                res.groupby(["threshold", "stage"])[["precision", recall_col]]
+                .agg(["mean", "std"])
+                .fillna(0)
+            )
+            df.columns = df.columns.map("-".join)
+            for c in df.columns.str.split("-").str[0].unique():
+                df[f"{c}-mean_plus_std"] = df[f"{c}-mean"] + df[f"{c}-std"]
+                df[f"{c}-mean_minus_std"] = df[f"{c}-mean"] - df[f"{c}-std"]
+            df.reset_index(inplace=True)
+
+            # plot with matplotlib
+            for s, d in df.groupby("stage"):
+                plt.plot(d[f"{recall_col}-mean"], d["precision-mean"], label=s)
+                plt.fill_between(
+                    d[f"{recall_col}-mean"],
+                    d["precision-mean_minus_std"],
+                    d["precision-mean_plus_std"],
+                    alpha=0.2,
+                )
+
+            plt.xlabel(recall_col)
+            plt.ylabel("precision")
+            plt.legend()
+            plt.show()
+
+        else:
+
+            g = sns.relplot(
+                res,
+                x=recall_col,
+                y="precision",
+                hue="fold",
+                col="stage",
+                kind="line",
+            )
+            g.set(xlim=(0, 1), ylim=(0, 1))
+
+        return res
+
+    def precision_recall_tissues(
+        self, recall_col: str = "adjusted_locus_recall"
+    ) -> pd.DataFrame:
+        # TODO: use plotly to make interactive plot
+        # TODO: add error bars to each point
+
+        res = []
+        for k in self.results:
+            if isinstance(k, int):
+                for r in self.results[k]["test"]:
+                    if len(r["Tissues"]) == 1:
+                        res.append(
+                            {
+                                "fold": k,
+                                "tissue": r["Tissues"][0],
+                                "precision": r["precision"],
+                                recall_col: r[recall_col],
+                            }
+                        )
+
+        res = (
+            pd.DataFrame(res)
+            .explode(["precision", recall_col])
+            .groupby("tissue")
+            .mean()
+            .reset_index()
+            .drop(columns=["fold"])
+        )
+
+        g = sns.relplot(
+            res,
+            x=recall_col,
+            y="precision",
+            kind="scatter",
+        )
+        g.set(xlim=(0, 1), ylim=(0, 1))
+
+        return res
