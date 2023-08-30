@@ -15,7 +15,7 @@ pre-commit install
 # test
 snakemake \
    all \
-   --configfile .test/chr21chr22/config.yml \
+   --configfile .test/config/config.yml \
    --cores 2 \
    --use-conda \
    --show-failed-logs \
@@ -34,11 +34,25 @@ snakemake \
 
 05/17/2023
 
-- [ ] Get left and right bg windows in feature table in `./workflow/scripts/get_features.py`
-- [ ] Keep RepeatMasker insertions only if position in end > 860
-- [ ] Only consider read pairs with at least one mate having MAPQ = 60
-- [ ] Call germline L1 from bulk SLAV-seq data, validate with WGS
-- [ ] Remove mean template length, instead count # of discordant and concordant reads
 - [ ] switch back to T2T-CHM13
-- [ ] Try peak calling again
-- [ ] organize notebooks into subfolders with python scripts for utility functions
+- [ ] switch to parquet files for features and labels outputs
+- [ ] Correct for GC bias?
+
+Filter out regions (see RetroSom paper)
+
+- known insertions +/- 1kb
+- low complexity regions
+- GRC blacklist regions
+- 10x blacklist regions
+- decoy regions
+
+Features to add:
+
+- separate classes for transductions and regular insertions? (transductions have discordant read2)
+- start/end sites of clipped reads
+- alignment score quanties as fraction of read length
+- number of supplementary alignments / read
+- fraction of proper pairs
+- L1 consensus start site
+- L1 consensus AS
+- ORF2 motif
