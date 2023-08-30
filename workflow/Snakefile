@@ -69,12 +69,8 @@ rule all:
             expand(
                 rules.l1_coverage.output.r1,
                 anno=[
-                    "xtea",
-                    "xtea_1kb_3end",
-                    "xtea_20kb",
-                    "rmsk",
                     "rmsk_1kb_3end",
-                    "rmsk_20kb",
+                    "xtea_1kb_3end",
                 ],
                 outdir=config["outdir"],
                 allow_missing=True,
