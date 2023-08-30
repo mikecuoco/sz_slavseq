@@ -21,7 +21,6 @@ with AlignmentFile(snakemake.input.bam[0], "rb") as bam:  # type: ignore
         SCHEMA,
         size=200,
         step=1,
-        min_rpm=2,
         strand_split=True,
         merge=True,
         features=False,

@@ -57,6 +57,8 @@ rule l1_coverage:
         "{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.log",
     params:
         extra=" ",  # optional additional parameters as string
+    conda:
+        "../envs/ref.yml"
     shell:
         """
         samtools view -b -f 64 {input.bam} | bedtools coverage -a {input.anno} -b stdin > {output.r1} 2> {log}

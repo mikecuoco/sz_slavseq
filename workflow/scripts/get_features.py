@@ -18,7 +18,6 @@ with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
     sw.write_windows(
         snakemake.output.windows,  # type: ignore
         SCHEMA,
-        batch_size=10000,
         size=750,
         step=250,
         strand_split=False,
