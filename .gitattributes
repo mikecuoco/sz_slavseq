@@ -6,3 +6,4 @@ resources/eul1db_SRIP.txt filter=lfs diff=lfs merge=lfs -text
 .test/data/chm13v2 filter=lfs diff=lfs merge=lfs -text
 .test/data/hs37d5 filter=lfs diff=lfs merge=lfs -text
 .test/data/usd7_LINE1.vcf.gz filter=lfs diff=lfs merge=lfs -text
+.test/data/usd7_LINE1.vcf filter=lfs diff=lfs merge=lfs -text
