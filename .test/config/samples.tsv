@@ -1,3 +1,3 @@
-donor_id	sample_id	tissue_id	dna_type	R1	R2
-1	A	HIP	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
-1	B	HIP	mda	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
+donor_id	sample_id	tissue_id	R1	R2
+1	A	HIP	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
+1	gDNA	HIP	.test/data/USD07_F2_S100_chr21chr22_R1.fastq.gz	.test/data/USD07_F2_S100_chr21chr22_R2.fastq.gz
