@@ -83,11 +83,15 @@ def gini(array):
 
 
 class SlidingWindow(object):
-    def __init__(
-        self, bam: AlignmentFile, contigs: list = AUTOSOMES, min_mapq: int = 0
-    ) -> None:
+    def __init__(self, bam: AlignmentFile, min_mapq: int = 0) -> None:
         self.bam = bam
-        self.contigs = contigs
+
+        # get autosomes
+        self.contigs = []
+        for i in range(bam.nreferences):
+            if bam.get_reference_name(i) in AUTOSOMES:
+                self.contigs.append(bam.get_reference_name(i))
+
         self.min_mapq = min_mapq
         self.read_filter = (
             lambda x: x.is_read1
@@ -97,7 +101,7 @@ class SlidingWindow(object):
             and (not x.is_duplicate)
         )
 
-        total_reads = bam.count(read_callback=self.read_filter)
+        total_reads = bam.get_index_statistics()[0].mapped
         self.size_factor = total_reads / 1e6
         logger.info(f"{total_reads} filtered reads in the bam file")
 
@@ -112,7 +116,7 @@ class SlidingWindow(object):
         )
 
     def windows(self, reads, size: int = 200, step: int = 1) -> Generator:
-        "Slide window across contig, yield windows with > min_rpm"
+        "Slide window across contig and yield each window"
         try:
             r = next(reads)
             assert type(r) == Read, "Reads must be of type Read"
@@ -139,7 +143,7 @@ class SlidingWindow(object):
                     break
 
             yield {
-                "Chromosome": w[0].reference_name,
+                "Chromosome": contig,
                 "Start": start,
                 "End": end,
                 "reads": set(w),
@@ -152,6 +156,7 @@ class SlidingWindow(object):
         :param bandwidth: maximum distance between windows to merge
         """
 
+        # subfunction to calculate peak stats
         def peak_stats(p: dict):
             "calculate peak stats"
 
@@ -172,6 +177,8 @@ class SlidingWindow(object):
 
             return p
 
+        # filter windows for non-empty
+        windows = filter(lambda x: len(x["reads"]) > 0, windows)
         try:
             p = next(windows)  # grab first window
         except StopIteration:  # skip if no peaks
@@ -210,6 +217,10 @@ class SlidingWindow(object):
         f["Chromosome"] = w["Chromosome"]
         f["Start"] = w["Start"]
         f["End"] = w["End"]
+
+        # if reads are empty, return empty features
+        if len(w["reads"]) == 0:
+            return f
 
         # collect features from the reads in the window
         for r in w["reads"]:
@@ -328,12 +339,14 @@ class SlidingWindow(object):
         schema = pa.Schema.from_pandas(pd.Series(schema).to_frame().T)
 
         with pq.ParquetWriter(outfile, schema, compression="gzip") as writer:
-            windows = []
             start = time.perf_counter()
-
+            iter = self.make_windows(**kwargs)
+            # grab first window
+            w = next(iter)
+            chr = w["Chromosome"]
+            windows = [w]  # initialize list of windows
             # write windows to disk in batches by chromosome
-            chr = "chr1"
-            for w in self.make_windows(**kwargs):
+            for w in iter:
                 if w["Chromosome"] != chr:
                     writer.write_table(
                         pa.Table.from_pandas(pd.DataFrame(windows), schema=schema)
@@ -351,6 +364,9 @@ class SlidingWindow(object):
                 windows[f"localmax_{localbw}"] = (
                     windows["n_reads"].rolling(localbw, center=True).max()
                 )
+
+            # remove empty windows
+            windows = windows[windows.n_reads > 0]
 
             # write any remaining windows
             if len(windows) > 0:
