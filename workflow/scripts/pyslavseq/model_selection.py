@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import pyranges as pr
 from sklearn.model_selection import KFold, StratifiedGroupKFold
-import seaborn as sns
 from flaml import AutoML
 from flaml.automl.data import get_output_from_log
 from .metrics import Evaluator
@@ -291,7 +290,7 @@ class Model:
         # define splitter from cross-validation
         sgkf = StratifiedGroupKFold(n_splits=n_splits)
         # convert Chromosome to category for faster grouping
-        self.data["Chromosome"] = self.data["Chromosome"].astype("category")
+        self.data.loc[:, "Chromosome"] = self.data["Chromosome"].astype("category")
 
         for i, (train_idx, test_idx) in enumerate(
             sgkf.split(

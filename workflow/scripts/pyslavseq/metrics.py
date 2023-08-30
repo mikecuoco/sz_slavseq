@@ -233,8 +233,10 @@ class Evaluator:
 
 
 class Visualizer:
-    def __init__(self, results: dict) -> None:
-        self.results = results
+    def __init__(self, mdl) -> None:
+        self.mdl = mdl
+        self.results = mdl.out
+        self.loss = mdl.clf._settings["metric"]
         return None
 
     def learning_curve(self) -> pd.DataFrame:
@@ -260,7 +262,7 @@ class Visualizer:
             hue="fold",
             kind="line",
         )
-        g.set(xlabel="Time budget", ylabel="Best Validation Set Loss")
+        g.set(xlabel="Time budget", ylabel=f"Best Validation Set Loss ({self.loss})")
 
         return res
 
@@ -313,7 +315,7 @@ class Visualizer:
             kind="line",
             facet_kws={"sharex": False},
         )
-        g.set(xlabel="Value", ylabel="Validation Set Loss")
+        g.set(xlabel="Value", ylabel=f"Validation Set Loss ({self.loss})")
 
         return res
 
@@ -356,7 +358,7 @@ class Visualizer:
             if isinstance(k, int):
                 for stage in ["train", "test"]:
                     for r in self.results[k][stage]:
-                        if set(r["Tissues"]) == set(self.data.tissue_id.unique()):
+                        if set(r["Tissues"]) == set(self.mdl.data.tissue_id.unique()):
                             res.append(
                                 {
                                     "fold": k,
