@@ -13,7 +13,7 @@ import pandas as pd
 import pyranges as pr
 import seaborn as sns
 import matplotlib.pyplot as plt
-from .schemas import TAGS, FEATURES_SCHEMA, Read
+from .schemas import TAGS, Read
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -101,7 +101,7 @@ class SlidingWindow(object):
             and (not x.is_duplicate)
         )
 
-        total_reads = bam.get_index_statistics()[0].mapped
+        total_reads = bam.count(read_callback=self.read_filter)
         self.size_factor = total_reads / 1e6
         logger.info(f"{total_reads} filtered reads in the bam file")
 
@@ -211,15 +211,33 @@ class SlidingWindow(object):
         l = dict()
         for k in TAGS + ["3end", "5end", "mapq"]:
             l[k] = []
-        f = FEATURES_SCHEMA.copy()  # initialize feature dictionary
 
-        # add coordinates
-        f["Chromosome"] = w["Chromosome"]
-        f["Start"] = w["Start"]
-        f["End"] = w["End"]
+        # initialize features dict
+        f = {
+            "Chromosome": w["Chromosome"],
+            "Start": w["Start"],
+            "End": w["End"],
+            "n_reads": 0,
+            "n_fwd": 0,
+            "n_rev": 0,
+            "n_proper_pairs": 0,
+            "n_ref_reads": 0,
+            "3end_gini": float(0),
+            "5end_gini": float(0),
+            "max_mapq": 0,
+            "rpm": float(0),
+            "orientation_bias": float(0),
+            "frac_proper_pairs": float(0),
+        }
+
+        for tag in TAGS:
+            for n in [0, 0.25, 0.5, 0.75, 1]:
+                f[tag + "_q" + str(n)] = float(0)
+            f[tag + "_mean"] = float(0)
 
         # if reads are empty, return empty features
         if len(w["reads"]) == 0:
+            f["n_reads"] = 0
             return f
 
         # collect features from the reads in the window
@@ -279,9 +297,6 @@ class SlidingWindow(object):
         f["orientation_bias"] = np.maximum(f["n_fwd"], f["n_rev"]) / f["n_reads"]
         f["frac_proper_pairs"] = f["n_proper_pairs"] / f["n_reads"]
 
-        # ensure output matches schema
-        assert set(f.keys()) == set(FEATURES_SCHEMA.keys())
-
         return f
 
     def make_windows(
@@ -329,53 +344,65 @@ class SlidingWindow(object):
                             del w["reads"]
                         yield w
 
-    def write_windows(self, outfile: str, schema: pa.Schema, **kwargs) -> None:
+    def write_windows(self, outfile: str, **kwargs) -> None:
         """
         Generate windows and write to disk
         :param outfile: path to output file
-        :param schema: dictionary of column names and types, to be used as parquet schema
+        :param kwargs: arguments to pass to make_windows()
         """
 
-        schema = pa.Schema.from_pandas(pd.Series(schema).to_frame().T)
+        # grab first window
+        iter = self.make_windows(**kwargs)
+        w = next(iter)
+        for i in [2, 4, 8, 16, 32]:
+            w[f"localmax_{i}_reads"] = 0
+            w[f"localmax_{i}_rpm"] = float(0)
+        schema = pa.Schema.from_pandas(pd.Series(w).to_frame().T)
 
+        windows = []  # initialize list of windows
         with pq.ParquetWriter(outfile, schema, compression="gzip") as writer:
-            start = time.perf_counter()
-            iter = self.make_windows(**kwargs)
-            # grab first window
-            w = next(iter)
-            chr = w["Chromosome"]
-            windows = [w]  # initialize list of windows
             # write windows to disk in batches by chromosome
-            for w in iter:
-                if w["Chromosome"] != chr:
-                    writer.write_table(
-                        pa.Table.from_pandas(pd.DataFrame(windows), schema=schema)
-                    )
-                    logger.info(
-                        f"Processed {len(windows)} windows in {time.perf_counter() - start:.2f} seconds"
-                    )
-                    windows = []
-                    start = time.perf_counter()
-                    chr = w["Chromosome"]
-                windows.append(w)
+            for c in AUTOSOMES:
+                start = time.perf_counter()
 
-            windows = pd.DataFrame(windows)
-            for localbw in [2, 4, 8, 16, 32]:
-                windows[f"localmax_{localbw}"] = (
-                    windows["n_reads"].rolling(localbw, center=True).max()
-                )
+                # collect windows for this chromosome
+                while w["Chromosome"] == c:
+                    windows.append(w)
+                    try:
+                        w = next(iter)
+                    except StopIteration:
+                        break
 
-            # remove empty windows
-            windows = windows[windows.n_reads > 0]
+                # skip empty chromosomes
+                if len(windows) == 0:
+                    continue
 
-            # write any remaining windows
-            if len(windows) > 0:
-                writer.write_table(
-                    pa.Table.from_pandas(pd.DataFrame(windows), schema=schema)
-                )
+                # convert windows to dataframe
+                windows = pd.DataFrame(windows)
+
+                # compute local max
+                for localbw in [2, 4, 8, 16, 32]:
+                    lm = windows["n_reads"].rolling(localbw, center=True).max()
+                    windows[f"localmax_{localbw}_reads"] = lm
+                    windows[f"localmax_{localbw}_rpm"] = lm / self.size_factor
+
+                # remove empty windows
+                windows = windows.loc[windows.n_reads > 0, :].fillna(0)
+
+                # write to disk
+                # assert windows.columns.isin(schema.names).all(), "Columns do not match schema"
+                if not windows.columns.isin(schema.names).all():
+                    # find non matching columns
+                    non_matching = windows.columns[~windows.columns.isin(schema.names)]
+                    raise Exception(f"{non_matching} columns are not in schema")
+
+                writer.write_table(pa.Table.from_pandas(windows, schema=schema))
                 logger.info(
                     f"Processed {len(windows)} windows in {time.perf_counter() - start:.2f} seconds"
                 )
+
+                # reset windows list
+                windows = []
 
     def coverage(
         self, peaks: pd.DataFrame, line1: pd.DataFrame, blacklist=None

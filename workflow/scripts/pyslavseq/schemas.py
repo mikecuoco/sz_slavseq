@@ -47,29 +47,6 @@ TAGS = [
     "num_supp_alignments",
 ]
 
-FEATURES_SCHEMA = {
-    "Chromosome": "",
-    "Start": np.int32(),
-    "End": np.int32(),
-    "n_fwd": np.int32(),
-    "n_rev": np.int32(),
-    "n_proper_pairs": np.int32(),
-    "n_ref_reads": np.int32(),
-    "3end_gini": np.float32(),
-    "5end_gini": np.float32(),
-    "max_mapq": np.int8(),
-    "n_reads": np.int32(),
-    "rpm": np.float64(),
-    "orientation_bias": np.float32(),
-    "frac_proper_pairs": np.float32(),
-}
-
-for tag in TAGS:
-    for q in [0, 0.25, 0.5, 0.75, 1]:
-        FEATURES_SCHEMA[f"{tag}_q{q}"] = np.float32()
-    FEATURES_SCHEMA[f"{tag}_mean"] = np.float32()
-
-
 # define schema for peaks
 PEAKS_SCHEMA = {
     "Chromosome": "",

@@ -5,7 +5,6 @@ __author__ = "Michael Cuoco"
 import sys, logging
 from pysam import AlignmentFile
 from pyslavseq.sliding_window import SlidingWindow
-from pyslavseq.schemas import FEATURES_SCHEMA as SCHEMA
 
 # redirect stderr to log file
 sys.stderr = open(snakemake.log[0], "w")  # type: ignore
@@ -17,7 +16,6 @@ with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
     sw = SlidingWindow(bam, min_mapq=snakemake.params["min_mapq"])  # type: ignore
     sw.write_windows(
         snakemake.output.windows,  # type: ignore
-        SCHEMA,
         size=750,
         step=250,
         strand_split=False,
