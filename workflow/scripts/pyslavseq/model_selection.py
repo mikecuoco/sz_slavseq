@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 import json, warnings, tempfile
-from typing import Union
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -20,6 +19,45 @@ from flaml import AutoML
 from flaml.automl.data import get_output_from_log
 from .metrics import Evaluator
 from .utilities import count_loci
+from numbers import Integral as Int
+from typing import Iterator
+
+
+class MyKFold(StratifiedGroupKFold):
+    def __init__(
+        self,
+        n_splits: Int = 5,
+        train_donors: list | None = None,
+        test_donors: list | None = None,
+        shuffle: bool = False,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
+        super().__init__(n_splits, shuffle=shuffle, random_state=random_state)
+
+        # train and test donors must both be specified or both be None
+        assert (train_donors is None) == (
+            test_donors is None
+        ), "train and test donors must both be specified or both be None"
+        self.train_donors = train_donors
+        self.test_donors = test_donors
+        return None
+
+    def split(self, X, y) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+        # convert donors to categorical
+        X["donor_id"] = X["donor_id"].astype("category")
+
+        for train_index, test_index in super().split(X, y, X["Chromosome"]):
+            if self.train_donors is not None:
+                train_donor_index = X.loc[X.donor_id.isin(self.train_donors)].index
+                test_donor_index = X.loc[X.donor_id.isin(self.test_donors)].index
+                train_index = np.intersect1d(train_index, train_donor_index)
+                test_index = np.intersect1d(test_index, test_donor_index)
+                assert (
+                    len(np.intersect1d(train_index, test_index)) == 0
+                ), "train and test indices overlap"
+                assert len(train_index) > 0, "train index is empty"
+                assert len(test_index) > 0, "test index is empty"
+            yield train_index, test_index
 
 
 class SampleChrSplitter(KFold):
@@ -138,7 +176,7 @@ class Model:
         label_col: str,
         donor_knrgls: dict[str : pr.PyRanges],
         query_str: str,
-        outfile: Union[str, None] = None,
+        outfile: str | None = None,
     ) -> None:
         """
         Parameters
@@ -165,7 +203,7 @@ class Model:
 
         # filter data
         logger.info(f"Keeping windows with {query_str}")
-        self.data = data.query(query_str).copy()  # TODO: try removing this
+        self.data = data.query(query_str).reset_index(drop=True)
         # initialize proba columns
         self.data["train_proba"] = np.nan
         self.data["test_proba"] = np.nan
@@ -241,7 +279,6 @@ class Model:
     def pred_eval(
         self, train_idx: np.ndarray, test_idx: np.ndarray
     ) -> dict[str, np.ndarray]:
-
         logger.info("Evaluting model")
 
         # make predictions for train and test sets
@@ -284,20 +321,17 @@ class Model:
 
         return tuple(result)
 
-    def cv(self, n_splits: int) -> None:
+    def cv(self, splitter: KFold) -> None:
         logger.info("Starting cross-validation")
 
         # define splitter from cross-validation
-        sgkf = StratifiedGroupKFold(n_splits=n_splits)
         # convert Chromosome to category for faster grouping
         self.data.loc[:, "Chromosome"] = self.data["Chromosome"].astype("category")
 
         for i, (train_idx, test_idx) in enumerate(
-            sgkf.split(
-                self.data, self.data[self.label_col], groups=self.data["Chromosome"]
-            )
+            splitter.split(X=self.data, y=self.data[self.label_col])
         ):
-            logger.info(f"Fold {i+1}/{n_splits}")
+            logger.info(f"Fold {i+1}/{splitter.get_n_splits()}")
             self.out[i + 1] = {}
             flog = self.out[i + 1]
 
