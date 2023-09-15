@@ -13,6 +13,7 @@ import pyranges as pr
 from .preprocessing import label
 from .utilities import count_loci
 import seaborn as sns
+from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 
 # TODO: add null predictions
@@ -20,56 +21,54 @@ import matplotlib.pyplot as plt
 class Evaluator:
     def __init__(
         self,
-        mdl,
-        query_str: str,
+        data,
+        features,
+        label_col,
+        estimator,
         donor_knrgls: dict[str, pr.PyRanges],
     ) -> None:
         """
         Parameters
         ----------
-        model: Model, model to evaluate
-        query_str: str, query string to subset the data to the desired set
+        data : pd.DataFrame, data to evaluate
+        features : list[str], list of feature columns
+        label_col : str, name of label column
+        estimator : estimator to evaluate
         donor_knrgls: dict[str, pr.PyRanges], dictionary of donor knrgls
         """
 
-        # get logger from mdl object
-        # import pdb; pdb.set_trace()
-        self.data = mdl.data.query(query_str)  # subset data
-        mdl._validate_inputs(self.data)  # validate inputs
-        self.proba = mdl.clf.predict_proba(self.data[mdl.features])[
-            :, 1
-        ]  # get probabilities
-        self.data = self.data.query(query_str)[
+        # set attributes
+        self.label_col = label_col
+        self.donor_knrgls = donor_knrgls
+        logger.info(f"Making predictions on {data.shape[0]} windows")
+        self.proba = estimator.predict_proba(data[features])[:, 1]  # get probabilities
+
+        # subset data to save memory
+        logger.info("Loading data")
+        self.data = data.loc[
+            :,
             [
                 "Chromosome",
                 "Start",
                 "End",
-                mdl.label_col,
+                label_col,
                 "cell_id",
                 "tissue_id",
                 "donor_id",
-            ]
-        ]  # remove feature columns
+            ],
+        ].copy()
 
-        # set attributes
-        self.label_col = mdl.label_col
-        self.donor_knrgls = donor_knrgls
+        # convert to categorical for faster groupby
+        for c in ["donor_id", "cell_id"]:
+            self.data[c] = self.data[c].astype("category")
+            self.data[c] = self.data[c].cat.remove_unused_categories()
+        self.data.reset_index(drop=True, inplace=True)
 
-        # get extra fn
-        raw_pos_windows = mdl.raw_data.query(query_str)[self.label_col].sum()
-        filtered_pos_windows = mdl.data.query(query_str)[self.label_col].sum()
-        self.extra_pos_windows = raw_pos_windows - filtered_pos_windows
-        raw_pos_loci = count_loci(mdl.raw_data.query(query_str), self.donor_knrgls)
-        filtered_pos_loci = count_loci(mdl.data.query(query_str), self.donor_knrgls)
-        self.extra_pos_loci = raw_pos_loci - filtered_pos_loci
-
-        # make data
-        self.thresholds = np.linspace(0.01, 0.99, 99)
+        # make thresholds
+        self.thresholds = np.linspace(0, 1, 20)
 
         # make predictions
-        self.pred_cols = np.array(
-            ["pred_{}".format(i) for i in range(len(self.thresholds))]
-        )
+        self.pred_cols = np.array([f"pred_{t}" for t in range(len(self.thresholds))])
         self.data.loc[:, self.pred_cols] = self.proba[:, np.newaxis] > self.thresholds
 
         # make random predictions
@@ -77,10 +76,6 @@ class Evaluator:
         # for t in self.thresholds:
         # 	pred_ind = np.random.choice(self.data[self.label_col].values, size=int(self.data.shape[0] * t))
         # 	self.data[f"null_pred_{t}"] = np.isin(self.data[self.label_col].values, pred_ind)
-
-        return None
-
-    def clean_pred_cols(self) -> None:
 
         tp = (
             self.data[self.pred_cols].to_numpy()
@@ -97,87 +92,135 @@ class Evaluator:
 
         # check where both fp and tp are zero and remove
         zero = (fp.sum(axis=0) == 0) & (tp.sum(axis=0) == 0)
+        logger.info(
+            f"Removing {zero.sum()} thresholds with no true positives or false positives"
+        )
         tp = tp[:, ~zero]
         fp = fp[:, ~zero]
         fn = fn[:, ~zero]
         self.pred_cols = self.pred_cols[~zero]
         self.thresholds = self.thresholds[~zero]
 
-    def locus_recall(
-        self, pred_cols: str, extra_fn: int
-    ) -> tuple[np.ndarray, np.ndarray]:
+        return None
+
+    def locus_precision_per_cell(self, n_jobs: int) -> pd.DataFrame:
+        """
+        Cluster windows above a certiain threshold in each cell
+        """
+
+        def compute_precision(p, t, data, label_col):
+            res = {
+                "tp": [],
+                "fp": [],
+                "precision": [],
+                "cell_id": [],
+                "threshold": [],
+            }
+            for c, tdf in data[data[p]].groupby("cell_id"):
+                if tdf.empty:
+                    continue
+                cdf = pr.PyRanges(tdf).cluster().df  # cluster overlapping windows
+                cdf.Cluster = cdf.Cluster.astype(
+                    "category"
+                )  # convert Cluster to categorical
+                tp = cdf.groupby("Cluster")[label_col].any().sum()
+
+                # append results
+                res["tp"].append(tp)
+                res["fp"].append(cdf.Cluster.nunique() - tp)
+                res["precision"].append(tp / cdf.Cluster.nunique())
+                res["cell_id"].append(c)
+                res["threshold"].append(t)
+
+            return res
+
+        res = Parallel(n_jobs=n_jobs, verbose=2)(
+            delayed(compute_precision)(p, t, self.data, self.label_col)
+            for p, t in zip(self.pred_cols, self.thresholds)
+        )
+        res = pd.DataFrame(res).explode(
+            ["tp", "fp", "precision", "cell_id", "threshold"]
+        )
+        res["fp"] = res["fp"].astype(int)
+        res["tp"] = res["tp"].astype(int)
+        res["precision"] = res["precision"].astype(float)
+
+        return res
+
+    def locus_recall_per_cell(self, n_jobs: int) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute the recall and adjusted recall at the locus level for each threshold
-
-        Parameters
-        ----------
-        extra_fn : int, optional, extra false negative loci to add to the denominator
         """
-        self.data["donor_id"] = self.data["donor_id"].astype(str)
-        self.data["cell_id"] = self.data["cell_id"].astype(str)
-        logger.info(
-            f"Computing locus recall on {self.data.cell_id.nunique()} cells from {self.data.donor_id.astype(str).unique()} donors"
-        )
 
-        # give each locus a unique id
-        data = (
-            self.data.groupby("donor_id")
-            .apply(
-                lambda d: label(
-                    d, self.donor_knrgls[d.name].df, name="label", add_id=True
-                )
+        def compute_recall(d, df):
+            df.cell_id = df.cell_id.cat.remove_unused_categories()
+            df = label(
+                df, self.donor_knrgls[d].df, name="label", add_id=True
+            )  # give each locus a unique id
+            df = (
+                df.query("label_id > 0")
+                .groupby(["label_id", "cell_id"])
+                .agg(
+                    {c: "max" for c in self.pred_cols}
+                )  # is there at least one overlapping window in each cell?
+                .fillna(False)
+                .reset_index()
+                .drop(columns=["label_id"])
+                .groupby("cell_id")
+                .sum()
+                .reset_index()
+                .melt(id_vars=["cell_id"], var_name="pred_col", value_name="tp")
             )
-            .reset_index(drop=True)
+            # map threshold onto pred_col
+            df["threshold"] = df["pred_col"].map(
+                {p: t for p, t in zip(self.pred_cols, self.thresholds)}
+            )
+            df.drop(columns=["pred_col"], inplace=True)
+            df["fn"] = len(self.donor_knrgls[d].df) - df["tp"]
+            df["recall"] = df["tp"] / len(self.donor_knrgls[d].df)
+
+            return df
+
+        res = Parallel(n_jobs=n_jobs, verbose=2)(
+            delayed(compute_recall)(d, df) for d, df in self.data.groupby("donor_id")
         )
 
-        # get the predicted loci
-        locus_pred = (
-            data[data["label_id"] > 0]
-            .groupby(["label_id", "cell_id"])
-            .agg({c: "max" for c in pred_cols})
-            .reset_index()
+        return pd.concat(res)
+
+    def locus_precision_recall_per_cell(self, n_jobs: int) -> pd.DataFrame:
+
+        precision = self.locus_precision_per_cell(n_jobs)
+        recall = self.locus_recall_per_cell(n_jobs)
+
+        return pd.merge(
+            precision,
+            recall,
+            on=["cell_id", "threshold"],
+            suffixes=("_precision", "_recall"),
         )
 
-        # compute recall
-        tp = locus_pred[pred_cols].sum(axis=0)  # sum across loci for each threshold
-        fn = locus_pred.shape[0] - tp
-        recall = tp / (tp + fn)
-        adjusted_recall = tp / (tp + fn + extra_fn)
-
-        recall = tp / (tp + fn)
-        adjusted_recall = tp / (tp + fn + extra_fn)
-
-        return recall, adjusted_recall
-
-    def precision_recall_curve(
-        self, pred_cols: str, extra_fn: int
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def precision_recall_curve(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Compute precision, recall, and adjusted recall at the window level for each threshold
-
-        Parameters
-        ----------
-        extra_fn : int, optional, extra false negative windows to add to the denominator
+        Compute the precision and recall at the window level for each threshold
         """
 
         tp = (
-            self.data[pred_cols].to_numpy()
+            self.data[self.pred_cols].to_numpy()
             & self.data[self.label_col].to_numpy()[:, np.newaxis]
         )
         fp = (
-            self.data[pred_cols].to_numpy()
+            self.data[self.pred_cols].to_numpy()
             & ~self.data[self.label_col].to_numpy()[:, np.newaxis]
         )
         fn = (
-            ~self.data[pred_cols].to_numpy()
+            ~self.data[self.pred_cols].to_numpy()
             & self.data[self.label_col].to_numpy()[:, np.newaxis]
         )
 
         precision = tp.sum(axis=0) / (tp.sum(axis=0) + fp.sum(axis=0))
         recall = tp.sum(axis=0) / (tp.sum(axis=0) + fn.sum(axis=0))
-        adjusted_recall = tp.sum(axis=0) / (tp.sum(axis=0) + fn.sum(axis=0) + extra_fn)
 
-        return precision, recall, adjusted_recall
+        return precision, recall, self.thresholds
 
     def all_metrics(self) -> dict[str, np.ndarray]:
         """
@@ -189,7 +232,6 @@ class Evaluator:
         extra_pos_loci : int, optional, extra false negative loci to add to the denominator
         """
 
-        self.clean_pred_cols()
         logger.info(
             "Calculating precision, recall, and adjusted recall at the window level"
         )
@@ -266,7 +308,11 @@ class Visualizer:
 
         return res
 
-    def tuning_curve(self) -> pd.DataFrame:
+    def tuning_curve(self, y_axis: str) -> pd.DataFrame:
+        assert y_axis in [
+            "time_budget",
+            "valid_loss_history",
+        ], f"invalid y_axis {y_axis}, must be one of ['time_budget', 'valid_loss_history']"
 
         res = []
         for k in self.results:
@@ -308,14 +354,18 @@ class Visualizer:
         g = sns.relplot(
             data=res,
             x="value",
-            y="valid_loss_history",
+            y=y_axis,
             hue="fold",
             col="variable",
             col_wrap=5,
             kind="line",
             facet_kws={"sharex": False},
         )
-        g.set(xlabel="Value", ylabel=f"Validation Set Loss ({self.loss})")
+        g.set(xlabel="Value")
+        if y_axis == "time_budget":
+            g.set(ylabel="Time budget")
+        elif y_axis == "valid_loss_history":
+            g.set(ylabel=f"Validation Set Loss ({self.loss})")
 
         return res
 
@@ -350,7 +400,10 @@ class Visualizer:
         return res
 
     def precision_recall_curve(
-        self, recall_col: str = "adjusted_locus_recall", summarize_folds: bool = True
+        self,
+        recall_col: str = "adjusted_locus_recall",
+        summarize_folds: bool = True,
+        ax=None,
     ) -> pd.DataFrame:
 
         res = []
@@ -370,44 +423,19 @@ class Visualizer:
                             )
 
         res = pd.DataFrame(res).explode(["precision", recall_col, "threshold"])
+        res.rename(columns={recall_col: "recall"}, inplace=True)
 
         if summarize_folds:
-            # get mean and std across folds for each threshold
-            df = (
-                res.groupby(["threshold", "stage"])[["precision", recall_col]]
-                .agg(["mean", "std"])
-                .fillna(0)
-            )
-            df.columns = df.columns.map("-".join)
-            for c in df.columns.str.split("-").str[0].unique():
-                df[f"{c}-mean_plus_std"] = df[f"{c}-mean"] + df[f"{c}-std"]
-                df[f"{c}-mean_minus_std"] = df[f"{c}-mean"] - df[f"{c}-std"]
-            df.reset_index(inplace=True)
-
-            # plot with matplotlib
-            for s, d in df.groupby("stage"):
-                plt.plot(d[f"{recall_col}-mean"], d["precision-mean"], label=s)
-                plt.fill_between(
-                    d[f"{recall_col}-mean"],
-                    d["precision-mean_minus_std"],
-                    d["precision-mean_plus_std"],
-                    alpha=0.2,
-                )
-
-            plt.xlabel(recall_col)
-            plt.ylabel("precision")
-            plt.legend()
-            plt.show()
-
+            plot_precision_recall_curve_folds(res, ax=ax)
         else:
-
             g = sns.relplot(
                 res,
-                x=recall_col,
+                x="recall",
                 y="precision",
                 hue="fold",
                 col="stage",
                 kind="line",
+                ax=ax,
             )
             g.set(xlim=(0, 1), ylim=(0, 1))
 
@@ -451,3 +479,50 @@ class Visualizer:
         g.set(xlim=(0, 1), ylim=(0, 1))
 
         return res
+
+
+def plot_precision_recall_curve_folds(df, ax=None):
+
+    # check columns
+    for c in ["precision", "recall", "threshold", "fold", "stage"]:
+        assert c in df.columns, f"{c} not in df.columns"
+        if c in ["threshold", "stage"]:
+            df[c] = df[c].astype("category")
+            df[c] = df[c].cat.remove_unused_categories()
+
+    # get mean and std across folds for each threshold
+    logger.info("Calculating mean and std across folds for each threshold")
+    df = (
+        df.groupby(["threshold", "stage"])[["precision", "recall"]]
+        .agg(["mean", "std"])
+        .fillna(0)
+    )
+
+    # compute error bars
+    logger.info("Computing error bars")
+    df.columns = df.columns.map("-".join)
+    for c in df.columns.str.split("-").str[0].unique():
+        df[f"{c}-mean_plus_std"] = df[f"{c}-mean"] + df[f"{c}-std"]
+        df[f"{c}-mean_minus_std"] = df[f"{c}-mean"] - df[f"{c}-std"]
+    df.reset_index(inplace=True)
+
+    if ax is None:
+        ax = plt.gca()
+
+    # plot with matplotlib
+    for s, d in df.groupby("stage"):
+        ax.plot(d[f"recall-mean"], d["precision-mean"], label=s)
+        ax.fill_between(
+            d[f"recall-mean"],
+            d["precision-mean_minus_std"],
+            d["precision-mean_plus_std"],
+            alpha=0.2,
+        )
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("recall")
+    ax.set_ylabel("precision")
+    ax.legend()
+
+    return ax
