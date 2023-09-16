@@ -50,7 +50,7 @@ rule get_features:
         bai=rules.sambamba_index.output[0],
     output:
         windows="{outdir}/results/model/get_features/{donor}/{sample}_windows.pqt",
-        # peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
+        peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
     log:
         "{outdir}/results/model/get_features/{donor}/{sample}.log",
     params:

@@ -83,16 +83,37 @@ def gini(array):
 
 
 class SlidingWindow(object):
-    def __init__(self, bam: AlignmentFile, min_mapq: int = 0) -> None:
+    def __init__(
+        self,
+        bam: AlignmentFile,
+        contigs: list | None = None,
+        min_mapq: int = 0,
+        peaks: bool = False,
+        collect_features: bool = False,
+        collect_localmax: bool = False,
+    ) -> None:
+
+        # save inputs to attributes
         self.bam = bam
 
-        # get autosomes
-        self.contigs = []
-        for i in range(bam.nreferences):
-            if bam.get_reference_name(i) in AUTOSOMES:
-                self.contigs.append(bam.get_reference_name(i))
+        # validate contigs
+        if contigs:
+            for c in contigs:
+                if c not in AUTOSOMES:
+                    raise Exception(f"{c} is not an autosome")
+            self.contigs = contigs
+        else:
+            self.contigs = []
+            for i in range(bam.nreferences):
+                if bam.get_reference_name(i) in AUTOSOMES:
+                    self.contigs.append(bam.get_reference_name(i))
 
+        # save settings
         self.min_mapq = min_mapq
+        self.peaks = peaks
+        self.collect_features = collect_features
+        self.collect_localmax = collect_localmax
+
         self.read_filter = (
             lambda x: x.is_read1
             and x.is_mapped
@@ -101,6 +122,7 @@ class SlidingWindow(object):
             and (not x.is_duplicate)
         )
 
+        # count reads in bam satisfying read filter
         total_reads = bam.count(read_callback=self.read_filter)
         self.size_factor = total_reads / 1e6
         logger.info(f"{total_reads} filtered reads in the bam file")
@@ -115,7 +137,14 @@ class SlidingWindow(object):
             and (x.mapping_quality >= min_mapq)
         )
 
-    def windows(self, reads, size: int = 200, step: int = 1) -> Generator:
+    def windows(
+        self,
+        reads,
+        size: int = 200,
+        step: int = 1,
+        min_rpm: float = 0,
+        min_reads: int = 0,
+    ) -> Generator:
         "Slide window across contig and yield each window"
         try:
             r = next(reads)
@@ -142,12 +171,14 @@ class SlidingWindow(object):
                 except StopIteration:
                     break
 
-            yield {
-                "Chromosome": contig,
-                "Start": start,
-                "End": end,
-                "reads": set(w),
-            }
+            # return window if it has min_rpm
+            if (len(w) / self.size_factor >= min_rpm) and (len(w) >= min_reads):
+                yield {
+                    "Chromosome": contig,
+                    "Start": start,
+                    "End": end,
+                    "reads": set(w),
+                }
 
     def merge(self, windows: Generator, bandwidth: int = 0) -> Generator:
         """
@@ -155,27 +186,6 @@ class SlidingWindow(object):
         :param windows: generator of windows
         :param bandwidth: maximum distance between windows to merge
         """
-
-        # subfunction to calculate peak stats
-        def peak_stats(p: dict):
-            "calculate peak stats"
-
-            p["n_reads"] = len(p["reads"])
-            p["rpm"] = p["n_reads"] / self.size_factor
-
-            # iterate over reads to calculate remaining stats
-            p["n_ref_reads"], p["max_mapq"] = 0, 0
-            starts = []
-            for r in p["reads"]:
-                p["max_mapq"] = max(p["max_mapq"], r.mapping_quality)
-                p["n_ref_reads"] += r.isref_read
-                if r.is_forward:
-                    starts.append(r.reference_start)
-                else:
-                    starts.append(r.reference_end)
-            p["n_unique_starts"] = len(set(starts))
-
-            return p
 
         # filter windows for non-empty
         windows = filter(lambda x: len(x["reads"]) > 0, windows)
@@ -191,8 +201,6 @@ class SlidingWindow(object):
                 p["reads"] = p["reads"].union(n["reads"])
             # otherwise, yield the previous window and start a new one
             else:
-                # calculate some stats
-                p = peak_stats(p)
                 # drop reads
                 yield p
                 # start new window
@@ -200,6 +208,38 @@ class SlidingWindow(object):
                     p["Chromosome"] == n["Chromosome"]
                 ), "Windows are not sorted by contig"
                 p = n
+
+    # subfunction to calculate peak stats
+    def stats(self, p: dict):
+        "calculate basic stats"
+
+        # iterate over reads to calculate stats
+        p["n_ref_reads"], p["max_mapq"] = 0, 0
+        starts = []
+        fwd, rev = 0, 0
+        for r in p["reads"]:
+            if r.is_reverse:
+                rev += 1
+            else:
+                fwd += 1
+            p["max_mapq"] = max(p["max_mapq"], r.mapping_quality)
+            p["n_ref_reads"] += r.isref_read
+            if r.is_forward:
+                starts.append(r.reference_start)
+            else:
+                starts.append(r.reference_end)
+        p["n_unique_starts"] = len(set(starts))
+
+        p["n_reads"] = fwd + rev
+        p["rpm"] = p["n_reads"] / self.size_factor
+
+        # add strand info
+        if (fwd == 0) and (rev > 0):
+            p["Strand"] = "-"
+        elif (rev == 0) and (fwd > 0):
+            p["Strand"] = "+"
+
+        return p
 
     def features(self, w: dict) -> dict:
         """
@@ -299,11 +339,9 @@ class SlidingWindow(object):
 
         return f
 
-    def make_windows(
+    def make_regions(
         self,
         strand_split: bool = False,
-        merge: bool = False,
-        features: bool = False,
         **kwargs,
     ) -> Generator:
         """
@@ -323,46 +361,47 @@ class SlidingWindow(object):
             rg = [lambda x: x.is_read1]
 
         for c in self.contigs:
-            logger.info(f"Making windows on {c}")
+            logger.info(f"Making regions on {c}")
             for f in rg:
                 reads = filter(self.read_filter, self.bam.fetch(c))
                 reads = filter(f, reads)
                 reads = map(read_to_namedtuple, reads)
 
                 # define window generator
-                if merge:
+                if self.peaks:
                     windows = self.merge(self.windows(reads, **kwargs))
                 else:
                     windows = self.windows(reads, **kwargs)
 
                 # yield windows
                 for w in windows:
-                    if features:
+                    if self.collect_features:
                         yield self.features(w)
                     else:
                         if "reads" in w:
                             del w["reads"]
-                        yield w
+                        yield self.stats(w)
 
-    def write_windows(self, outfile: str, **kwargs) -> None:
+    def write_regions(self, outfile: str, **kwargs) -> None:
         """
         Generate windows and write to disk
         :param outfile: path to output file
         :param kwargs: arguments to pass to make_windows()
         """
 
-        # grab first window
-        iter = self.make_windows(**kwargs)
+        # grab first region
+        iter = self.make_regions(**kwargs)
         w = next(iter)
-        for i in [2, 4, 8, 16, 32]:
-            w[f"localmax_{i}_reads"] = 0
-            w[f"localmax_{i}_rpm"] = float(0)
+        if self.collect_localmax:
+            for i in [2, 4, 8, 16, 32]:
+                w[f"localmax_{i}_reads"] = 0
+                w[f"localmax_{i}_rpm"] = float(0)
         schema = pa.Schema.from_pandas(pd.Series(w).to_frame().T)
 
         windows = []  # initialize list of windows
         with pq.ParquetWriter(outfile, schema, compression="gzip") as writer:
             # write windows to disk in batches by chromosome
-            for c in AUTOSOMES:
+            for c in self.contigs:
                 start = time.perf_counter()
 
                 # collect windows for this chromosome
@@ -381,24 +420,19 @@ class SlidingWindow(object):
                 windows = pd.DataFrame(windows)
 
                 # compute local max
-                for localbw in [2, 4, 8, 16, 32]:
-                    lm = windows["n_reads"].rolling(localbw, center=True).max()
-                    windows[f"localmax_{localbw}_reads"] = lm
-                    windows[f"localmax_{localbw}_rpm"] = lm / self.size_factor
+                if self.collect_localmax:
+                    for localbw in [2, 4, 8, 16, 32]:
+                        lm = windows["n_reads"].rolling(localbw, center=True).max()
+                        windows[f"localmax_{localbw}_reads"] = lm
+                        windows[f"localmax_{localbw}_rpm"] = lm / self.size_factor
 
                 # remove empty windows
                 windows = windows.loc[windows.n_reads > 0, :].fillna(0)
 
                 # write to disk
-                # assert windows.columns.isin(schema.names).all(), "Columns do not match schema"
-                if not windows.columns.isin(schema.names).all():
-                    # find non matching columns
-                    non_matching = windows.columns[~windows.columns.isin(schema.names)]
-                    raise Exception(f"{non_matching} columns are not in schema")
-
                 writer.write_table(pa.Table.from_pandas(windows, schema=schema))
                 logger.info(
-                    f"Processed {len(windows)} windows in {time.perf_counter() - start:.2f} seconds"
+                    f"Processed {len(windows)} regions in {time.perf_counter() - start:.2f} seconds"
                 )
 
                 # reset windows list
