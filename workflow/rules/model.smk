@@ -44,21 +44,36 @@ rule call_bulk_peaks:
         "../scripts/call_bulk_peaks.py"
 
 
-rule get_features:
+rule make_windows:
     input:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
         windows="{outdir}/results/model/get_features/{donor}/{sample}_windows.pqt",
-        peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
     log:
-        "{outdir}/results/model/get_features/{donor}/{sample}.log",
+        "{outdir}/results/model/get_features/{donor}/{sample}_windows.log",
     params:
         **config["get_features"],
     conda:
         "../envs/features.yml"
     script:
-        "../scripts/get_features.py"
+        "../scripts/make_windows.py"
+
+
+rule make_peaks:
+    input:
+        bam=rules.sambamba_sort.output[0],
+        bai=rules.sambamba_index.output[0],
+    output:
+        peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
+    log:
+        "{outdir}/results/model/get_features/{donor}/{sample}_peaks.log",
+    params:
+        **config["get_features"],
+    conda:
+        "../envs/features.yml"
+    script:
+        "../scripts/make_peaks.py"
 
 
 with open("resources/bad_cells.txt", "r") as f:
@@ -73,8 +88,13 @@ def get_donor_features(wildcards):
     cells = [c for c in donor_cells if c not in bad_cells]
 
     res = {
-        "features": expand(
-            rules.get_features.output.windows,
+        "windows": expand(
+            rules.make_windows.output.windows,
+            sample=cells,
+            allow_missing=True,
+        ),
+        "peaks": expand(
+            rules.make_peaks.output.peaks,
             sample=cells,
             allow_missing=True,
         ),
@@ -99,8 +119,10 @@ rule get_labels:
     params:
         **config["get_features"],
     output:
-        "{outdir}/results/model/get_labels/{donor}.pqt",
-        "{outdir}/results/model/get_labels/{donor}_nonrefonly.pqt",
+        windows="{outdir}/results/model/get_labels/{donor}_windows.pqt",
+        windows_nonrefonly="{outdir}/results/model/get_labels/{donor}_windows_nonrefonly.pqt",
+        peaks="{outdir}/results/model/get_labels/{donor}_peaks.pqt",
+        peaks_nonrefonly="{outdir}/results/model/get_labels/{donor}_peaks_nonrefonly.pqt",
     log:
         "{outdir}/results/model/get_labels/{donor}.log",
     conda:
