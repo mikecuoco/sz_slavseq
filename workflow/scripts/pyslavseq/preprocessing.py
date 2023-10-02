@@ -38,7 +38,11 @@ def read_cell_features(
 
 
 def label(
-    df: pd.DataFrame, other_df: pd.DataFrame, name: str, add_id: bool = False
+    df: pd.DataFrame,
+    other_df: pd.DataFrame,
+    name: str,
+    add_id: bool = False,
+    slack: int = 0,
 ) -> pd.DataFrame:
     """
     Label windows in df with whether they overlap with other_df
@@ -71,6 +75,7 @@ def label(
         .join(
             pr.PyRanges(other_df, int64=True),
             how="left",
+            slack=slack,
         )
         .df
     )
