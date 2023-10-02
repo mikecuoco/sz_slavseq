@@ -17,7 +17,6 @@ from .schemas import TAGS, Read
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-
 AUTOSOMES = [f"chr{c}" for c in range(1, 23)]
 
 
@@ -80,6 +79,19 @@ def gini(array):
     return (np.sum((2 * index - n - 1) * array)) / (
         n * np.sum(array)
     )  # Gini coefficient
+
+
+# # define subclass for genome rolling window
+# from pandas.api.indexers import VariableOffsetWindowIndexer
+
+# class WindowIndexer(VariableOffsetWindowIndexer):
+#     def get_window_bounds(self, num_values, min_periods, center, closed):
+#         start = np.empty(num_values, dtype=np.int64)
+#         end = np.empty(num_values, dtype=np.int64)
+#         for i in range(num_values):
+#             if center:
+#                 start[i] = i - self.window_size // 2 + 1
+#                 end[i] = i + self.window_size // 2 + 1
 
 
 class SlidingWindow(object):
@@ -209,9 +221,11 @@ class SlidingWindow(object):
                 ), "Windows are not sorted by contig"
                 p = n
 
-    # subfunction to calculate peak stats
     def stats(self, p: dict):
-        "calculate basic stats"
+        """
+        Calculate basic stats about a region
+        :param p: dict of region, must contain "reads" key
+        """
 
         # iterate over reads to calculate stats
         p["n_ref_reads"], p["max_mapq"] = 0, 0
@@ -241,22 +255,22 @@ class SlidingWindow(object):
 
         return p
 
-    def features(self, w: dict) -> dict:
+    def features(self, p: dict) -> dict:
         """
         Extract features from a window of reads"
-        :param w: window of reads
+        :param p: dict of region, must contain "reads" key
         """
 
         # initialize lists for features
         l = dict()
-        for k in TAGS + ["3end", "5end", "mapq"]:
+        for k in TAGS + ["3end", "5end", "mapq", "starts"]:
             l[k] = []
 
         # initialize features dict
         f = {
-            "Chromosome": w["Chromosome"],
-            "Start": w["Start"],
-            "End": w["End"],
+            "Chromosome": p["Chromosome"],
+            "Start": p["Start"],
+            "End": p["End"],
             "n_reads": 0,
             "n_fwd": 0,
             "n_rev": 0,
@@ -268,6 +282,7 @@ class SlidingWindow(object):
             "rpm": float(0),
             "orientation_bias": float(0),
             "frac_proper_pairs": float(0),
+            "n_unique_starts": 0,
         }
 
         for tag in TAGS:
@@ -276,20 +291,25 @@ class SlidingWindow(object):
             f[tag + "_mean"] = float(0)
 
         # if reads are empty, return empty features
-        if len(w["reads"]) == 0:
+        if len(p["reads"]) == 0:
             f["n_reads"] = 0
             return f
 
         # collect features from the reads in the window
-        for r in w["reads"]:
-            assert r.is_read1, "Reads must be all read 1"
+        for i, r in enumerate(p["reads"]):
+            if not r.is_read1:
+                raise Exception("Reads must all be read1")
 
+            if i == 0:
+                peak_start = r.reference_start
+
+            l["starts"].append(r.reference_start)
             if r.is_forward:
-                l["3end"].append(r.reference_end)
-                l["5end"].append(r.reference_start)
+                l["3end"].append(r.reference_end - peak_start)
+                l["5end"].append(r.reference_start - peak_start)
             else:
-                l["3end"].append(r.reference_start)
-                l["5end"].append(r.reference_end)
+                l["3end"].append(r.reference_start - peak_start)
+                l["5end"].append(r.reference_end - peak_start)
 
             l["mapq"].append(r.mapping_quality)
 
@@ -320,10 +340,6 @@ class SlidingWindow(object):
                 elif getattr(r, tag):
                     l[tag].append(getattr(r, tag))
 
-        f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
-        f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))
-        f["max_mapq"] = max(l["mapq"])
-
         # compute mean and quantiles for these features
         for tag in TAGS:
             if len(l[tag]) > 0:
@@ -332,6 +348,10 @@ class SlidingWindow(object):
                     f[tag + "_q" + str(n)] = q
                 f[tag + "_mean"] = np.mean(l[tag])
 
+        f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
+        f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))
+        f["max_mapq"] = max(l["mapq"])
+        f["n_unique_starts"] = len(set(l["starts"]))
         f["n_reads"] = f["n_fwd"] + f["n_rev"]
         f["rpm"] = f["n_reads"] / self.size_factor
         f["orientation_bias"] = np.maximum(f["n_fwd"], f["n_rev"]) / f["n_reads"]
@@ -384,161 +404,57 @@ class SlidingWindow(object):
 
     def write_regions(self, outfile: str, **kwargs) -> None:
         """
-        Generate windows and write to disk
+        Generate regions and write to disk
         :param outfile: path to output file
-        :param kwargs: arguments to pass to make_windows()
+        :param kwargs: arguments to pass to make_regions()
         """
 
         # grab first region
         iter = self.make_regions(**kwargs)
-        w = next(iter)
+        r = next(iter)
+        # TODO: create custom windowing class with a BaseIndexer subclass https://pandas.pydata.org/pandas-docs/stable/user_guide/window.html#custom-window-rolling
         if self.collect_localmax:
             for i in [2, 4, 8, 16, 32]:
-                w[f"localmax_{i}_reads"] = 0
-                w[f"localmax_{i}_rpm"] = float(0)
-        schema = pa.Schema.from_pandas(pd.Series(w).to_frame().T)
+                r[f"localmax_{i}_reads"] = 0
+                r[f"localmax_{i}_rpm"] = float(0)
+        schema = pa.Schema.from_pandas(pd.Series(r).to_frame().T)
 
-        windows = []  # initialize list of windows
+        regions = []  # initialize list of regions
         with pq.ParquetWriter(outfile, schema, compression="gzip") as writer:
-            # write windows to disk in batches by chromosome
+            # write regions to disk in batches by chromosome
             for c in self.contigs:
                 start = time.perf_counter()
 
-                # collect windows for this chromosome
-                while w["Chromosome"] == c:
-                    windows.append(w)
+                # collect regions for this chromosome
+                while r["Chromosome"] == c:
+                    regions.append(r)
                     try:
-                        w = next(iter)
+                        r = next(iter)
                     except StopIteration:
                         break
 
                 # skip empty chromosomes
-                if len(windows) == 0:
+                if len(regions) == 0:
                     continue
 
-                # convert windows to dataframe
-                windows = pd.DataFrame(windows)
+                # convert regions to dataframe
+                regions = pd.DataFrame(regions)
 
                 # compute local max
                 if self.collect_localmax:
                     for localbw in [2, 4, 8, 16, 32]:
-                        lm = windows["n_reads"].rolling(localbw, center=True).max()
-                        windows[f"localmax_{localbw}_reads"] = lm
-                        windows[f"localmax_{localbw}_rpm"] = lm / self.size_factor
+                        lm = regions["n_reads"].rolling(localbw, center=True).max()
+                        regions[f"localmax_{localbw}_reads"] = lm
+                        regions[f"localmax_{localbw}_rpm"] = lm / self.size_factor
 
-                # remove empty windows
-                windows = windows.loc[windows.n_reads > 0, :].fillna(0)
+                # remove empty regions
+                regions = regions.loc[regions.n_reads > 0, :].fillna(0)
 
                 # write to disk
-                writer.write_table(pa.Table.from_pandas(windows, schema=schema))
+                writer.write_table(pa.Table.from_pandas(regions, schema=schema))
                 logger.info(
-                    f"Processed {len(windows)} regions in {time.perf_counter() - start:.2f} seconds"
+                    f"Processed {len(regions)} regions in {time.perf_counter() - start:.2f} seconds"
                 )
 
-                # reset windows list
-                windows = []
-
-    def coverage(
-        self, peaks: pd.DataFrame, line1: pd.DataFrame, blacklist=None
-    ) -> tuple:
-        """
-        Calculate coverage of peaks and annotations
-        :param peaks: dataframe of peaks
-        :param line1: dataframe of line1 annotations
-        :param blacklist: dataframe of blacklist regions
-        """
-
-        # validate inputs
-        for name, df in zip(["peaks", "knrgl", "rmsk"], [peaks, line1]):
-            assert type(df) == pd.DataFrame, f"{name} must be a pandas dataframe"
-            for c in ["Chromosome", "Start", "End"]:
-                assert c in df.columns, f"{c} must be in {name} columns"
-        assert "Name" in line1.columns, "Name must be in line1 columns"
-
-        # ony use chromosomes of interest
-        peaks = pr.PyRanges(peaks[peaks["Chromosome"].isin(self.contigs)])  # type: ignore
-        line1 = pr.PyRanges(line1[line1["Chromosome"].isin(self.contigs)])  # type: ignore
-
-        # optionally remove blacklist regions
-        if blacklist is not None:
-            blacklist = pr.PyRanges(
-                blacklist[blacklist["Chromosome"].isin(self.contigs)]
-            )
-            peaks = peaks.overlap(blacklist, invert=True)  # type: ignore
-            line1 = line1.overlap(blacklist, invert=True)  # type: ignore
-
-        # label line1 by peaks
-        line_df = line1.join(peaks, how="left").df
-
-        # label peaks by line1
-        peak_df = peaks.join(line1, how="left").sort().df  # type: ignore
-        peak_df.loc[
-            (peak_df.Name == "-1") & (peak_df.n_ref_reads == 0), "Name"
-        ] = "NoneNR"
-        peak_df.loc[
-            (peak_df.Name == "-1") & (peak_df.n_ref_reads > 0), "Name"
-        ] = "NoneR"
-        peak_df["diff"] = peak_df.Start.diff()
-        peak_df["width"] = peak_df.End - peak_df.Start
-
-        # define order of L1s
-        order = ["KNRGL", "L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]
-
-        # PLOTTING
-        # make subplots
-        fig, axes = plt.subplots(2, 3, figsize=(13, 8))
-        fig.tight_layout(pad=3)
-
-        # plot 1: how many peak reads overlap each L1?
-        sns.ecdfplot(
-            line_df,
-            x="n_reads",
-            hue="Name",
-            hue_order=order,
-            ax=axes[0, 0],
-        ).set(xscale="log", xlim=(1, None), title="Peak reads in L1s")
-
-        # plot 2: how many reads are in each peak?
-        sns.ecdfplot(
-            peak_df,
-            x="n_reads",
-            hue="Name",
-            hue_order=order + ["NoneR", "NoneNR"],
-            ax=axes[0, 1],
-        ).set(xscale="log", xlim=(1, None), title="Reads in Peaks by label")
-
-        # plot 3: how wide are the peaks?
-        sns.ecdfplot(
-            peak_df,
-            x="width",
-            hue="Name",
-            hue_order=order + ["NoneR", "NoneNR"],
-            ax=axes[0, 2],
-        ).set(title="Peak Width by label")
-
-        # plot 4: how are nrefreads distributed?
-        sns.ecdfplot(
-            peak_df,
-            x="n_ref_reads",
-            hue="Name",
-            hue_order=order + ["NoneR", "NoneNR"],
-            ax=axes[1, 0],
-        ).set(xlim=(1, None), xscale="log", title="Reference reads in Peaks by label")
-
-        peak_df["frac_ref_reads"] = peak_df.n_ref_reads / peak_df.n_reads
-        sns.ecdfplot(
-            peak_df,
-            x="frac_ref_reads",
-            hue="Name",
-            hue_order=order + ["NoneR", "NoneNR"],
-            ax=axes[1, 1],
-        ).set(title="Fraction of reference reads in Peaks by label")
-
-        # plot 6: how many peaks labelled by each class?
-        axes[1, 2] = peak_df.groupby(["Name"]).size().plot.barh(rot=0)
-        axes[1, 2].bar_label(axes[1, 2].containers[0])
-        axes[1, 2].set_xscale("log")
-        axes[1, 2].set_title("Peak Count by label")
-        axes[1, 2].set_xlim(1, max(axes[1, 2].get_xlim()) * 2)
-
-        return axes, peak_df, line_df
+                # reset regions list
+                regions = []
