@@ -25,6 +25,7 @@ def get_bulk_sample(wildcards):
             sample=bulk,
             allow_missing=True,
         ),
+        "primer_bed": rules.blast_primers.output.bed,
     }
 
 

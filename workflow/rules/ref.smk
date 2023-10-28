@@ -84,6 +84,31 @@ rule run_rmsk:
         """
 
 
+rule blast_primers:
+    input:
+        ref_fa=config["genome"]["fasta"],
+        primer_fa="resources/L1_capture/L1_capture.fa",
+    output:
+        db=multiext(
+            "resources/{genome}/BLASTDB/{genome}",
+            ".ndb",
+            ".nhr",
+            ".nin",
+            ".njs",
+            ".not",
+            ".nsq",
+            ".ntf",
+            ".nto",
+        ),
+        bed="resources/{genome}/blast_primers/L1_primers.bed",
+    log:
+        "resources/{genome}/blast_primers/blast_primers.log",
+    conda:
+        "../envs/blast.yml"
+    script:
+        "../scripts/blast_primers.py"
+
+
 rule rmsk_to_bed:
     input:
         rules.run_rmsk.output[0],
