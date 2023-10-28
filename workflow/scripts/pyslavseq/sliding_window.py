@@ -104,7 +104,6 @@ class SlidingWindow(object):
         collect_features: bool = False,
         collect_localmax: bool = False,
     ) -> None:
-
         # save inputs to attributes
         self.bam = bam
 
@@ -228,7 +227,7 @@ class SlidingWindow(object):
         """
 
         # iterate over reads to calculate stats
-        p["n_ref_reads"], p["max_mapq"] = 0, 0
+        p["n_ref_reads"], p["max_mapq"], p["n_duplicates"] = 0, 0, 0
         starts = []
         fwd, rev = 0, 0
         for r in p["reads"]:
@@ -238,6 +237,8 @@ class SlidingWindow(object):
                 fwd += 1
             p["max_mapq"] = max(p["max_mapq"], r.mapping_quality)
             p["n_ref_reads"] += r.isref_read
+            p["n_duplicates"] += r.is_duplicate
+
             if r.is_forward:
                 starts.append(r.reference_start)
             else:
@@ -252,6 +253,9 @@ class SlidingWindow(object):
             p["Strand"] = "-"
         elif (rev == 0) and (fwd > 0):
             p["Strand"] = "+"
+
+        # remove reads
+        del p["reads"]
 
         return p
 
@@ -274,6 +278,7 @@ class SlidingWindow(object):
             "n_reads": 0,
             "n_fwd": 0,
             "n_rev": 0,
+            "n_duplicates": 0,
             "n_proper_pairs": 0,
             "n_ref_reads": 0,
             "3end_gini": float(0),
@@ -301,20 +306,21 @@ class SlidingWindow(object):
                 raise Exception("Reads must all be read1")
 
             if i == 0:
-                peak_start = r.reference_start
+                start = r.reference_start
 
             l["starts"].append(r.reference_start)
             if r.is_forward:
-                l["3end"].append(r.reference_end - peak_start)
-                l["5end"].append(r.reference_start - peak_start)
+                l["3end"].append(r.reference_end - start)
+                l["5end"].append(r.reference_start - start)
             else:
-                l["3end"].append(r.reference_start - peak_start)
-                l["5end"].append(r.reference_end - peak_start)
+                l["3end"].append(r.reference_start - start)
+                l["5end"].append(r.reference_end - start)
 
             l["mapq"].append(r.mapping_quality)
 
             f["n_proper_pairs"] += r.is_proper_pair
             f["n_ref_reads"] += r.isref_read
+            f["n_duplicates"] += r.is_duplicate
 
             if r.is_reverse:
                 f["n_rev"] += 1
@@ -398,8 +404,6 @@ class SlidingWindow(object):
                     if self.collect_features:
                         yield self.features(w)
                     else:
-                        if "reads" in w:
-                            del w["reads"]
                         yield self.stats(w)
 
     def write_regions(self, outfile: str, **kwargs) -> None:

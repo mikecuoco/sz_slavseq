@@ -42,8 +42,8 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
                     else:
                         r2 = r_genome
 
-                # skip if read1 is a duplicate or unmapped
-                if r1.is_duplicate or r1.is_unmapped:
+                # skip if read1 is unmapped
+                if r1.is_unmapped:
                     continue
 
                 assert (
