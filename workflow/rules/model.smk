@@ -1,10 +1,10 @@
 rule en_motif:
     input:
-        rules.get_genome.output.fa,
+        config["genome"]["fasta"],
     output:
-        "{outdir}/resources/en_motif.pqt",
+        "resources/{genome}/en_motif.pqt",
     log:
-        "{outdir}/resources/en_motif.log",
+        "resources/{genome}/en_motif.log",
     conda:
         "../envs/features.yml"
     script:
@@ -32,10 +32,10 @@ rule call_bulk_peaks:
     input:
         unpack(get_bulk_sample),
     output:
-        pqt="{outdir}/results/bulk_peaks/{donor}.pqt",
-        bed="{outdir}/results/bulk_peaks/{donor}.bed",
+        pqt="{outdir}/results/{genome}/bulk_peaks/{donor}.pqt",
+        bed="{outdir}/results/{genome}/bulk_peaks/{donor}.bed",
     log:
-        "{outdir}/results/bulk_peaks/{donor}.log",
+        "{outdir}/results/{genome}/bulk_peaks/{donor}.log",
     params:
         **config["get_features"],
     conda:
@@ -49,9 +49,9 @@ rule make_windows:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        windows="{outdir}/results/model/get_features/{donor}/{sample}_windows.pqt",
+        windows="{outdir}/results/{genome}/model/get_features/{donor}/{sample}_windows.pqt",
     log:
-        "{outdir}/results/model/get_features/{donor}/{sample}_windows.log",
+        "{outdir}/results/{genome}/model/get_features/{donor}/{sample}_windows.log",
     params:
         **config["get_features"],
     conda:
@@ -65,9 +65,9 @@ rule make_peaks:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        peaks="{outdir}/results/model/get_features/{donor}/{sample}_peaks.pqt",
+        peaks="{outdir}/results/{genome}/model/get_features/{donor}/{sample}_peaks.pqt",
     log:
-        "{outdir}/results/model/get_features/{donor}/{sample}_peaks.log",
+        "{outdir}/results/{genome}/model/get_features/{donor}/{sample}_peaks.log",
     params:
         **config["get_features"],
     conda:
@@ -111,20 +111,18 @@ rule get_labels:
         unpack(get_donor_features),
         xtea=rules.xtea_to_bed.output.xtea,
         xtea_1kb_3end=rules.xtea_to_bed.output.xtea_1kb_3end,
-        xtea_20kb=rules.xtea_to_bed.output.xtea_20kb,
         rmsk=rules.rmsk_to_bed.output.rmsk,
         rmsk_1kb_3end=rules.rmsk_to_bed.output.rmsk_1kb_3end,
-        rmsk_20kb=rules.rmsk_to_bed.output.rmsk_20kb,
         en_motif=rules.en_motif.output,
     params:
         **config["get_features"],
     output:
-        windows="{outdir}/results/model/get_labels/{donor}_windows.pqt",
-        windows_nonrefonly="{outdir}/results/model/get_labels/{donor}_windows_nonrefonly.pqt",
-        peaks="{outdir}/results/model/get_labels/{donor}_peaks.pqt",
-        peaks_nonrefonly="{outdir}/results/model/get_labels/{donor}_peaks_nonrefonly.pqt",
+        windows="{outdir}/results/{genome}/model/get_labels/{donor}_windows.pqt",
+        windows_nonrefonly="{outdir}/{genome}/results/model/get_labels/{donor}_windows_nonrefonly.pqt",
+        peaks="{outdir}/results/{genome}/model/get_labels/{donor}_peaks.pqt",
+        peaks_nonrefonly="{outdir}/results/{genome}/model/get_labels/{donor}_peaks_nonrefonly.pqt",
     log:
-        "{outdir}/results/model/get_labels/{donor}.log",
+        "{outdir}/results/{genome}/model/get_labels/{donor}.log",
     conda:
         "../envs/model.yml"
     threads: 16
@@ -137,13 +135,13 @@ rule fit:
         expand(
             rules.get_labels.output,
             donor=donors.loc[~donors["xtea"].isnull(), "donor_id"],
-            outdir=config["outdir"],
+            allow_missing=True,
         ),
     output:
-        model="{outdir}/results/model/train/model.pkl",
-        features="{outdir}/results/model/train/features.txt",
+        model="{outdir}/results/{genome}/model/train/model.pkl",
+        features="{outdir}/results/{genome}/model/train/features.txt",
     log:
-        "{outdir}/results/model/train/train.log",
+        "{outdir}/results/{genome}/model/train/train.log",
     threads: 24
     params:
         # bad÷_cells

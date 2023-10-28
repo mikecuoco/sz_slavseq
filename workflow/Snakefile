@@ -52,6 +52,7 @@ rule all:
     input:
         expand(
             rules.fit.output,
+            genome=config["genome"]["name"],
             outdir=config["outdir"],
         ),
         expand(
@@ -60,6 +61,7 @@ rule all:
                 stage=["tagged.sorted"],
                 outdir=config["outdir"],
                 allow_missing=True,
+                genome=config["genome"]["name"],
             ),
             zip,
             sample=samples["sample_id"],
@@ -72,8 +74,9 @@ rule all:
                     "rmsk_1kb_3end",
                     "xtea_1kb_3end",
                 ],
-                outdir=config["outdir"],
                 allow_missing=True,
+                outdir=config["outdir"],
+                genome=config["genome"]["name"],
             ),
             zip,
             sample=samples["sample_id"],

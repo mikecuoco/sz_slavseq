@@ -25,11 +25,11 @@ rule fastqc:
 
 rule flagstat:
     input:
-        "{outdir}/results/align/{donor}/{sample}.{stage}.bam",
+        "{outdir}/results/{genome}/align/{donor}/{sample}.{stage}.bam",
     output:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.{stage}.flagstat",
+        "{outdir}/results/{genome}/qc/flagstat/{donor}/{sample}.{stage}.flagstat",
     log:
-        "{outdir}/results/qc/flagstat/{donor}/{sample}.{stage}.flagstat.log",
+        "{outdir}/results/{genome}/qc/flagstat/{donor}/{sample}.{stage}.flagstat.log",
     wrapper:
         "v1.21.0/bio/samtools/flagstat"
 
@@ -51,10 +51,10 @@ rule l1_coverage:
         bai=rules.sambamba_index.output,
         anno=get_l1_coverage_anno,
     output:
-        r1="{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.r1.txt",
-        r2="{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.r2.txt",
+        r1="{outdir}/results/{genome}/qc/l1_coverage/{donor}/{sample}.{anno}.r1.txt",
+        r2="{outdir}/results/{genome}/qc/l1_coverage/{donor}/{sample}.{anno}.r2.txt",
     log:
-        "{outdir}/results/qc/l1_coverage/{donor}/{sample}.{anno}.log",
+        "{outdir}/results/{genome}/qc/l1_coverage/{donor}/{sample}.{anno}.log",
     params:
         extra=" ",  # optional additional parameters as string
     conda:

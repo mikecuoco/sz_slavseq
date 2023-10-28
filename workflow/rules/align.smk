@@ -1,9 +1,9 @@
 rule bwa_index:
     input:
-        fa="{outdir}/resources/{ref}.fa",
+        fa=rules.get_l1hs_consensus.output,
     output:
         idx=multiext(
-            "{outdir}/resources/{ref}.fa",
+            rules.get_l1hs_consensus.output[0],
             ".amb",
             ".ann",
             ".bwt",
@@ -11,35 +11,40 @@ rule bwa_index:
             ".sa",
         ),
     log:
-        "{outdir}/resources/{ref}.bwa_index.log",
+        "resources/LINE1/bwa_index.log",
     conda:
         "../envs/align.yml"
     params:
-        algorithm=lambda wc: "is" if "LINE" in wc.ref else "bwtsw",
+        algorithm="is",
     shell:
         """
         bwa index -a {params.algorithm} {input.fa} > {log} 2>&1
         """
 
 
+if not Path(config["genome"]["bwa"] + ".amb").exists():
+    raise ValueError("BWA index not found for genome: " + config["genome"]["name"])
+
+
 rule bwa_mem_genome:
     input:
-        idx=expand(rules.bwa_index.output.idx, ref=genome_name, allow_missing=True),
-        fa=rules.get_genome.output.fa,
+        idx=config["genome"]["bwa"] + ".amb",
         reads=[rules.filter_read2.output.fastq1, rules.filter_read2.output.fastq2],
     output:
-        temp("{outdir}/results/align/{donor}/{sample}.genome.bam"),
+        temp("{outdir}/results/{genome}/align/{donor}/{sample}.genome.bam"),
     log:
-        bwa="{outdir}/results/align/{donor}/{sample}.bwa_genome.log",
-        samblaster="{outdir}/results/align/{donor}/{sample}.samblaster_genome.log",
-    threads: 4
+        bwa="{outdir}/results/{genome}/align/{donor}/{sample}.bwa_genome.log",
+        samblaster="{outdir}/results/{genome}/align/{donor}/{sample}.samblaster_genome.log",
+    threads: 2
     conda:
         "../envs/align.yml"
     params:
         min_as=30,  # minimum alignment score (default = 30)
     shell:
         """
-        bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log.bwa} \
+        # remove .amb from idx
+        idx=$(echo {input.idx} | sed 's/.amb//g')
+        bwa mem -T {params.min_as} -t {threads} $idx {input.reads} 2> {log.bwa} \
         | samblaster --addMateTags 2> {log.samblaster} \
         | samtools view -Sb - > {output}
         """
@@ -47,14 +52,14 @@ rule bwa_mem_genome:
 
 rule bwa_mem_line1:
     input:
-        idx=expand(rules.bwa_index.output.idx, ref="LINE1_lib", allow_missing=True),
-        fa=rules.make_dfam_lib.output,
+        idx=rules.bwa_index.output.idx[0],
+        fa=rules.get_l1hs_consensus.output,
         reads=rules.filter_read2.output.fastq2,
     output:
-        temp(rules.bwa_mem_genome.output[0].replace("genome", "line1")),
+        temp(rules.bwa_mem_genome.output[0].replace("genome.", "line1.")),
     log:
-        rules.bwa_mem_genome.log.bwa.replace("genome", "line1"),
-    threads: 4
+        rules.bwa_mem_genome.log.bwa.replace("genome.", "line1."),
+    threads: 1
     conda:
         "../envs/align.yml"
     params:
@@ -70,7 +75,7 @@ rule tag_reads:
         genome_bam=rules.bwa_mem_genome.output[0],
         line1_bam=rules.bwa_mem_line1.output[0],
     output:
-        temp(rules.bwa_mem_genome.output[0].replace("genome", "tagged")),
+        temp(rules.bwa_mem_genome.output[0].replace("genome.", "tagged.")),
     log:
         rules.bwa_mem_genome.log.bwa.replace("bwa_genome", "tag_reads"),
     conda:

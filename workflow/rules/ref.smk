@@ -1,51 +1,12 @@
-# handle specified region
-region = (
-    "".join(config["genome"]["region"])
-    if isinstance(config["genome"]["region"], list)
-    else config["genome"]["region"]
-)
-region_name = f"_{region}" if region != "all" else ""
-genome_name = config["genome"]["name"] + region_name
-assert (
-    "38" in genome_name
-), "Only GRCh38 is supported due to segdup and blacklist regions used from 10x genomics"
-
-
-rule get_genome:
-    input:
-        fa=FTP.remote(
-            config["genome"]["fasta"],
-            keep_local=True,
-            static=True,
-            immediate_close=True,
-        ),
+rule get_l1hs_consensus:
     output:
-        fa=f"{{outdir}}/resources/{genome_name}.fa",
-        fai=f"{{outdir}}/resources/{genome_name}.fa.fai",
+        "resources/LINE1/LINE1.fa",
     log:
-        "{outdir}/resources/gen_ref.log",
-    conda:
-        "../envs/ref.yml"
-    script:
-        "../scripts/get_genome.py"
-
-
-rule make_dfam_lib:
-    output:
-        "{outdir}/resources/LINE1_lib.fa",
-    log:
-        "{outdir}/resources/rmsk_lib.log",
+        "resources/LINE1/dfam_query.log",
     conda:
         "../envs/ref.yml"
     params:
-        accessions=[
-            "DF0000225",
-            "DF0000339",
-            "DF0000340",
-            "DF0000341",
-            "DF0000342",
-            "DF0000343",
-        ],
+        accessions=["DF0000225"],
     shell:
         """
         touch {log} && exec 1>{log} 2>&1
@@ -57,18 +18,78 @@ rule make_dfam_lib:
         """
 
 
+rule get_line1_hmm:
+    output:
+        "resources/LINE1_3end/LINE1_3end.hmm",
+    log:
+        "resources/LINE1_3end/dfam_query.log",
+    conda:
+        "../envs/ref.yml"
+    params:
+        accessions=[
+            "DF0000225",
+            "DF0000339",
+            "DF0000340",
+            "DF0000341",
+            "DF0000342",
+            "DF0000343",
+            "DF0000344",
+            "DF0000345",
+            "DF0000347",
+            "DF0000327",
+            "DF0000329",
+            "DF0000331",
+            "DF0000333",
+            "DF0000335",
+            "DF0000336",
+            "DF0000337",
+        ],
+    shell:
+        """
+        touch {log} && exec 1>{log} 2>&1
+        touch {output}
+        for a in {params.accessions}; do
+            curl -s https://dfam.org/api/families/$a/hmm?format=hmm >> {output}
+        done
+        """
+
+
+# generate high accuracy annotation of L1 sequences in references
+rule run_rmsk:
+    input:
+        fa=config["genome"]["fasta"],
+        lib=rules.get_line1_hmm.output,
+    output:
+        multiext(
+            config["genome"]["fasta"],
+            ".out",
+            ".masked",
+        ),
+    log:
+        config["genome"]["fasta"] + ".rmsk.log",
+    conda:
+        "../envs/ref.yml"
+    params:
+        # -s Slow search; 0-5% more sensitive, 2-3 times slower than default;
+        # empty string is default
+        # -q Quick search; 5-10% less sensitive, 2-5 times faster than default
+        # -qq Rush job; about 10% less sensitive, 4->10 times faster than default
+        speed="-qq" if config["genome"]["name"] == "chr2122" else "-s",
+    shadow:
+        "shallow"
+    threads: 24
+    shell:
+        """
+        RepeatMasker -pa {threads} -lib {input.lib} -no_is -e hmmer {params.speed} {input} > {log} 2>&1
+        """
+
+
 rule rmsk_to_bed:
     input:
-        FTP.remote(
-            config["genome"]["rmsk"],
-            keep_local=True,
-            static=True,
-            immediate_close=True,
-        ),
+        rules.run_rmsk.output[0],
     output:
         rmsk="{outdir}/resources/rmsk.bed",
         rmsk_1kb_3end="{outdir}/resources/rmsk_1kb_3end.bed",
-        rmsk_20kb="{outdir}/resources/rmsk_20kb.bed",
     log:
         "{outdir}/resources/rmsk_to_bed.log",
     conda:
@@ -84,7 +105,6 @@ rule xtea_to_bed:
     output:
         xtea="{outdir}/resources/{donor}_insertions.bed",
         xtea_1kb_3end="{outdir}/resources/{donor}_insertions_1kb_3end.bed",
-        xtea_20kb="{outdir}/resources/{donor}_insertions_20kb.bed",
     conda:
         "../envs/features.yml"
     log:
