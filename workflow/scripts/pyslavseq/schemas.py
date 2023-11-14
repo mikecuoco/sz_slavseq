@@ -1,4 +1,3 @@
-import numpy as np
 from collections import namedtuple
 
 # for converting read to a hashable format
@@ -29,6 +28,7 @@ Read = namedtuple(
         "mate_reference_start",
         "is_proper_pair",
         "isref_read",
+        "is_duplicate",
     ],
 )
 
@@ -46,15 +46,3 @@ TAGS = [
     "mate_read_length",
     "num_supp_alignments",
 ]
-
-# define schema for peaks
-PEAKS_SCHEMA = {
-    "Chromosome": "",
-    "Start": np.int32(),
-    "End": np.int32(),
-    "n_ref_reads": np.int32(),
-    "n_reads": np.int32(),
-    "rpm": np.float32(),
-    "max_mapq": np.int32(),
-    "n_unique_starts": np.int32(),
-}

@@ -10,9 +10,6 @@ from typing import Generator
 from pysam import AlignmentFile, AlignedSegment
 import numpy as np
 import pandas as pd
-import pyranges as pr
-import seaborn as sns
-import matplotlib.pyplot as plt
 from .schemas import TAGS, Read
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -62,6 +59,7 @@ def read_to_namedtuple(read: AlignedSegment) -> Read:
         read.next_reference_start,
         read.is_proper_pair,
         isref_read(read),
+        read.is_duplicate,
     )
 
 
@@ -130,7 +128,6 @@ class SlidingWindow(object):
             and x.is_mapped
             and (not x.is_secondary)
             and (not x.is_supplementary)
-            and (not x.is_duplicate)
         )
 
         # count reads in bam satisfying read filter
@@ -144,7 +141,6 @@ class SlidingWindow(object):
             and x.is_mapped
             and (not x.is_secondary)
             and (not x.is_supplementary)
-            and (not x.is_duplicate)
             and (x.mapping_quality >= min_mapq)
         )
 
@@ -416,6 +412,7 @@ class SlidingWindow(object):
         # grab first region
         iter = self.make_regions(**kwargs)
         r = next(iter)
+
         # TODO: create custom windowing class with a BaseIndexer subclass https://pandas.pydata.org/pandas-docs/stable/user_guide/window.html#custom-window-rolling
         if self.collect_localmax:
             for i in [2, 4, 8, 16, 32]:

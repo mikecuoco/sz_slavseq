@@ -5,7 +5,6 @@ __author__ = "Michael Cuoco"
 import sys, logging
 from pysam import AlignmentFile
 from pyslavseq.sliding_window import SlidingWindow
-from pyslavseq.schemas import PEAKS_SCHEMA as SCHEMA
 import pyarrow.parquet as pq
 import pyranges as pr
 
@@ -15,15 +14,12 @@ logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 # load bam file, save as parquet in stream
 with AlignmentFile(snakemake.input.bam[0], "rb") as bam:  # type: ignore
-    sw = SlidingWindow(bam, min_mapq=snakemake.params["min_mapq"])  # type: ignore
-    sw.write_windows(
+    sw = SlidingWindow(bam, peaks=True)  # type: ignore
+    sw.write_regions(
         snakemake.output.pqt,  # type: ignore
-        SCHEMA,
         size=200,
         step=1,
         strand_split=True,
-        merge=True,
-        features=False,
     )
 
 # convert to bed
