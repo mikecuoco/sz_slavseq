@@ -14,7 +14,7 @@ from .schemas import TAGS, Read
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-AUTOSOMES = [f"chr{c}" for c in range(1, 23)]
+CHROMOSOMES = [f"chr{c}" for c in range(1, 23)] + ["chrX", "chrY"]
 
 
 def isref_read(read: AlignedSegment) -> bool:
@@ -79,19 +79,8 @@ def gini(array):
     )  # Gini coefficient
 
 
-# # define subclass for genome rolling window
-# from pandas.api.indexers import VariableOffsetWindowIndexer
-
-# class WindowIndexer(VariableOffsetWindowIndexer):
-#     def get_window_bounds(self, num_values, min_periods, center, closed):
-#         start = np.empty(num_values, dtype=np.int64)
-#         end = np.empty(num_values, dtype=np.int64)
-#         for i in range(num_values):
-#             if center:
-#                 start[i] = i - self.window_size // 2 + 1
-#                 end[i] = i + self.window_size // 2 + 1
-
-
+# TODO: remove collect_localmax and associated code
+# TODO: move features and stats methods outside of class
 class SlidingWindow(object):
     def __init__(
         self,
@@ -108,18 +97,19 @@ class SlidingWindow(object):
         # validate contigs
         if contigs:
             for c in contigs:
-                if c not in AUTOSOMES:
-                    raise Exception(f"{c} is not an autosome")
+                if c not in CHROMOSOMES:
+                    raise Exception(f"{c} is not valid chromosome")
             self.contigs = contigs
         else:
             self.contigs = []
             for i in range(bam.nreferences):
-                if bam.get_reference_name(i) in AUTOSOMES:
+                if bam.get_reference_name(i) in CHROMOSOMES:
                     self.contigs.append(bam.get_reference_name(i))
 
         # save settings
         self.min_mapq = min_mapq
         self.peaks = peaks
+        self.mode = "peaks" if self.peaks else "windows"
         self.collect_features = collect_features
         self.collect_localmax = collect_localmax
 
@@ -167,7 +157,7 @@ class SlidingWindow(object):
 
             # while w is not empty and the first read is outside the window
             while w and w[0].reference_start < start:
-                w.popleft()
+                w.popleft().isref_read
 
             # while the next read is inside the window
             while r.reference_start < end:
@@ -208,12 +198,12 @@ class SlidingWindow(object):
                 p["reads"] = p["reads"].union(n["reads"])
             # otherwise, yield the previous window and start a new one
             else:
-                # drop reads
+                # yield merged windpow
                 yield p
-                # start new window
                 assert (
                     p["Chromosome"] == n["Chromosome"]
                 ), "Windows are not sorted by contig"
+                # start new window
                 p = n
 
     def stats(self, p: dict):
@@ -222,27 +212,30 @@ class SlidingWindow(object):
         :param p: dict of region, must contain "reads" key
         """
 
+        assert "reads" in p, "Region must contain reads"
+
         # iterate over reads to calculate stats
         p["n_ref_reads"], p["max_mapq"], p["n_duplicates"] = 0, 0, 0
         starts = []
         fwd, rev = 0, 0
         for r in p["reads"]:
+            if r.is_duplicate:
+                p["n_duplicates"] += 1
+                continue
+
             if r.is_reverse:
                 rev += 1
             else:
                 fwd += 1
             p["max_mapq"] = max(p["max_mapq"], r.mapping_quality)
             p["n_ref_reads"] += r.isref_read
-            p["n_duplicates"] += r.is_duplicate
 
             if r.is_forward:
                 starts.append(r.reference_start)
             else:
                 starts.append(r.reference_end)
         p["n_unique_starts"] = len(set(starts))
-
         p["n_reads"] = fwd + rev
-        p["rpm"] = p["n_reads"] / self.size_factor
 
         # add strand info
         if (fwd == 0) and (rev > 0):
@@ -260,6 +253,8 @@ class SlidingWindow(object):
         Extract features from a window of reads"
         :param p: dict of region, must contain "reads" key
         """
+
+        assert "reads" in p, "Region must contain reads"
 
         # initialize lists for features
         l = dict()
@@ -291,11 +286,6 @@ class SlidingWindow(object):
                 f[tag + "_q" + str(n)] = float(0)
             f[tag + "_mean"] = float(0)
 
-        # if reads are empty, return empty features
-        if len(p["reads"]) == 0:
-            f["n_reads"] = 0
-            return f
-
         # collect features from the reads in the window
         for i, r in enumerate(p["reads"]):
             if not r.is_read1:
@@ -303,6 +293,10 @@ class SlidingWindow(object):
 
             if i == 0:
                 start = r.reference_start
+
+            if r.is_duplicate:
+                f["n_duplicates"] += 1
+                continue
 
             l["starts"].append(r.reference_start)
             if r.is_forward:
@@ -313,10 +307,8 @@ class SlidingWindow(object):
                 l["5end"].append(r.reference_end - start)
 
             l["mapq"].append(r.mapping_quality)
-
             f["n_proper_pairs"] += r.is_proper_pair
             f["n_ref_reads"] += r.isref_read
-            f["n_duplicates"] += r.is_duplicate
 
             if r.is_reverse:
                 f["n_rev"] += 1
@@ -350,14 +342,16 @@ class SlidingWindow(object):
                     f[tag + "_q" + str(n)] = q
                 f[tag + "_mean"] = np.mean(l[tag])
 
+        f["n_reads"] = f["n_fwd"] + f["n_rev"]
+
+        # if reads are empty, return empty features
+        if f["n_reads"] == 0:
+            return f
+
         f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
         f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))
         f["max_mapq"] = max(l["mapq"])
         f["n_unique_starts"] = len(set(l["starts"]))
-        f["n_reads"] = f["n_fwd"] + f["n_rev"]
-        f["rpm"] = f["n_reads"] / self.size_factor
-        f["orientation_bias"] = np.maximum(f["n_fwd"], f["n_rev"]) / f["n_reads"]
-        f["frac_proper_pairs"] = f["n_proper_pairs"] / f["n_reads"]
 
         return f
 
@@ -369,8 +363,7 @@ class SlidingWindow(object):
         """
         Make windows on the given contigs
         :param strand_split: optionally generate windows separately for each strand
-        :param merge: optionally merge overlapping windows
-        :param features: optionally extract features from windows
+        :param kwargs: arguments to pass to windows()
         """
 
         # define read group filters
@@ -383,7 +376,6 @@ class SlidingWindow(object):
             rg = [lambda x: x.is_read1]
 
         for c in self.contigs:
-            logger.info(f"Making regions on {c}")
             for f in rg:
                 reads = filter(self.read_filter, self.bam.fetch(c))
                 reads = filter(f, reads)
@@ -413,7 +405,6 @@ class SlidingWindow(object):
         iter = self.make_regions(**kwargs)
         r = next(iter)
 
-        # TODO: create custom windowing class with a BaseIndexer subclass https://pandas.pydata.org/pandas-docs/stable/user_guide/window.html#custom-window-rolling
         if self.collect_localmax:
             for i in [2, 4, 8, 16, 32]:
                 r[f"localmax_{i}_reads"] = 0
@@ -434,6 +425,10 @@ class SlidingWindow(object):
                     except StopIteration:
                         break
 
+                logger.info(
+                    f"Generated {len(regions)} {self.mode} on {c} in {time.perf_counter() - start:.2f} seconds"
+                )
+
                 # skip empty chromosomes
                 if len(regions) == 0:
                     continue
@@ -451,11 +446,23 @@ class SlidingWindow(object):
                 # remove empty regions
                 regions = regions.loc[regions.n_reads > 0, :].fillna(0)
 
+                # compute metrics on vector scale
+                regions["rpm"] = regions["n_reads"] / self.size_factor
+                if self.collect_features:
+                    regions["orientation_bias"] = (
+                        np.maximum(regions["n_fwd"], regions["n_rev"])
+                        / regions["n_reads"]
+                    )
+                    regions["frac_proper_pairs"] = (
+                        regions["n_proper_pairs"] / regions["n_reads"]
+                    )
+                    regions["frac_duplicates"] = regions["n_duplicates"] / (
+                        regions["n_reads"] + regions["n_duplicates"]
+                    )
+
                 # write to disk
+                logger.info(f"Writing {len(regions)} {self.mode} on {c} to disk")
                 writer.write_table(pa.Table.from_pandas(regions, schema=schema))
-                logger.info(
-                    f"Processed {len(regions)} regions in {time.perf_counter() - start:.2f} seconds"
-                )
 
                 # reset regions list
                 regions = []

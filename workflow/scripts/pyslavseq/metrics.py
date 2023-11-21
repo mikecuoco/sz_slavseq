@@ -16,6 +16,7 @@ import seaborn as sns
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 
+
 # TODO: add null predictions
 # TODO: how to import .model_selection Model without circular import?
 class Evaluator:
@@ -153,6 +154,9 @@ class Evaluator:
         """
 
         def compute_recall(d, df):
+            """
+            Compute the recall and adjusted recall at the locus level for each threshold for a single cell
+            """
             df.cell_id = df.cell_id.cat.remove_unused_categories()
             df = label(
                 df, self.donor_knrgls[d].df, name="label", add_id=True
@@ -171,10 +175,12 @@ class Evaluator:
                 .reset_index()
                 .melt(id_vars=["cell_id"], var_name="pred_col", value_name="tp")
             )
+
             # map threshold onto pred_col
             df["threshold"] = df["pred_col"].map(
                 {p: t for p, t in zip(self.pred_cols, self.thresholds)}
             )
+
             df.drop(columns=["pred_col"], inplace=True)
             df["fn"] = len(self.donor_knrgls[d].df) - df["tp"]
             df["recall"] = df["tp"] / len(self.donor_knrgls[d].df)
@@ -188,7 +194,6 @@ class Evaluator:
         return pd.concat(res)
 
     def locus_precision_recall_per_cell(self, n_jobs: int) -> pd.DataFrame:
-
         precision = self.locus_precision_per_cell(n_jobs)
         recall = self.locus_recall_per_cell(n_jobs)
 
@@ -282,7 +287,6 @@ class Visualizer:
         return None
 
     def learning_curve(self) -> pd.DataFrame:
-
         res = []
         for k in self.results:
             if isinstance(k, int):
@@ -370,7 +374,6 @@ class Visualizer:
         return res
 
     def feature_importances(self) -> pd.DataFrame:
-
         res = []
         for k in self.results:
             if isinstance(k, int):
@@ -405,7 +408,6 @@ class Visualizer:
         summarize_folds: bool = True,
         ax=None,
     ) -> pd.DataFrame:
-
         res = []
         for k in self.results:
             if isinstance(k, int):
@@ -482,7 +484,6 @@ class Visualizer:
 
 
 def plot_precision_recall_curve_folds(df, ax=None):
-
     # check columns
     for c in ["precision", "recall", "threshold", "fold", "stage"]:
         assert c in df.columns, f"{c} not in df.columns"

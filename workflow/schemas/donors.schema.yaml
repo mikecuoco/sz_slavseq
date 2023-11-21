@@ -6,6 +6,10 @@ properties:
   donor_id:
     type: string
     description: donor identifier
+  libd_id:
+    type: string
+    description: libd identifier
 
 required:
   - donor_id
+  - libd_id

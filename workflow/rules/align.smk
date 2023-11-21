@@ -22,10 +22,6 @@ rule bwa_index:
         """
 
 
-if not Path(config["genome"]["bwa"] + ".amb").exists():
-    raise ValueError("BWA index not found for genome: " + config["genome"]["name"])
-
-
 rule bwa_mem_genome:
     input:
         idx=config["genome"]["bwa"] + ".amb",
@@ -68,6 +64,21 @@ rule bwa_mem_line1:
         """
         bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log} > {output}
         """
+
+
+if not Path(config["genome"]["bwa"] + ".amb").exists():
+    raise ValueError("BWA index not found for genome: " + config["genome"]["name"])
+
+
+rule flagstat:
+    input:
+        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.bam",
+    output:
+        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.flagstat",
+    log:
+        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.flagstat.log",
+    wrapper:
+        "v1.21.0/bio/samtools/flagstat"
 
 
 rule tag_reads:

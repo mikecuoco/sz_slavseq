@@ -33,7 +33,16 @@ def read_rmsk_L1_3ends(filename: str, min_repend: int = 5900):
     rmsk = read_rmsk(filename)
 
     # keep L1s in these 6 families with intact 3' ends
-    rep_names = ["L1HS", "L1PA2", "L1PA3", "L1PA4", "L1PA5", "L1PA6"]
+    rep_names = [
+        "L1HS_3end",
+        "L1PA2",
+        "L1PA3",
+        "L1PA4",
+        "L1PA5",
+        "L1PA6",
+        "L1PA7",
+        "L1PA8",
+    ]
     rmsk = rmsk.loc[
         (rmsk["repName"].isin(rep_names)) & (rmsk["repEnd"] > min_repend), :
     ]
@@ -65,7 +74,7 @@ def fix_negative_ends(df):
 
 if __name__ == "__main__":
     sys.stderr = open(snakemake.log[0], "w")
-    rmsk = read_rmsk_L1_3ends(snakemake.input[0])
+    rmsk = read_rmsk_L1_3ends(snakemake.input[0], min_repend=5000)
     rmsk["repStart"] = rmsk["Start"]
     rmsk["repEnd"] = rmsk["End"]
 
@@ -77,11 +86,5 @@ if __name__ == "__main__":
     rmsk_1kb_3end = pr.PyRanges(rmsk_1kb_3end).extend({"3": 1000}).sort().df
     rmsk_1kb_3end = fix_negative_ends(rmsk_1kb_3end)
     pr.PyRanges(rmsk_1kb_3end).to_bed(snakemake.output.rmsk_1kb_3end)
-
-    # save to BED with 20kb extensions of both ends
-    rmsk_20kb = rmsk.copy()
-    rmsk_20kb = pr.PyRanges(rmsk_20kb).extend({"3": 2e4, "5": 2e4}).sort().df
-    rmsk_20kb = fix_negative_ends(rmsk_20kb)
-    pr.PyRanges(rmsk_20kb).to_bed(snakemake.output.rmsk_20kb)
 
     sys.stderr.close()

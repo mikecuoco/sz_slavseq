@@ -48,3 +48,28 @@ rule filter_read2:
     threads: 4
     wrapper:
         "v1.31.1/bio/cutadapt/pe"
+
+
+def get_fastqc_input(wc):
+    if wc.fastq == "raw":
+        reads = [
+            samples.loc[wc.donor, wc.sample][["R1"]],
+            samples.loc[wc.donor, wc.sample][["R2"]],
+        ]
+    elif wc.fastq == "trimmed":
+        reads = [rules.trim_adapters.output.fastq1, rules.trim_adapters.output.fastq2]
+    elif wc.fastq == "filtered":
+        reads = [rules.filter_read2.output.fastq1, rules.filter_read2.output.fastq2]
+    return reads[0] if wc.read == "R1" else reads[1]
+
+
+rule fastqc:
+    input:
+        get_fastqc_input,
+    output:
+        html="{outdir}/results/fastq/{donor}/{sample}_{read}.{fastq}.html",
+        zip="{outdir}/results/fastq/{donor}/{sample}_{read}.{fastq}.fastqc.zip",
+    log:
+        "{outdir}/results/fastq/{donor}/{sample}_{read}.{fastq}.log",
+    wrapper:
+        "v1.21.0/bio/fastqc"

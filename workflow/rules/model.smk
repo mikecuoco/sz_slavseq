@@ -1,16 +1,3 @@
-rule en_motif:
-    input:
-        config["genome"]["fasta"],
-    output:
-        "resources/{genome}/en_motif.pqt",
-    log:
-        "resources/{genome}/en_motif.log",
-    conda:
-        "../envs/features.yml"
-    script:
-        "../scripts/en_motif.py"
-
-
 def get_bulk_sample(wildcards):
     donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
     bulk = donor_samples[donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
@@ -37,10 +24,10 @@ rule call_bulk_peaks:
         bed="{outdir}/results/{genome}/bulk_peaks/{donor}.bed",
     log:
         "{outdir}/results/{genome}/bulk_peaks/{donor}.log",
-    params:
-        **config["get_features"],
     conda:
         "../envs/model.yml"
+    params:
+        **config["bulk_peak_params"],
     script:
         "../scripts/call_bulk_peaks.py"
 
@@ -50,15 +37,18 @@ rule make_windows:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        windows="{outdir}/results/{genome}/model/get_features/{donor}/{sample}_windows.pqt",
+        "{outdir}/results/{genome}/windows/{donor}/{sample}.pqt",
     log:
-        "{outdir}/results/{genome}/model/get_features/{donor}/{sample}_windows.log",
-    params:
-        **config["get_features"],
+        "{outdir}/results/{genome}/windows/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
+    params:
+        **config["window_params"],
     script:
         "../scripts/make_windows.py"
+
+
+peak_size = config["peak_params"]["size"]
 
 
 rule make_peaks:
@@ -66,88 +56,111 @@ rule make_peaks:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        peaks="{outdir}/results/{genome}/model/get_features/{donor}/{sample}_peaks.pqt",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}.pqt",
     log:
-        "{outdir}/results/{genome}/model/get_features/{donor}/{sample}_peaks.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}.log",
+    conda:
+        "../envs/features.yml"
     params:
-        **config["get_features"],
+        **config["peak_params"],
+    script:
+        "../scripts/make_peaks.py"
+
+
+def get_regions(wildcards):
+    if wildcards.region == "peaks":
+        return (rules.make_peaks.output[0],)
+    elif wildcards.region == "windows":
+        return (rules.make_windows.output[0],)
+    else:
+        raise ValueError("Unknown region: {}".format(wildcards.region))
+
+
+rule local_background:
+    input:
+        pqt=get_regions,
+        bam=rules.sambamba_sort.output[0],
+        bai=rules.sambamba_index.output[0],
+    output:
+        "{outdir}/results/{genome}/{region}/{donor}/{sample}_bg.pqt",
+    log:
+        "{outdir}/results/{genome}/{region}/{donor}/{sample}_bg.log",
     conda:
         "../envs/features.yml"
     script:
-        "../scripts/make_peaks.py"
+        "../scripts/local_background.py"
 
 
 with open("resources/bad_cells.txt", "r") as f:
     bad_cells = [line.strip() for line in f.readlines()]
 
 
-def get_donor_features(wildcards):
+def get_donor_regions(wildcards):
     donor_cells = samples.loc[
         (samples["donor_id"] == wildcards.donor)
         & (~samples["sample_id"].str.contains("gDNA"))
     ]["sample_id"].values
     cells = [c for c in donor_cells if c not in bad_cells]
 
-    res = {
-        "windows": expand(
-            rules.make_windows.output.windows,
-            sample=cells,
-            allow_missing=True,
-        ),
-        "peaks": expand(
-            rules.make_peaks.output.peaks,
-            sample=cells,
-            allow_missing=True,
-        ),
-    }
-    # add bulk peaks if not common brain
-    if wildcards.donor != "CommonBrain":
-        res["bulk_peaks"] = rules.call_bulk_peaks.output.pqt
+    # TODO: replace with local_background, skipping for now to finish prelim analysis
+    # current error in local_background:
+    #     Traceback (most recent call last):
+    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/.snakemake/scripts/tmp2kquc_3d.local_background.py", line 49, in <module>
+    #     f = sw.features(w)
+    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/workflow/rules/../scripts/pyslavseq/sliding_window.py", line 351, in features
+    #     f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
+    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/workflow/rules/../scripts/pyslavseq/sliding_window.py", line 71, in gini
+    #     if np.amin(array) < 0:
+    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/.snakemake/conda/65cff2bb81647bc9d297d6550e298d36_/lib/python3.10/site-packages/numpy/core/fromnumeric.py", line 2970, in amin
+    #     return _wrapreduction(a, np.minimum, 'min', axis, None, out,
+    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/.snakemake/conda/65cff2bb81647bc9d297d6550e298d36_/lib/python3.10/site-packages/numpy/core/fromnumeric.py", line 88, in _wrapreduction
+    #     return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
+    # ValueError: zero-size array to reduction operation minimum which has no identity
+    return expand(
+        "{outdir}/results/{genome}/{region}/{donor}/{sample}.pqt",
+        region=wildcards.region,
+        # rules.local_background.output,
+        sample=cells,
+        allow_missing=True,
+    )
 
-    return res
 
-
-rule get_labels:
+rule join_donor_regions:
     input:
-        unpack(get_donor_features),
-        xtea=rules.xtea_to_bed.output.xtea,
-        xtea_1kb_3end=rules.xtea_to_bed.output.xtea_1kb_3end,
-        rmsk=rules.rmsk_to_bed.output.rmsk,
-        rmsk_1kb_3end=rules.rmsk_to_bed.output.rmsk_1kb_3end,
-        en_motif=rules.en_motif.output,
-    params:
-        **config["get_features"],
+        cells=get_donor_regions,
+        en_motif_pos=rules.en_motif.output.pos,
+        en_motif_neg=rules.en_motif.output.neg,
     output:
-        windows="{outdir}/results/{genome}/model/get_labels/{donor}_windows.pqt",
-        windows_nonrefonly="{outdir}/{genome}/results/model/get_labels/{donor}_windows_nonrefonly.pqt",
-        peaks="{outdir}/results/{genome}/model/get_labels/{donor}_peaks.pqt",
-        peaks_nonrefonly="{outdir}/results/{genome}/model/get_labels/{donor}_peaks_nonrefonly.pqt",
+        "{outdir}/results/{genome}/{region}/{donor}.pqt",
     log:
-        "{outdir}/results/{genome}/model/get_labels/{donor}.log",
+        "{outdir}/results/{genome}/{region}/{donor}.log",
     conda:
-        "../envs/model.yml"
-    threads: 16
+        "../envs/features.yml"
     script:
-        "../scripts/get_labels.py"
+        "../scripts/join_donor_regions.py"
 
 
-rule fit:
+# TODO: add genome-specific mappability regions from https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.3 (specificy in config)
+rule label_donor_regions:
     input:
-        expand(
-            rules.get_labels.output,
-            donor=donors.loc[~donors["xtea"].isnull(), "donor_id"],
-            allow_missing=True,
-        ),
+        regions=rules.join_donor_regions.output,
+        bulk_peaks=rules.call_bulk_peaks.output.bed,
+        primer_sites=rules.blast_primers.output.bed,
+        xtea_vcf=config["genome"]["xtea"],
+        megane_vcf=config["genome"]["megane"],
+        rmsk=rules.run_rmsk.output[0],
     output:
-        model="{outdir}/results/{genome}/model/train/model.pkl",
-        features="{outdir}/results/{genome}/model/train/features.txt",
+        "{outdir}/results/{genome}/{region}/{donor}_labelled.pqt",
     log:
-        "{outdir}/results/{genome}/model/train/train.log",
-    threads: 24
-    params:
-        # bad÷_cells
-        chromosomes=["chr{}".format(i) for i in range(1, 22)],
+        "{outdir}/results/{genome}/{region}/{donor}_labelled.log",
     conda:
-        "../envs/model.yml"
+        "../envs/features.yml"
     script:
-        "../scripts/fit.py"
+        "../scripts/label_donor_regions.py"
+
+
+# TODO: add rule to generate report on regions
+# By cells, donors, and labels
+# 1. # regions
+# 2. if peaks, length
+# 3. reads / region

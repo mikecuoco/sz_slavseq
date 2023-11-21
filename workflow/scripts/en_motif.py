@@ -3,28 +3,41 @@
 # followed BioPython motif guide: https://biopython-tutorial.readthedocs.io/en/latest/notebooks/14%20-%20Sequence%20motif%20analysis%20using%20Bio.motifs.html#
 __author__ = "Michael Cuoco"
 
+import logging
+
+logging.basicConfig(
+    filename=snakemake.log[0],
+    filemode="w",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger(__name__)
+
 from Bio import motifs, SeqIO
 from Bio.Seq import Seq
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-import sys
-import pyarrow as pa
-import pyarrow.parquet as pq
+import pyBigWig
 
-sys.stderr = open(snakemake.log[0], "w")
+
+CHROMOSOMES = [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"]
 
 ## CREATE MOTIF
 # Engineered L1 Insertion Coordinates, Characteristics, and Sequences from Flasch et al. 2019 PMID: 30955886
+logger.info("Loading L1 EN cleavage sites from Flasch et al. 2019")
 FLASCH_2019_SUPP1 = "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6558663/bin/NIHMS1523125-supplement-8.xls"
 flasch = pd.read_excel(FLASCH_2019_SUPP1)
 instances = [Seq(site.replace("/", "")) for site in flasch["L1 EN Cleavage"].values]
 m = motifs.create(instances)
 
 # compute genomic background frequencies
+logger.info(f"Computing genomic background frequencies from {snakemake.input[0]}")
 bg = defaultdict(list)
 with open(snakemake.input[0], "r") as f:
     for record in SeqIO.parse(f, "fasta"):
+        if record.id not in CHROMOSOMES:
+            continue
         for base in "ACGT":
             bg[base].append(record.seq.count(base) / len(record.seq))
 
@@ -33,88 +46,38 @@ for base in bg.keys():
     bg[base] = sum(bg[base]) / len(bg[base])
 
 # create PWM and PSSM
+logger.info("Creating PWM and PSSM")
 pwm = m.counts.normalize()
 pssm = pwm.log_odds(bg)
 rpssm = pssm.reverse_complement()
 
+# setup output files
+pos_wig = pyBigWig.open(snakemake.output.pos, "w")
+neg_wig = pyBigWig.open(snakemake.output.neg, "w")
+
+header = []
+for record in SeqIO.parse(snakemake.input[0], "fasta"):
+    if record.id not in CHROMOSOMES:
+        continue
+    header.append((record.id, len(record.seq)))
+
+pos_wig.addHeader(header)
+neg_wig.addHeader(header)
+
 ## SCORE GENOME
-schema = pa.schema(
-    [
-        pa.field("Chromosome", pa.string()),
-        pa.field("Start", pa.int64()),
-        pa.field("End", pa.int64()),
-        pa.field("pos_score_q0", pa.float32()),
-        pa.field("pos_score_q0.25", pa.float32()),
-        pa.field("pos_score_q0.5", pa.float32()),
-        pa.field("pos_score_q0.75", pa.float32()),
-        pa.field("pos_score_q1", pa.float32()),
-        pa.field("pos_score_mean", pa.float32()),
-        pa.field("neg_score_q0", pa.float32()),
-        pa.field("neg_score_q0.25", pa.float32()),
-        pa.field("neg_score_q0.5", pa.float32()),
-        pa.field("neg_score_q0.75", pa.float32()),
-        pa.field("neg_score_q1", pa.float32()),
-        pa.field("neg_score_mean", pa.float32()),
-    ]
-)
+for record in SeqIO.parse(snakemake.input[0], "fasta"):
+    if record.id not in CHROMOSOMES:
+        continue
 
-with open(snakemake.input[0], "r") as infile, pq.ParquetWriter(
-    snakemake.output[0], schema, compression="gzip"
-) as writer:
-    for record in SeqIO.parse(infile, "fasta"):
-        if record.id not in [f"chr{c}" for c in range(1, 23)]:
-            continue
+    # calculate scores for each base this chromosome
+    pos_score = pssm.calculate(record.seq)
+    neg_score = rpssm.calculate(record.seq)
 
-        # calculate scores for each base this chromosome
-        scores = pd.DataFrame(
-            {
-                "Chromosome": record.id,
-                "pos_score": pssm.calculate(record.seq),
-                "neg_score": rpssm.calculate(record.seq),
-            }
-        )
-        scores["Start"] = scores.index + 1
-        scores["End"] = scores["Start"] + pssm.length
-        min_score = min(scores["pos_score"].min(), scores["neg_score"].min())
-        scores.fillna(min_score - 100, inplace=True)
+    # write scores to wiggle
+    logger.info(f"Writing scores for {record.id}")
+    pos_wig.addEntries(record.id, 0, values=pos_score, span=pssm.length, step=1)
+    neg_wig.addEntries(record.id, 0, values=neg_score, span=rpssm.length, step=1)
 
-        # generate windows for this chromosome
-        reflen = len(record.seq)
-        step = 250
-        size = 750
-        window_scores = []
-        for start in range(0, reflen + 1, step):
-            end = start + size if start + size < reflen else reflen
-            out = {
-                "Chromosome": record.id,
-                "Start": start,
-                "End": end,
-            }
-
-            for strand in ["pos_score", "neg_score"]:
-                try:
-                    quantiles = np.quantile(
-                        scores.loc[start : (end - len(pssm)), strand],
-                        [0, 0.25, 0.5, 0.75, 1],
-                    )
-                except:
-                    IndexError
-                    import pdb
-
-                    pdb.set_trace()
-
-                for n, q in zip([0, 0.25, 0.5, 0.75, 1], quantiles):
-                    out[strand + "_q" + str(n)] = q
-                out[strand + "_mean"] = scores.loc[
-                    start : (end - len(pssm)), strand
-                ].mean()
-
-            window_scores.append(out)
-
-        writer.write_table(
-            pa.Table.from_pandas(pd.DataFrame(window_scores), schema=schema)
-        )
-
-        # write to file
-
-sys.stderr.close()
+# close files
+pos_wig.close()
+neg_wig.close()

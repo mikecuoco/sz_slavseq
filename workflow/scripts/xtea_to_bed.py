@@ -58,11 +58,4 @@ if __name__ == "__main__":
     xtea_1kb_3end = fix_negative_ends(xtea_1kb_3end)
     pr.PyRanges(xtea_1kb_3end).sort().to_bed(snakemake.output.xtea_1kb_3end)
 
-    # save to BED with 20kb extensions of both ends
-    xtea_20kb = xtea.copy()
-    xtea_20kb["Start"] -= 2e4
-    xtea_20kb["End"] += 2e4
-    xtea_20kb = fix_negative_ends(xtea_20kb)
-    pr.PyRanges(xtea_20kb).sort().to_bed(snakemake.output.xtea_20kb)
-
     sys.stderr.close()

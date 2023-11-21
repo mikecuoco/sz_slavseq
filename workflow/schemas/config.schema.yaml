@@ -15,32 +15,87 @@ properties:
   genome:
     type: object
     properties:
-      ftp:
+      fasta:
+        type: string
+      bwa:
+        type: string
+      rmsk:
+        type: string
+      xtea:
+        type: string
+      megane:
         type: string
       name:
         type: string
-      region:
-        type: [string, array]
+    required:
+      - fasta
+      - bwa
+      - xtea
+      - megane
+      - name
 
   adapters:
     type: object
 
-  get_features:
+  bulk_peak_params:
     type: object
-    min_reads:
-      type: integer
-    window_size:
-      type: integer
-    window_step:
-      type: integer
-    min_mapq:
-      type: integer
-    min_ya:
-      type: integer
-    max_yg:
-      type: integer
-    min_secondary_mapq:
-      type: integer
+    properties:
+      size:
+        type: integer
+      step:
+        type: integer
+      strand_split:
+        type: boolean
+      min_rpm:
+        type: integer
+      min_reads:
+        type: integer
+    required:
+      - size
+      - step
+      - strand_split
+      - min_rpm
+      - min_reads
+
+  peak_params:
+    type: object
+    properties:
+      size:
+        type: integer
+      step:
+        type: integer
+      strand_split:
+        type: boolean
+      min_rpm:
+        type: integer
+      min_reads:
+        type: integer
+    required:
+      - size
+      - step
+      - strand_split
+      - min_rpm
+      - min_reads
+
+  window_params:
+    type: object
+    properties:
+      size:
+        type: integer
+      step:
+        type: integer
+      strand_split:
+        type: boolean
+      min_rpm:
+        type: integer
+      min_reads:
+        type: integer
+    required:
+      - size
+      - step
+      - strand_split
+      - min_rpm
+      - min_reads
 
 required:
   - outdir
@@ -48,4 +103,3 @@ required:
   - samples
   - donors
   - adapters
-  - get_features

@@ -2,18 +2,10 @@ import pandas as pd
 from pathlib import Path
 from snakemake.utils import validate
 from snakemake.utils import min_version
-from snakemake.remote import FTP, HTTP
-
-FTP = FTP.RemoteProvider()
-HTTP = HTTP.RemoteProvider()
 
 
 ##### set minimum snakemake version #####
 min_version("7.22.0")
-
-
-wildcard_constraints:
-    sample="\w+",
 
 
 configfile: "config/config.yml"
@@ -40,45 +32,54 @@ samples = samples.merge(donors, on=["donor_id"]).set_index(
 donors = donors.set_index("donor_id", drop=False)
 
 
+wildcard_constraints:
+    donor="|".join(donors["donor_id"]),
+    sample="|".join(samples["sample_id"]),
+    genome=config["genome"]["name"],
+    region="windows|peaks",
+    outdir=config["outdir"],
+
+
 include: "rules/ref.smk"
 include: "rules/download.smk"
 include: "rules/trim.smk"
 include: "rules/align.smk"
 include: "rules/model.smk"
-include: "rules/qc.smk"
 
 
 rule all:
     input:
         expand(
-            rules.fit.output,
+            rules.label_donor_regions.output,
+            donor=donors["donor_id"],
+            region="peaks",
             genome=config["genome"]["name"],
             outdir=config["outdir"],
         ),
-        expand(
-            expand(
-                rules.flagstat.output,
-                stage=["tagged.sorted"],
-                outdir=config["outdir"],
-                allow_missing=True,
-                genome=config["genome"]["name"],
-            ),
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
-        ),
-        expand(
-            expand(
-                rules.l1_coverage.output.r1,
-                anno=[
-                    "rmsk_1kb_3end",
-                    "xtea_1kb_3end",
-                ],
-                allow_missing=True,
-                outdir=config["outdir"],
-                genome=config["genome"]["name"],
-            ),
-            zip,
-            sample=samples["sample_id"],
-            donor=samples["donor_id"],
-        ),
+        # expand(
+        #     expand(
+        #         rules.flagstat.output,
+        #         stage=["tagged.sorted"],
+        #         outdir=config["outdir"],
+        #         allow_missing=True,
+        #         genome=config["genome"]["name"],
+        #     ),
+        #     zip,
+        #     sample=samples["sample_id"],
+        #     donor=samples["donor_id"],
+        # ),
+        # expand(
+        #     expand(
+        #         rules.l1_coverage.output.r1,
+        #         anno=[
+        #             "rmsk_1kb_3end",
+        #             "xtea_1kb_3end",
+        #         ],
+        #         allow_missing=True,
+        #         outdir=config["outdir"],
+        #         genome=config["genome"]["name"],
+        #     ),
+        #     zip,
+        #     sample=samples["sample_id"],
+        #     donor=samples["donor_id"],
+        # ),

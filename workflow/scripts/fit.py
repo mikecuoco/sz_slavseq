@@ -3,75 +3,61 @@
 __author__ = "Michael Cuoco"
 
 import sys
-
-# set the log file
-sys.stderr = open(snakemake.log[0], "w")
-
+from tempfile import NamedTemporaryFile
+import pyarrow.parquet as pq
 import pandas as pd
 import pickle as pkl
 from flaml import AutoML
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GroupKFold, GridSearchCV, cross_val_score
-from sklearn.metrics import make_scorer
-import pdb
-
-# read the data
-df = pd.concat([pd.read_parquet(f) for f in snakemake.input])
-assert set(df["label"].unique()) == {"KNRGL", "OTHER"}, "labels are not correct"
-
-# save all features for model to list
-features = [
-    x
-    for x in df.columns
-    if not any(
-        x.endswith(y)
-        for y in [
-            "Chromosome",
-            "Start",
-            "End",
-            "cell_id",
-            "donor_id",
-            "label",
-            "blacklist",
-            "index",
-            "reads",
-            "fwd",
-            "rev",
-            "reads_bg",
-            "fwd_bg",
-            "rev_bg",
-        ]
-    )
-]
-
-assert all(x in df.columns for x in features), "some features are not in the dataframe"
-
-# # encode labels
-print("encoding labels as integers...")
-df["label_encoded"] = df["label"].map({"KNRGL": 1, "OTHER": 0})
-
-
-# fit the model
-clf = AutoML()
-clf.fit(
-    X_train=df[features],
-    y_train=df["label_encoded"],
-    task="classification",
-    metric="f1",
-    n_jobs=snakemake.threads,
-    estimator_list=["xgboost"],
-    groups=df["cell_id"],
-    early_stop=True,
-    time_budget=600,
-    log_file_name=sys.stderr.name,
+from flaml.automl.data import get_output_from_log
+from sklearn import model_selection
+from sklearn.metrics import (
+    precision_recall_curve,
+    roc_curve,
+    PrecisionRecallDisplay,
+    RocCurveDisplay,
 )
+import matplotlib.pyplot as plt
+import numpy as np
 
-# save the model
-with open(snakemake.output["model"], "wb") as f:
-    pkl.dump(clf, f, pkl.HIGHEST_PROTOCOL)
 
-# save the features
-with open(snakemake.output["features"], "w") as f:
-    f.write("\n".join(features))
+if __name__ == "__main__":
+    # set the log file
+    sys.stderr = open(snakemake.log[0], "w")
 
-sys.stderr.close()
+    # read the data
+    df = pd.concat([pq.read_table(f).to_pandas() for f in snakemake.input])
+
+    # encode labels as integers
+    df["label_encoded"] = df["label"].map({"KNRGL": 1, "OTHER": 0})
+
+    # define features
+    features = []
+    keys = ["_q", "frac", "gini", "bias"]
+    for c in df.columns:
+        for k in keys:
+            if k in c:
+                features.append(c)
+
+    # define model training settings
+    flaml_settings = dict(
+        task="classification",
+        n_jobs=snakemake.threads,
+        estimator_list=["xgboost", "rf"],
+        early_stop=True,
+        skip_transform=True,  # don't preprocess data
+        auto_augment=False,  # don't augment rare classes
+        time_budget=600,
+    )
+
+    m = Model(df, features, val_chr="chr1")
+    m.fit(df, features, **flaml_settings)
+
+    # save the model
+    with open(snakemake.output["model"], "wb") as f:
+        pkl.dump(clf, f, pkl.HIGHEST_PROTOCOL)
+
+    # save the features
+    with open(snakemake.output["features"], "w") as f:
+        f.write("\n".join(features))
+
+    sys.stderr.close()

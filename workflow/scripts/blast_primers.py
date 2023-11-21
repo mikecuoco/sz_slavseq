@@ -36,21 +36,30 @@ with NamedTemporaryFile() as tmp:
     df = pd.read_csv(tmp.name, sep="\t", header=None, names=outfmt.split(" ")[1:])
 
 
-df = df.drop(
-    columns=["pident", "length", "mismatch", "gapopen", "qstart", "qend", "evalue"]
-).rename(
-    {
-        "qseqid": "Name",
-        "sseqid": "Chromosome",
-        "sstart": "Start",
-        "send": "End",
-        "sstrand": "Strand",
-        "bitscore": "Score",
-    },
-    axis=1,
-)
+def switch_start_end(x):
+    if x.Start > x.End:
+        x.Start, x.End = x.End, x.Start
+    return x
+
+
+new_names = {
+    "qseqid": "Name",
+    "sseqid": "Chromosome",
+    "sstart": "Start",
+    "send": "End",
+    "sstrand": "Strand",
+    "bitscore": "Score",
+}
+
+df = df[list(new_names)].rename(new_names, axis=1).apply(switch_start_end, axis=1)
 df["Strand"] = df["Strand"].str.replace("minus", "-")
 df["Strand"] = df["Strand"].str.replace("plus", "+")
+
+df_capture = pr.PyRanges(df[df["Name"] == "L1_capture_probe"])
+df_pcr = pr.PyRanges(df[df["Name"] == "L1_PCR_primer"])
+
+df = df_capture.extend(1000).overlap(df_pcr).df
+df["Name"] = "Predicted_SLAVseq_fragment"
 
 # save as bed
 logging.info(f"Saving blast results to {snakemake.output.bed}")

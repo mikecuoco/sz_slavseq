@@ -2,16 +2,21 @@
 # Created on: 10/26/22, 1:59 PM
 __author__ = "Michael Cuoco"
 
-import sys, logging
+import logging, os
+
+logging.basicConfig(
+    filename=snakemake.log[0],  # type: ignore
+    filemode="w",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger(__name__)
+
 from pysam import AlignmentFile
 from pyslavseq.sliding_window import SlidingWindow
 
-# redirect stderr to log file
-sys.stderr = open(snakemake.log[0], "w")  # type: ignore
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-
-# load bam file
-logging.info(f"Generating peaks from {snakemake.input['bam']}")  # type: ignore
+logger.info(f"Generating peaks from {snakemake.input.bam}")  # type: ignore
+logger.info("Using parameters %s:", dict(snakemake.params))  # type: ignore
 with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
     sw = SlidingWindow(
         bam,
@@ -19,15 +24,13 @@ with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
         collect_features=True,
         collect_localmax=False,
     )
-    sw.write_regions(
-        snakemake.output.peaks,  # type: ignore
-        size=150,
-        step=1,
-        strand_split=False,
-        min_rpm=2,
-        min_reads=3,
-    )
-logging.info("Done")
-
-# # close log file
-sys.stderr.close()
+    try:
+        sw.write_regions(
+            snakemake.output[0],  # type: ignore
+            **snakemake.params,  # type: ignore
+        )
+        logger.info("Done")
+    except:
+        # delete output file if error/interrupt
+        os.remove(snakemake.output[0])  # type: ignore
+        logger.error(f"Detected Error/Interuption, deleted {snakemake.output[0]}")  # type: ignore

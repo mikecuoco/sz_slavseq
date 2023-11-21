@@ -6,6 +6,8 @@ genome:
   fasta: resources/chr2122/chr2122.fasta
   bwa: resources/chr2122/BWA/chr2122.fasta
   rmsk: resources/chr2122/chr2122.fasta.out
+  xtea: resources/chr2122/wgs_calls/xtea_LINE1.vcf
+  megane: resources/chr2122/wgs_calls/megane_MEIs.vcf
   name: chr2122
 
 adapters:
@@ -16,7 +18,23 @@ adapters:
   L1_nested: "TAACTAACCTGCACAATGTGCAC"
   L1_downstream: "ATGTACCCTAAAACTTAGAGTATAATAAAAAAAAAAAAA"
 
-get_features:
-  split_by: "donor_id"
-  num_folds: 2
-  min_reads: 1
+bulk_peak_params:
+  size: 200
+  step: 1
+  strand_split: True
+  min_rpm: 0
+  min_reads: 0
+
+peak_params:
+  size: 150
+  step: 1
+  strand_split: False
+  min_rpm: 0
+  min_reads: 0
+
+window_params:
+  size: 750
+  step: 250
+  strand_split: False
+  min_rpm: 0
+  min_reads: 0

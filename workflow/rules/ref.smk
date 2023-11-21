@@ -109,30 +109,15 @@ rule blast_primers:
         "../scripts/blast_primers.py"
 
 
-rule rmsk_to_bed:
+rule en_motif:
     input:
-        rules.run_rmsk.output[0],
+        config["genome"]["fasta"],
     output:
-        rmsk="{outdir}/resources/rmsk.bed",
-        rmsk_1kb_3end="{outdir}/resources/rmsk_1kb_3end.bed",
+        pos="resources/{genome}/en_pos_score.wig",
+        neg="resources/{genome}/en_neg_score.wig",
     log:
-        "{outdir}/resources/rmsk_to_bed.log",
+        "resources/{genome}/en_motif.log",
     conda:
         "../envs/features.yml"
     script:
-        "../scripts/rmsk_to_bed.py"
-
-
-# get vcf, convert to bed, remove orphan insertions (higher FP rate and won't be detected in SLAV-seq)
-rule xtea_to_bed:
-    input:
-        lambda wc: donors.loc[wc.donor]["xtea"],
-    output:
-        xtea="{outdir}/resources/{donor}_insertions.bed",
-        xtea_1kb_3end="{outdir}/resources/{donor}_insertions_1kb_3end.bed",
-    conda:
-        "../envs/features.yml"
-    log:
-        "{outdir}/resources/{donor}_to_bed.log",
-    script:
-        "../scripts/xtea_to_bed.py"
+        "../scripts/en_motif.py"

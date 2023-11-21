@@ -19,3 +19,8 @@ hgdownload.soe.ucsc.edu/**
 ftp.ncbi.nlm.nih.gov/**
 *nbconvert.ipynb
 config/*tsv
+*pqt
+*pkl
+*svg
+*png
+*pdf
