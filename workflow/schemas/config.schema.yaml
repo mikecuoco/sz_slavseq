@@ -37,7 +37,7 @@ properties:
   adapters:
     type: object
 
-  bulk_peak_params:
+  bulk_peaks_params:
     type: object
     properties:
       size:
@@ -53,11 +53,10 @@ properties:
     required:
       - size
       - step
-      - strand_split
       - min_rpm
       - min_reads
 
-  peak_params:
+  peaks_params:
     type: object
     properties:
       size:
@@ -73,19 +72,16 @@ properties:
     required:
       - size
       - step
-      - strand_split
       - min_rpm
       - min_reads
 
-  window_params:
+  windows_params:
     type: object
     properties:
       size:
         type: integer
       step:
         type: integer
-      strand_split:
-        type: boolean
       min_rpm:
         type: integer
       min_reads:
@@ -93,7 +89,6 @@ properties:
     required:
       - size
       - step
-      - strand_split
       - min_rpm
       - min_reads
 
@@ -103,3 +98,6 @@ required:
   - samples
   - donors
   - adapters
+  - bulk_peaks_params
+  - peaks_params
+  - windows_params

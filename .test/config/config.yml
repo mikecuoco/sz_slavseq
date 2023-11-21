@@ -18,23 +18,20 @@ adapters:
   L1_nested: "TAACTAACCTGCACAATGTGCAC"
   L1_downstream: "ATGTACCCTAAAACTTAGAGTATAATAAAAAAAAAAAAA"
 
-bulk_peak_params:
+bulk_peaks_params:
   size: 200
   step: 1
-  strand_split: True
   min_rpm: 0
   min_reads: 0
 
-peak_params:
+peaks_params:
   size: 150
   step: 1
-  strand_split: False
   min_rpm: 0
   min_reads: 0
 
-window_params:
+windows_params:
   size: 750
   step: 250
-  strand_split: False
   min_rpm: 0
   min_reads: 0

@@ -9,6 +9,7 @@ from collections import deque
 from typing import Generator
 from pysam import AlignmentFile, AlignedSegment
 import numpy as np
+from math import ceil
 import pandas as pd
 from .schemas import TAGS, Read
 import pyarrow as pa
@@ -79,17 +80,168 @@ def gini(array):
     )  # Gini coefficient
 
 
-# TODO: remove collect_localmax and associated code
-# TODO: move features and stats methods outside of class
+def basic_stats(p: dict):
+    """
+    Calculate basic stats about a region
+    :param p: dict of region, must contain "reads" key
+    """
+
+    for n in ["Chromosome", "Start", "End", "reads"]:
+        assert n in p, f"Region must contain {n}"
+
+    # iterate over reads to calculate stats
+    p["n_ref_reads"], p["max_mapq"], p["n_duplicates"] = 0, 0, 0
+    starts = []
+    fwd, rev = 0, 0
+    for r in p["reads"]:
+        if r.is_duplicate:
+            p["n_duplicates"] += 1
+            continue
+
+        if r.is_reverse:
+            rev += 1
+        else:
+            fwd += 1
+        p["max_mapq"] = max(p["max_mapq"], r.mapping_quality)
+        p["n_ref_reads"] += r.isref_read
+
+        if r.is_forward:
+            starts.append(r.reference_start)
+        else:
+            starts.append(r.reference_end)
+    p["n_unique_starts"] = len(set(starts))
+    p["n_reads"] = fwd + rev
+
+    # add strand info
+    if (fwd == 0) and (rev > 0):
+        p["Strand"] = "-"
+    elif (rev == 0) and (fwd > 0):
+        p["Strand"] = "+"
+
+    # remove reads
+    del p["reads"]
+
+    return p
+
+
+def features(p: dict) -> dict:
+    """
+    Extract features from a window of reads
+    All reads must be read1
+    :param p: dict of region, must contain "reads" key
+    """
+
+    for n in ["Chromosome", "Start", "End", "reads"]:
+        assert n in p, f"Region must contain {n}"
+
+    # initialize lists for features
+    l = dict()
+    for k in TAGS + ["3end", "5end", "mapq", "starts"]:
+        l[k] = []
+
+    # initialize features dict
+    f = {
+        "Chromosome": p["Chromosome"],
+        "Start": p["Start"],
+        "End": p["End"],
+        "n_reads": 0,
+        "n_fwd": 0,
+        "n_rev": 0,
+        "n_duplicates": 0,
+        "n_proper_pairs": 0,
+        "n_ref_reads": 0,
+        "3end_gini": float(0),
+        "5end_gini": float(0),
+        "max_mapq": 0,
+        "rpm": float(0),
+        "orientation_bias": float(0),
+        "frac_proper_pairs": float(0),
+        "n_unique_starts": 0,
+    }
+
+    for tag in TAGS:
+        for n in [0, 0.25, 0.5, 0.75, 1]:
+            f[tag + "_q" + str(n)] = float(0)
+        f[tag + "_mean"] = float(0)
+
+    # collect features from the reads in the window
+    for i, r in enumerate(p["reads"]):
+        if not r.is_read1:
+            raise Exception("Reads must all be read1")
+
+        if i == 0:
+            start = r.reference_start
+
+        if r.is_duplicate:
+            f["n_duplicates"] += 1
+            continue
+
+        l["starts"].append(r.reference_start)
+        if r.is_forward:
+            l["3end"].append(r.reference_end - start)
+            l["5end"].append(r.reference_start - start)
+        else:
+            l["3end"].append(r.reference_start - start)
+            l["5end"].append(r.reference_end - start)
+
+        l["mapq"].append(r.mapping_quality)
+        f["n_proper_pairs"] += r.is_proper_pair
+        f["n_ref_reads"] += r.isref_read
+
+        if r.is_reverse:
+            f["n_rev"] += 1
+        else:
+            f["n_fwd"] += 1
+
+        for tag in TAGS:
+            if "_normed" in tag:
+                if getattr(r, tag.replace("_normed", "")):
+                    if tag in [
+                        "L1_alignment_score_normed",
+                        "mate_alignment_score_normed",
+                    ]:  # adjust alignments scores for read length
+                        l[tag].append(
+                            getattr(r, tag.replace("_normed", ""))
+                            / getattr(r, "mate_read_length")
+                        )
+                    elif tag in ["alignment_score_normed"]:
+                        l[tag].append(
+                            getattr(r, tag.replace("_normed", ""))
+                            / getattr(r, "read_length")
+                        )
+            elif getattr(r, tag):
+                l[tag].append(getattr(r, tag))
+
+    # compute mean and quantiles for these features
+    for tag in TAGS:
+        if len(l[tag]) > 0:
+            quantiles = np.quantile(l[tag], [0, 0.25, 0.5, 0.75, 1])
+            for n, q in zip([0, 0.25, 0.5, 0.75, 1], quantiles):
+                f[tag + "_q" + str(n)] = q
+            f[tag + "_mean"] = np.mean(l[tag])
+
+    f["n_reads"] = f["n_fwd"] + f["n_rev"]
+
+    # if reads are empty, return empty features
+    if f["n_reads"] == 0:
+        return f
+
+    f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
+    f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))
+    f["max_mapq"] = max(l["mapq"])
+    f["n_unique_starts"] = len(set(l["starts"]))
+
+    return f
+
+
 class SlidingWindow(object):
     def __init__(
         self,
         bam: AlignmentFile,
         contigs: list | None = None,
-        min_mapq: int = 0,
-        peaks: bool = False,
+        read_filter: callable = lambda x: x.is_read1,
+        mode: str = "peaks",
         collect_features: bool = False,
-        collect_localmax: bool = False,
     ) -> None:
         # save inputs to attributes
         self.bam = bam
@@ -106,41 +258,22 @@ class SlidingWindow(object):
                 if bam.get_reference_name(i) in CHROMOSOMES:
                     self.contigs.append(bam.get_reference_name(i))
 
-        # save settings
-        self.min_mapq = min_mapq
-        self.peaks = peaks
-        self.mode = "peaks" if self.peaks else "windows"
+        self.read_filter = read_filter
+        self.mode = mode
         self.collect_features = collect_features
-        self.collect_localmax = collect_localmax
-
-        self.read_filter = (
-            lambda x: x.is_read1
-            and x.is_mapped
-            and (not x.is_secondary)
-            and (not x.is_supplementary)
-        )
 
         # count reads in bam satisfying read filter
         total_reads = bam.count(read_callback=self.read_filter)
         self.size_factor = total_reads / 1e6
         logger.info(f"{total_reads} filtered reads in the bam file")
 
-        # reset read filter to include min_mapq
-        self.read_filter = (
-            lambda x: x.is_read1
-            and x.is_mapped
-            and (not x.is_secondary)
-            and (not x.is_supplementary)
-            and (x.mapping_quality >= min_mapq)
-        )
-
     def windows(
         self,
         reads,
         size: int = 200,
         step: int = 1,
-        min_rpm: float = 0,
         min_reads: int = 0,
+        min_rpm: float = 0,
     ) -> Generator:
         "Slide window across contig and yield each window"
         try:
@@ -151,6 +284,8 @@ class SlidingWindow(object):
         except StopIteration:
             return
 
+        rpm_reads = ceil(min_rpm * self.size_factor)
+        min_reads = max(min_reads, rpm_reads)
         w = deque()
         for start in range(0, reflen + 1, step):
             end = start + size if start + size < reflen else reflen
@@ -169,7 +304,7 @@ class SlidingWindow(object):
                     break
 
             # return window if it has min_rpm
-            if (len(w) / self.size_factor >= min_rpm) and (len(w) >= min_reads):
+            if len(w) >= min_reads:
                 yield {
                     "Chromosome": contig,
                     "Start": start,
@@ -184,11 +319,12 @@ class SlidingWindow(object):
         :param bandwidth: maximum distance between windows to merge
         """
 
-        # filter windows for non-empty
+        # filter for non-empty windows
         windows = filter(lambda x: len(x["reads"]) > 0, windows)
+
         try:
             p = next(windows)  # grab first window
-        except StopIteration:  # skip if no peaks
+        except StopIteration:  # skip if no windows left
             return
 
         for n in windows:
@@ -198,7 +334,7 @@ class SlidingWindow(object):
                 p["reads"] = p["reads"].union(n["reads"])
             # otherwise, yield the previous window and start a new one
             else:
-                # yield merged windpow
+                # yield merged window
                 yield p
                 assert (
                     p["Chromosome"] == n["Chromosome"]
@@ -206,214 +342,49 @@ class SlidingWindow(object):
                 # start new window
                 p = n
 
-    def stats(self, p: dict):
-        """
-        Calculate basic stats about a region
-        :param p: dict of region, must contain "reads" key
-        """
-
-        assert "reads" in p, "Region must contain reads"
-
-        # iterate over reads to calculate stats
-        p["n_ref_reads"], p["max_mapq"], p["n_duplicates"] = 0, 0, 0
-        starts = []
-        fwd, rev = 0, 0
-        for r in p["reads"]:
-            if r.is_duplicate:
-                p["n_duplicates"] += 1
-                continue
-
-            if r.is_reverse:
-                rev += 1
-            else:
-                fwd += 1
-            p["max_mapq"] = max(p["max_mapq"], r.mapping_quality)
-            p["n_ref_reads"] += r.isref_read
-
-            if r.is_forward:
-                starts.append(r.reference_start)
-            else:
-                starts.append(r.reference_end)
-        p["n_unique_starts"] = len(set(starts))
-        p["n_reads"] = fwd + rev
-
-        # add strand info
-        if (fwd == 0) and (rev > 0):
-            p["Strand"] = "-"
-        elif (rev == 0) and (fwd > 0):
-            p["Strand"] = "+"
-
-        # remove reads
-        del p["reads"]
-
-        return p
-
-    def features(self, p: dict) -> dict:
-        """
-        Extract features from a window of reads"
-        :param p: dict of region, must contain "reads" key
-        """
-
-        assert "reads" in p, "Region must contain reads"
-
-        # initialize lists for features
-        l = dict()
-        for k in TAGS + ["3end", "5end", "mapq", "starts"]:
-            l[k] = []
-
-        # initialize features dict
-        f = {
-            "Chromosome": p["Chromosome"],
-            "Start": p["Start"],
-            "End": p["End"],
-            "n_reads": 0,
-            "n_fwd": 0,
-            "n_rev": 0,
-            "n_duplicates": 0,
-            "n_proper_pairs": 0,
-            "n_ref_reads": 0,
-            "3end_gini": float(0),
-            "5end_gini": float(0),
-            "max_mapq": 0,
-            "rpm": float(0),
-            "orientation_bias": float(0),
-            "frac_proper_pairs": float(0),
-            "n_unique_starts": 0,
-        }
-
-        for tag in TAGS:
-            for n in [0, 0.25, 0.5, 0.75, 1]:
-                f[tag + "_q" + str(n)] = float(0)
-            f[tag + "_mean"] = float(0)
-
-        # collect features from the reads in the window
-        for i, r in enumerate(p["reads"]):
-            if not r.is_read1:
-                raise Exception("Reads must all be read1")
-
-            if i == 0:
-                start = r.reference_start
-
-            if r.is_duplicate:
-                f["n_duplicates"] += 1
-                continue
-
-            l["starts"].append(r.reference_start)
-            if r.is_forward:
-                l["3end"].append(r.reference_end - start)
-                l["5end"].append(r.reference_start - start)
-            else:
-                l["3end"].append(r.reference_start - start)
-                l["5end"].append(r.reference_end - start)
-
-            l["mapq"].append(r.mapping_quality)
-            f["n_proper_pairs"] += r.is_proper_pair
-            f["n_ref_reads"] += r.isref_read
-
-            if r.is_reverse:
-                f["n_rev"] += 1
-            else:
-                f["n_fwd"] += 1
-
-            for tag in TAGS:
-                if "_normed" in tag:
-                    if getattr(r, tag.replace("_normed", "")):
-                        if tag in [
-                            "L1_alignment_score_normed",
-                            "mate_alignment_score_normed",
-                        ]:  # adjust alignments scores for read length
-                            l[tag].append(
-                                getattr(r, tag.replace("_normed", ""))
-                                / getattr(r, "mate_read_length")
-                            )
-                        elif tag in ["alignment_score_normed"]:
-                            l[tag].append(
-                                getattr(r, tag.replace("_normed", ""))
-                                / getattr(r, "read_length")
-                            )
-                elif getattr(r, tag):
-                    l[tag].append(getattr(r, tag))
-
-        # compute mean and quantiles for these features
-        for tag in TAGS:
-            if len(l[tag]) > 0:
-                quantiles = np.quantile(l[tag], [0, 0.25, 0.5, 0.75, 1])
-                for n, q in zip([0, 0.25, 0.5, 0.75, 1], quantiles):
-                    f[tag + "_q" + str(n)] = q
-                f[tag + "_mean"] = np.mean(l[tag])
-
-        f["n_reads"] = f["n_fwd"] + f["n_rev"]
-
-        # if reads are empty, return empty features
-        if f["n_reads"] == 0:
-            return f
-
-        f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
-        f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))
-        f["max_mapq"] = max(l["mapq"])
-        f["n_unique_starts"] = len(set(l["starts"]))
-
-        return f
-
-    def make_regions(
-        self,
-        strand_split: bool = False,
-        **kwargs,
-    ) -> Generator:
+    def make_regions(self, **kwargs) -> Generator:
         """
         Make windows on the given contigs
-        :param strand_split: optionally generate windows separately for each strand
         :param kwargs: arguments to pass to windows()
         """
 
-        # define read group filters
-        if strand_split:
-            rg = [
-                lambda x: x.is_read1 and x.is_forward,
-                lambda x: x.is_read1 and x.is_reverse,
-            ]
-        else:
-            rg = [lambda x: x.is_read1]
-
         for c in self.contigs:
-            for f in rg:
-                reads = filter(self.read_filter, self.bam.fetch(c))
-                reads = filter(f, reads)
-                reads = map(read_to_namedtuple, reads)
+            reads = filter(self.read_filter, self.bam.fetch(c))
+            reads = map(read_to_namedtuple, reads)
 
-                # define window generator
-                if self.peaks:
-                    windows = self.merge(self.windows(reads, **kwargs))
+            # define window generator
+            if self.mode == "peaks":
+                windows = self.merge(self.windows(reads, **kwargs))
+            elif self.mode == "windows":
+                windows = self.windows(reads, **kwargs)
+            else:
+                raise Exception(
+                    f"Mode {self.mode} is not valid, must be 'peaks' or 'windows'"
+                )
+
+            # yield windows
+            for w in windows:
+                if self.collect_features:
+                    yield features(w)
                 else:
-                    windows = self.windows(reads, **kwargs)
-
-                # yield windows
-                for w in windows:
-                    if self.collect_features:
-                        yield self.features(w)
-                    else:
-                        yield self.stats(w)
+                    yield basic_stats(w)
 
     def write_regions(self, outfile: str, **kwargs) -> None:
         """
         Generate regions and write to disk
         :param outfile: path to output file
-        :param kwargs: arguments to pass to make_regions()
+        :param kwargs: arguments to pass to make_regions(), to pass to windows()
         """
 
-        # grab first region
-        iter = self.make_regions(**kwargs)
-        r = next(iter)
+        # create generator of regions and get first region
+        gen_regions = self.make_regions(**kwargs)
+        r = next(gen_regions)
 
-        if self.collect_localmax:
-            for i in [2, 4, 8, 16, 32]:
-                r[f"localmax_{i}_reads"] = 0
-                r[f"localmax_{i}_rpm"] = float(0)
         schema = pa.Schema.from_pandas(pd.Series(r).to_frame().T)
 
         regions = []  # initialize list of regions
+        # write regions to disk in batches by chromosome
         with pq.ParquetWriter(outfile, schema, compression="gzip") as writer:
-            # write regions to disk in batches by chromosome
             for c in self.contigs:
                 start = time.perf_counter()
 
@@ -421,7 +392,7 @@ class SlidingWindow(object):
                 while r["Chromosome"] == c:
                     regions.append(r)
                     try:
-                        r = next(iter)
+                        r = next(gen_regions)
                     except StopIteration:
                         break
 
@@ -433,18 +404,8 @@ class SlidingWindow(object):
                 if len(regions) == 0:
                     continue
 
-                # convert regions to dataframe
-                regions = pd.DataFrame(regions)
-
-                # compute local max
-                if self.collect_localmax:
-                    for localbw in [2, 4, 8, 16, 32]:
-                        lm = regions["n_reads"].rolling(localbw, center=True).max()
-                        regions[f"localmax_{localbw}_reads"] = lm
-                        regions[f"localmax_{localbw}_rpm"] = lm / self.size_factor
-
-                # remove empty regions
-                regions = regions.loc[regions.n_reads > 0, :].fillna(0)
+                # convert regions to dataframe and remove empty regions
+                regions = pd.DataFrame(regions).query("n_reads > 0").fillna(0)
 
                 # compute metrics on vector scale
                 regions["rpm"] = regions["n_reads"] / self.size_factor

@@ -27,58 +27,30 @@ rule call_bulk_peaks:
     conda:
         "../envs/model.yml"
     params:
-        **config["bulk_peak_params"],
+        **config["bulk_peaks_params"],
     script:
         "../scripts/call_bulk_peaks.py"
 
 
-rule make_windows:
+rule make_regions:
     input:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        "{outdir}/results/{genome}/windows/{donor}/{sample}.pqt",
+        "{outdir}/results/{genome}/{region}/{donor}/{sample}.pqt",
     log:
-        "{outdir}/results/{genome}/windows/{donor}/{sample}.log",
+        "{outdir}/results/{genome}/{region}/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
     params:
-        **config["window_params"],
+        lambda wc: config[f"{wc.region}_params"],
     script:
-        "../scripts/make_windows.py"
-
-
-peak_size = config["peak_params"]["size"]
-
-
-rule make_peaks:
-    input:
-        bam=rules.sambamba_sort.output[0],
-        bai=rules.sambamba_index.output[0],
-    output:
-        "{outdir}/results/{genome}/peaks/{donor}/{sample}.pqt",
-    log:
-        "{outdir}/results/{genome}/peaks/{donor}/{sample}.log",
-    conda:
-        "../envs/features.yml"
-    params:
-        **config["peak_params"],
-    script:
-        "../scripts/make_peaks.py"
-
-
-def get_regions(wildcards):
-    if wildcards.region == "peaks":
-        return (rules.make_peaks.output[0],)
-    elif wildcards.region == "windows":
-        return (rules.make_windows.output[0],)
-    else:
-        raise ValueError("Unknown region: {}".format(wildcards.region))
+        "../scripts/make_regions.py"
 
 
 rule local_background:
     input:
-        pqt=get_regions,
+        pqt=rules.make_regions.output[0],
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
@@ -117,9 +89,9 @@ def get_donor_regions(wildcards):
     #     return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
     # ValueError: zero-size array to reduction operation minimum which has no identity
     return expand(
-        "{outdir}/results/{genome}/{region}/{donor}/{sample}.pqt",
-        region=wildcards.region,
+        rules.make_regions.output[0],
         # rules.local_background.output,
+        region=wildcards.region,
         sample=cells,
         allow_missing=True,
     )
