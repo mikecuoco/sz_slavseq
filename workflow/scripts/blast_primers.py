@@ -13,9 +13,9 @@ from subprocess import Popen
 from pathlib import Path
 
 # index the genome
-db = Path(snakemake.output[0]).parent / snakemake.wildcards.genome
+db = Path(snakemake.output[0]).parent / snakemake.wildcards.genome  # type: ignore
 
-cmd = f"makeblastdb -in {snakemake.input.ref_fa} -dbtype 'nucl' -blastdb_version 5 -parse_seqids -out {db} >> {snakemake.log[0]} 2>&1"
+cmd = f"makeblastdb -in {snakemake.input.ref_fa} -dbtype 'nucl' -blastdb_version 5 -parse_seqids -out {db} >> {snakemake.log[0]} 2>&1"  # type: ignore
 logging.info(f"Running makeblastdb with command: {cmd}")
 Popen(cmd, shell=True).wait()
 
@@ -28,7 +28,7 @@ outfmt = "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send
 
 # add log statement
 with NamedTemporaryFile() as tmp:
-    cmd = f"blastn -query {snakemake.input.primer_fa} -task blastn -ungapped -no_greedy -db {db} -outfmt '{outfmt}' -out {tmp.name} >> {snakemake.log[0]} 2>&1"
+    cmd = f"blastn -query {snakemake.input.primer_fa} -task blastn -ungapped -no_greedy -db {db} -outfmt '{outfmt}' -out {tmp.name} >> {snakemake.log[0]} 2>&1"  # type: ignore
     logging.info(f"Running blastn with command: {cmd}")
     Popen(cmd, shell=True).communicate()
     # if Popen(cmd, shell=True).wait() != 0:
@@ -58,11 +58,11 @@ df["Strand"] = df["Strand"].str.replace("plus", "+")
 df_capture = pr.PyRanges(df[df["Name"] == "L1_capture_probe"])
 df_pcr = pr.PyRanges(df[df["Name"] == "L1_PCR_primer"])
 
-df = df_capture.extend(1000).overlap(df_pcr).df
+df = df_pcr.overlap(df_capture.extend({"3": 1200})).extend({"3": 750}).df
 df["Name"] = "Predicted_SLAVseq_fragment"
 
 # save as bed
-logging.info(f"Saving blast results to {snakemake.output.bed}")
+logging.info(f"Saving blast results to {snakemake.output.bed}")  # type: ignore
 pr.PyRanges(df).to_bed(snakemake.output.bed)  # type: ignore
 
 sys.stderr.close()
