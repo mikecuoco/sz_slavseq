@@ -4,14 +4,7 @@ __author__ = "Michael Cuoco"
 
 import logging
 
-logging.basicConfig(
-    filename=snakemake.log[0],  # type: ignore
-    filemode="w",
-    level=logging.INFO,
-)
-
 logger = logging.getLogger(__name__)
-
 import pyarrow.parquet as pq
 import pyranges as pr
 import pandas as pd
@@ -153,46 +146,57 @@ def label(
     return df
 
 
-logger.info(f"Reading regions for donor {snakemake.wildcards.donor}..")  # type: ignore
-data = pq.read_table(snakemake.input.regions).to_pandas()  # type: ignore
-data = data.sort_values(["Chromosome", "Start", "End"])
+if __name__ == "__main__":
 
-# TODO: label difficult regions
+    logging.basicConfig(
+        filename=snakemake.log[0],  # type: ignore
+        filemode="w",
+        level=logging.INFO,
+    )
 
-logger.info(f"Read donor metadata from {snakemake.config['donors']}")  # type: ignore
-meta = pd.read_csv(snakemake.config["donors"], sep="\t")  # type: ignore
-indv_to_libd = meta.set_index("donor_id")["libd_id"].to_dict()
-libd_id = indv_to_libd[int(snakemake.wildcards.donor)]  # type: ignore
+    logger = logging.getLogger(__name__)
 
-logger.info(f"Labelling megane calls using {snakemake.input.megane_vcf}")  # type: ignore
-megane = (
-    read_megane_LINE1(snakemake.input.megane_vcf)  # type: ignore
-    .query("Chromosome != 'chrY'")
-    .query("FILTER == 'PASS'")
-    .explode("individual")
-    .query("individual == @libd_id")
-)
-data = label(data, megane, "megane")
-data = label(data, megane, "megane_500bp", slack=500)
-data = label(data, megane, "megane_1000bp", slack=1000)
+    data = pq.read_table(snakemake.input.regions).to_pandas()  # type: ignore
+    data = data.sort_values(["Chromosome", "Start", "End", "cell_id"])
+    data = data.drop_duplicates(
+        ["Chromosome", "Start", "End", "cell_id"]
+    )  # remove duplicate regions (error from previous runs)
+    logger.info(f"Read {data.shape[0]} regions for donor {snakemake.wildcards.donor}")  # type: ignore
 
-logger.info(f"Labelling xtea calls from {snakemake.input.xtea_vcf}")  # type: ignore
-xtea = (
-    read_xtea_LINE1(snakemake.input.xtea_vcf)  # type: ignore
-    .explode("individual")
-    .query("~SUBTYPE.str.contains('transduction')")
-    .query("individual == @libd_id")
-)
-data = label(data, xtea, "xtea")
-data = label(data, xtea, "xtea_500bp", slack=500)
-data = label(data, xtea, "xtea_1000bp", slack=1000)
+    logger.info(f"Labelling SLAVseq primer sites from {snakemake.input.primer_sites}...")  # type: ignore
+    primer_sites = pr.read_bed(snakemake.input.primer_sites).df  # type: ignore
+    data = label(data, primer_sites, "primer_sites")
 
-logger.info(f"Labelling SLAVseq primer sites from {snakemake.input.primer_sites}")  # type: ignore
-primer_sites = pr.read_bed(snakemake.input.primer_sites).df  # type: ignore
-data = label(data, primer_sites, "primer_sites")
+    meta = pd.read_csv(snakemake.config["donors"], sep="\t")  # type: ignore
+    indv_to_libd = meta.set_index("donor_id")["libd_id"].to_dict()
+    libd_id = indv_to_libd[int(snakemake.wildcards.donor)]  # type: ignore
+    logger.info(f"Read donor metadata from {snakemake.config['donors']}")  # type: ignore
 
-logger.info(f"Labelling donor bulk peaks from {snakemake.input.bulk_peaks}")  # type: ignore
-bulk_peaks = pr.read_bed(snakemake.input.bulk_peaks).df  # type: ignore
-data = label(data, bulk_peaks, "bulk_peaks")
+    logger.info(f"Labelling megane calls using {snakemake.input.megane_vcf}...")  # type: ignore
+    megane = (
+        read_megane_LINE1(snakemake.input.megane_vcf)  # type: ignore
+        .query("Chromosome != 'chrY'")
+        .query("FILTER == 'PASS'")
+        .explode("individual")
+        .query("individual == @libd_id")
+    )
+    data = label(data, megane, "megane")
+    data = label(data, megane, "megane_500bp", slack=500)
+    data = label(data, megane, "megane_1000bp", slack=1000)
 
-data.to_parquet(snakemake.output[0])  # type: ignore
+    logger.info(f"Labelling xtea calls from {snakemake.input.xtea_vcf}...")  # type: ignore
+    xtea = (
+        read_xtea_LINE1(snakemake.input.xtea_vcf)  # type: ignore
+        .explode("individual")
+        .query("~SUBTYPE.str.contains('transduction')")
+        .query("individual == @libd_id")
+    )
+    data = label(data, xtea, "xtea")
+    data = label(data, xtea, "xtea_500bp", slack=500)
+    data = label(data, xtea, "xtea_1000bp", slack=1000)
+
+    logger.info(f"Labelling donor bulk peaks from {snakemake.input.bulk_peaks}...")  # type: ignore
+    bulk_peaks = pr.read_bed(snakemake.input.bulk_peaks).df  # type: ignore
+    data = label(data, bulk_peaks, "bulk_peaks")
+
+    data.to_parquet(snakemake.output[0])  # type: ignore
