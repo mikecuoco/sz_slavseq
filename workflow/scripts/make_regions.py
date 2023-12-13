@@ -15,27 +15,49 @@ logger = logging.getLogger(__name__)
 from pysam import AlignmentFile
 from pyslavseq.sliding_window import SlidingWindow
 
-logger.info(f"Generating {snakemake.wildcards.region} from {snakemake.input.bam}")  # type: ignore
-logger.info("Using parameters %s:", dict(snakemake.params))  # type: ignore
+params = {}
+for p in snakemake.wildcards.params.split("/"):
+    name, value = p.split("~")
+    params[name] = int(value) if value.isdigit() else value
 
-read_filter = (
-    lambda r: r.is_read1
-    and r.is_mapped
-    and not r.is_supplementary
-    and not r.is_secondary
-)
+logger.info("Using parameters %s:", params)
 
+# define read filter
+if params["reads"] == "proper_pairs":
+    read_filter = (
+        lambda r: r.is_proper_pair
+        and r.is_mapped
+        and not r.is_supplementary
+        and not r.is_secondary
+        # and r.mapping_quality >= 10
+    )
+elif params["reads"] == "read1":
+    read_filter = (
+        lambda r: r.is_read1
+        and r.is_mapped
+        and not r.is_supplementary
+        and not r.is_secondary
+        # and r.mapping_quality >= 10
+    )
+else:
+    raise Exception(f"Invalid read filter {params['reads']}")
+
+# generate the regions
+logger.info(f"Generating {params['region']} from {snakemake.input.bam}")  # type: ignore
 with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
     sw = SlidingWindow(
         bam,
         read_filter=read_filter,
-        mode=snakemake.wildcards.region,  # type: ignore
-        collect_features=True,
+        mode=params["region"],  # type: ignore
+        collect_features=True if params["reads"] == "read1" else False,  # type: ignore
     )
+    del params["region"]
+    del params["reads"]
     try:
         sw.write_regions(
             outfile=snakemake.output[0],  # type: ignore
-            **snakemake.params,  # type: ignore
+            min_reads=3,
+            **params,
         )
         logger.info("Done")
     except:

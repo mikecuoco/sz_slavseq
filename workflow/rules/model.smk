@@ -37,13 +37,13 @@ rule make_regions:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        "{outdir}/results/{genome}/{region}/{donor}/{sample}.pqt",
+        "{outdir}/results/{genome}/{params}/{donor}/{sample}.pqt",
     log:
-        "{outdir}/results/{genome}/{region}/{donor}/{sample}.log",
+        "{outdir}/results/{genome}/{params}/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
     params:
-        lambda wc: config[f"{wc.region}_params"],
+        regions_params.instance,
     script:
         "../scripts/make_regions.py"
 
@@ -54,9 +54,9 @@ rule local_background:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        "{outdir}/results/{genome}/{region}/{donor}/{sample}_bg.pqt",
+        "{outdir}/results/{genome}/{params}/{donor}/{sample}_bg.pqt",
     log:
-        "{outdir}/results/{genome}/{region}/{donor}/{sample}_bg.log",
+        "{outdir}/results/{genome}/{params}/{donor}/{sample}_bg.log",
     conda:
         "../envs/features.yml"
     script:
@@ -74,24 +74,9 @@ def get_donor_regions(wildcards):
     ]["sample_id"].values
     cells = [c for c in donor_cells if c not in bad_cells]
 
-    # TODO: replace with local_background, skipping for now to finish prelim analysis
-    # current error in local_background:
-    #     Traceback (most recent call last):
-    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/.snakemake/scripts/tmp2kquc_3d.local_background.py", line 49, in <module>
-    #     f = sw.features(w)
-    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/workflow/rules/../scripts/pyslavseq/sliding_window.py", line 351, in features
-    #     f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
-    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/workflow/rules/../scripts/pyslavseq/sliding_window.py", line 71, in gini
-    #     if np.amin(array) < 0:
-    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/.snakemake/conda/65cff2bb81647bc9d297d6550e298d36_/lib/python3.10/site-packages/numpy/core/fromnumeric.py", line 2970, in amin
-    #     return _wrapreduction(a, np.minimum, 'min', axis, None, out,
-    #   File "/iblm/logglun02/mcuoco/workflows/sz_slavseq/.snakemake/conda/65cff2bb81647bc9d297d6550e298d36_/lib/python3.10/site-packages/numpy/core/fromnumeric.py", line 88, in _wrapreduction
-    #     return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
-    # ValueError: zero-size array to reduction operation minimum which has no identity
     return expand(
         rules.make_regions.output[0],
         # rules.local_background.output,
-        region=wildcards.region,
         sample=cells,
         allow_missing=True,
     )
@@ -103,9 +88,9 @@ rule join_donor_regions:
         en_motif_pos=rules.en_motif.output.pos,
         en_motif_neg=rules.en_motif.output.neg,
     output:
-        "{outdir}/results/{genome}/{region}/{donor}.pqt",
+        "{outdir}/results/{genome}/{params}/{donor}.pqt",
     log:
-        "{outdir}/results/{genome}/{region}/{donor}.log",
+        "{outdir}/results/{genome}/{params}/{donor}.log",
     conda:
         "../envs/features.yml"
     script:
@@ -122,9 +107,9 @@ rule label_donor_regions:
         megane_vcf=config["genome"]["megane"],
         rmsk=rules.run_rmsk.output[0],
     output:
-        "{outdir}/results/{genome}/{region}/{donor}_labelled.pqt",
+        "{outdir}/results/{genome}/{params}/{donor}_labelled.pqt",
     log:
-        "{outdir}/results/{genome}/{region}/{donor}_labelled.log",
+        "{outdir}/results/{genome}/{params}/{donor}_labelled.log",
     conda:
         "../envs/features.yml"
     script:

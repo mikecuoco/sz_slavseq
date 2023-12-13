@@ -1,7 +1,6 @@
 import pandas as pd
 from pathlib import Path
-from snakemake.utils import validate
-from snakemake.utils import min_version
+from snakemake.utils import validate, min_version, Paramspace
 
 
 ##### set minimum snakemake version #####
@@ -36,7 +35,6 @@ wildcard_constraints:
     donor="|".join(donors["donor_id"]),
     sample="|".join(samples["sample_id"]),
     genome=config["genome"]["name"],
-    region="windows|peaks",
     outdir=config["outdir"],
 
 
@@ -44,6 +42,39 @@ include: "rules/ref.smk"
 include: "rules/download.smk"
 include: "rules/trim.smk"
 include: "rules/align.smk"
+
+
+# setup parameters for regions
+regions_params = [
+    {
+        "region": "windows",
+        "reads": "read1",
+        "step": 250,
+        "size": 750,
+    },
+    {
+        "region": "peaks",
+        "reads": "read1",
+        "step": 1,
+        "size": 400,
+    },
+    {
+        "region": "peaks",
+        "step": 1,
+        "reads": "read1",
+        "size": 300,
+    },
+    {
+        "region": "peaks",
+        "reads": "read1",
+        "step": 1,
+        "size": 200,
+    },
+]
+
+regions_params = Paramspace(pd.DataFrame(regions_params))
+
+
 include: "rules/model.smk"
 
 
@@ -51,9 +82,9 @@ rule all:
     input:
         expand(
             rules.label_donor_regions.output,
-            donor=donors["donor_id"],
-            region="peaks",
+            donor=donors["donor_id"].unique(),
             genome=config["genome"]["name"],
+            params=regions_params.instance_patterns,
             outdir=config["outdir"],
         ),
         # expand(
