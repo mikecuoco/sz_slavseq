@@ -2,15 +2,15 @@
 # Created on: Aug 8, 2023 at 1:53:30 PM
 __author__ = "Michael Cuoco"
 
-# source: Genome In A Bottle (GIAB) genome stratifications
-# https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/
-
 # configure logging
 import logging
 
 logger = logging.getLogger(__name__)
 
 import pandas as pd
+
+# source: Genome In A Bottle (GIAB) genome stratifications
+# https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/
 
 STRATIFICATIONS = {
     "chm13": {
@@ -46,4 +46,38 @@ def get_stratification(genome: str, name: str) -> pd.DataFrame:
         header=None,
         skiprows=1,
         names=["Chromosome", "Start", "End"],
+    )
+
+
+def read_rmsk_bed(file: str):
+    "read rmsk bed file into dataframe"
+
+    coord_conv = lambda x: int(x.rstrip(")").lstrip("("))
+
+    return pd.read_csv(
+        file,
+        sep="\t",
+        header=None,
+        usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+        names=[
+            "Chromosome",
+            "Start",
+            "End",
+            "repName",
+            "Score",
+            "Strand",
+            "milliDiv",
+            "milliDel",
+            "milliIns",
+            "genoLeft",
+            "repClassFamily",
+            "repStart",
+            "repEnd",
+            "repLeft",
+        ],
+        converters={
+            "repStart": coord_conv,
+            "repLeft": coord_conv,
+            "genoLeft": coord_conv,
+        },
     )
