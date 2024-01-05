@@ -30,87 +30,57 @@ samples = samples.merge(donors, on=["donor_id"]).set_index(
 # create donor sheet
 donors = donors.set_index("donor_id", drop=False)
 
+# setup parameters for regions
+regions_params = []
+for wsize in [100, 200, 300]:
+    for bgtest in [True, False]:
+        for bgsize in [10000, 20000]:
+            regions_params.append(
+                {
+                    "mode": "peaks",
+                    "step": 1,
+                    "minreads": 3,
+                    "size": wsize,
+                    "bgtest": bgtest,
+                }
+            )
+            if bgtest:
+                regions_params[-1]["bgsize"] = int(bgsize)
+
+regions_params = Paramspace(pd.DataFrame(regions_params))
+
 
 wildcard_constraints:
     donor="|".join(donors["donor_id"]),
     sample="|".join(samples["sample_id"]),
     genome=config["genome"]["name"],
     outdir=config["outdir"],
+    params="|".join(regions_params.instance_patterns),
 
 
 include: "rules/ref.smk"
 include: "rules/download.smk"
 include: "rules/trim.smk"
 include: "rules/align.smk"
-
-
-# setup parameters for regions
-regions_params = [
-    {
-        "region": "windows",
-        "reads": "read1",
-        "step": 250,
-        "size": 750,
-    },
-    {
-        "region": "peaks",
-        "reads": "read1",
-        "step": 1,
-        "size": 400,
-    },
-    {
-        "region": "peaks",
-        "step": 1,
-        "reads": "read1",
-        "size": 300,
-    },
-    {
-        "region": "peaks",
-        "reads": "read1",
-        "step": 1,
-        "size": 200,
-    },
-]
-
-regions_params = Paramspace(pd.DataFrame(regions_params))
-
-
 include: "rules/model.smk"
 
 
 rule all:
     input:
         expand(
-            rules.label_donor_regions.output,
-            donor=donors["donor_id"].unique(),
+            rules.tune.output,
             genome=config["genome"]["name"],
             params=regions_params.instance_patterns,
             outdir=config["outdir"],
         ),
-        # expand(
-        #     expand(
-        #         rules.flagstat.output,
-        #         stage=["tagged.sorted"],
-        #         outdir=config["outdir"],
-        #         allow_missing=True,
-        #         genome=config["genome"]["name"],
-        #     ),
-        #     zip,
-        #     sample=samples["sample_id"],
-        #     donor=samples["donor_id"],
-        # ),
-        # expand(
-        #     expand(
-        #         rules.l1_coverage.output.r1,
-        #         anno=[
-        #             "rmsk_1kb_3end",
-        #             "xtea_1kb_3end",
-        #         ],
-        #         allow_missing=True,
-        #         outdir=config["outdir"],
-        #         genome=config["genome"]["name"],
-        #     ),
-        #     zip,
-        #     sample=samples["sample_id"],
-        #     donor=samples["donor_id"],
-        # ),
+        expand(
+            expand(
+                rules.flagstat.output,
+                zip,
+                donor=samples["donor_id"],
+                sample=samples["sample_id"],
+                allow_missing=True,
+            ),
+            genome=config["genome"]["name"],
+            outdir=config["outdir"],
+        ),

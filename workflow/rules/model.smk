@@ -12,7 +12,6 @@ def get_bulk_sample(wildcards):
             sample=bulk,
             allow_missing=True,
         ),
-        "primer_bed": rules.blast_primers.output.bed,
     }
 
 
@@ -37,13 +36,12 @@ rule make_regions:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}.pqt",
+        pqt="{outdir}/results/{genome}/{params}/{donor}/{sample}.pqt",
+        bed="{outdir}/results/{genome}/{params}/{donor}/{sample}.bed",
     log:
         "{outdir}/results/{genome}/{params}/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
-    params:
-        regions_params.instance,
     script:
         "../scripts/make_regions.py"
 
@@ -54,9 +52,9 @@ rule local_background:
         bam=rules.sambamba_sort.output[0],
         bai=rules.sambamba_index.output[0],
     output:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_bg.pqt",
+        rules.make_regions.output.pqt.replace(".pqt", "_bg.pqt"),
     log:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_bg.log",
+        rules.make_regions.log[0].replace(".log", "_bg.log"),
     conda:
         "../envs/features.yml"
     script:
@@ -75,7 +73,7 @@ def get_donor_regions(wildcards):
     cells = [c for c in donor_cells if c not in bad_cells]
 
     return expand(
-        rules.make_regions.output[0],
+        rules.make_regions.output.pqt,
         # rules.local_background.output,
         sample=cells,
         allow_missing=True,
@@ -97,19 +95,30 @@ rule join_donor_regions:
         "../scripts/join_donor_regions.py"
 
 
-# TODO: add genome-specific mappability regions from https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.3 (specificy in config)
+def get_label_input(wildcards):
+    if wildcards.donor != "CommonBrain":
+        return {
+            "regions": rules.join_donor_regions.output,
+            "bulk_peaks": rules.call_bulk_peaks.output.bed,
+        }
+    else:
+        return {
+            "regions": rules.join_donor_regions.output,
+        }
+
+
 rule label_donor_regions:
     input:
-        regions=rules.join_donor_regions.output,
-        bulk_peaks=rules.call_bulk_peaks.output.bed,
+        unpack(get_label_input),
         primer_sites=rules.blast_primers.output.bed,
         xtea_vcf=config["genome"]["xtea"],
-        megane_vcf=config["genome"]["megane"],
-        rmsk=rules.run_rmsk.output[0],
+        megane_percentile_vcf=config["genome"]["megane_percentile"],
+        megane_gaussian_vcf=config["genome"]["megane_gaussian"],
+        rmsk=rules.run_rmsk.output.bed,
     output:
-        "{outdir}/results/{genome}/{params}/{donor}_labelled.pqt",
+        rules.join_donor_regions.output[0].replace(".pqt", "_labelled.pqt"),
     log:
-        "{outdir}/results/{genome}/{params}/{donor}_labelled.log",
+        rules.join_donor_regions.log[0].replace(".log", "_labelled.log"),
     conda:
         "../envs/features.yml"
     script:
@@ -121,3 +130,27 @@ rule label_donor_regions:
 # 1. # regions
 # 2. if peaks, length
 # 3. reads / region
+
+
+rule tune:
+    input:
+        expand(
+            rules.label_donor_regions.output,
+            donor=donors["donor_id"].unique(),
+            allow_missing=True,
+        ),
+    output:
+        model="{outdir}/results/{genome}/{params}/model/model.pkl",
+        best_hp="{outdir}/results/{genome}/{params}/model/best_hp.json",
+        history="{outdir}/results/{genome}/{params}/model/history.log",
+        tuning_curve="{outdir}/results/{genome}/{params}/model/tuning_curve.png",
+        precision_recall_curve="{outdir}/results/{genome}/{params}/model/precision_recall_curve.png",
+    log:
+        "{outdir}/results/{genome}/{params}/tune.log",
+    conda:
+        "../envs/model.yml"
+    params:
+        max_iter=50,
+    threads: 32
+    script:
+        "../scripts/tune.py"

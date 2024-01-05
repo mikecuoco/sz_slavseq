@@ -1,68 +1,38 @@
-rule bwa_index:
-    input:
-        fa=rules.get_l1hs_consensus.output,
-    output:
-        idx=multiext(
-            rules.get_l1hs_consensus.output[0],
-            ".amb",
-            ".ann",
-            ".bwt",
-            ".pac",
-            ".sa",
-        ),
-    log:
-        "resources/LINE1/bwa_index.log",
-    conda:
-        "../envs/align.yml"
-    params:
-        algorithm="is",
-    shell:
-        """
-        bwa index -a {params.algorithm} {input.fa} > {log} 2>&1
-        """
-
-
-rule bwa_mem_genome:
+rule bwa_mem:
     input:
         idx=config["genome"]["bwa"] + ".amb",
-        reads=[rules.filter_read2.output.fastq1, rules.filter_read2.output.fastq2],
+        r1=rules.filter_l1hs.output.r1,
+        r2=rules.filter_l1hs.output.r2,
+        merged=rules.filter_l1hs.output.merged,
     output:
-        temp("{outdir}/results/{genome}/align/{donor}/{sample}.genome.bam"),
+        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.bam",
     log:
-        bwa="{outdir}/results/{genome}/align/{donor}/{sample}.bwa_genome.log",
-        samblaster="{outdir}/results/{genome}/align/{donor}/{sample}.samblaster_genome.log",
+        bwa="{outdir}/results/{genome}/align/{donor}/{sample}.bwa.log",
+        samblaster="{outdir}/results/{genome}/align/{donor}/{sample}.samblaster.log",
     threads: 2
     conda:
         "../envs/align.yml"
-    params:
-        min_as=30,  # minimum alignment score (default = 30)
     shell:
         """
-        # remove .amb from idx
-        idx=$(echo {input.idx} | sed 's/.amb//g')
-        bwa mem -T {params.min_as} -t {threads} $idx {input.reads} 2> {log.bwa} \
-        | samblaster --addMateTags 2> {log.samblaster} \
-        | samtools view -Sb - > {output}
-        """
+        SAM=$(echo {output} | sed 's/.bam/.sam/g')
+        trap "rm -f $SAM" EXIT
 
+        # make sure r1 and r2 are the same length (for testing only)
+        if [[ "{wildcards.genome}" == *"chr2122"* ]]; then
+            NR1=$(zcat {input.r1} | wc -l)
+            NR2=$(zcat {input.r2} | wc -l)
+            if [ $NR1 -ne $NR2 ]; then
+                echo "Error: r1 and r2 are not the same length"
+                exit 1
+            fi
+        fi
 
-rule bwa_mem_line1:
-    input:
-        idx=rules.bwa_index.output.idx[0],
-        fa=rules.get_l1hs_consensus.output,
-        reads=rules.filter_read2.output.fastq2,
-    output:
-        temp(rules.bwa_mem_genome.output[0].replace("genome.", "line1.")),
-    log:
-        rules.bwa_mem_genome.log.bwa.replace("genome.", "line1."),
-    threads: 1
-    conda:
-        "../envs/align.yml"
-    params:
-        min_as=30,  # minimum alignment score (default = 30)
-    shell:
-        """
-        bwa mem -T {params.min_as} -t {threads} {input.fa} {input.reads} 2> {log} > {output}
+        # run bwa mem and samblaster
+        # do not add -T! will cause some mates to be lost
+        IDX=$(echo {input.idx} | sed 's/.amb//g') # remove .amb from idx for bwa mem
+        bwa mem -t {threads} -M $IDX {input.r1} {input.r2} 2> {log.bwa} | samblaster --addMateTags > $SAM 2> {log.samblaster}
+        bwa mem -t {threads} -M $IDX {input.merged} 2>> {log.bwa} | samblaster --ignoreUnmated 2>> {log.samblaster} | samtools view >> $SAM
+        samtools view -Sb -F 256 $SAM > {output}
         """
 
 
@@ -70,25 +40,14 @@ if not Path(config["genome"]["bwa"] + ".amb").exists():
     raise ValueError("BWA index not found for genome: " + config["genome"]["name"])
 
 
-rule flagstat:
-    input:
-        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.bam",
-    output:
-        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.flagstat",
-    log:
-        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.flagstat.log",
-    wrapper:
-        "v1.21.0/bio/samtools/flagstat"
-
-
 rule tag_reads:
     input:
-        genome_bam=rules.bwa_mem_genome.output[0],
-        line1_bam=rules.bwa_mem_line1.output[0],
+        genome_bam=rules.bwa_mem.output[0],
+        line1_bam=rules.filter_l1hs.output.bam,
     output:
-        temp(rules.bwa_mem_genome.output[0].replace("genome.", "tagged.")),
+        rules.bwa_mem.output[0].replace("genome.", "tagged."),
     log:
-        rules.bwa_mem_genome.log.bwa.replace("bwa_genome", "tag_reads"),
+        rules.bwa_mem.log.bwa.replace("bwa", "tag_reads"),
     conda:
         "../envs/align.yml"
     script:
@@ -101,7 +60,7 @@ rule sambamba_sort:
     output:
         rules.tag_reads.output[0].replace("tagged", "tagged.sorted"),
     log:
-        rules.bwa_mem_genome.log.bwa.replace("bwa_genome", "sort"),
+        rules.tag_reads.log[0].replace("tag_reads", "sort"),
     threads: 1
     wrapper:
         "v1.31.1/bio/sambamba/sort"
@@ -119,3 +78,14 @@ rule sambamba_index:
     threads: 1
     wrapper:
         "v1.31.1/bio/sambamba/index"
+
+
+rule flagstat:
+    input:
+        rules.sambamba_sort.output,
+    output:
+        rules.sambamba_sort.output[0].replace("bam", "bam.flagstat"),
+    log:
+        rules.sambamba_sort.log[0].replace("sort", "flagstat"),
+    wrapper:
+        "v1.21.0/bio/samtools/flagstat"

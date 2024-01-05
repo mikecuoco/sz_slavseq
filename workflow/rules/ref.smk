@@ -1,55 +1,37 @@
-rule get_l1hs_consensus:
+rule get_line1_consensus:
     output:
-        "resources/LINE1/LINE1.fa",
-    log:
-        "resources/LINE1/dfam_query.log",
-    conda:
-        "../envs/ref.yml"
-    params:
-        accessions=["DF0000225"],
-    shell:
-        """
-        touch {log} && exec 1>{log} 2>&1
-        touch {output}
-        for a in {params.accessions}; do
-            curl -s https://dfam.org/api/families/$a | jq -r '.name' | awk '{{print ">"$1}}'  >> {output}
-            curl -s https://dfam.org/api/families/$a | jq -r '.consensus_sequence' >> {output}
-        done
-        """
-
-
-rule get_line1_hmm:
-    output:
-        "resources/LINE1_3end/LINE1_3end.hmm",
+        hmm="resources/LINE1_3end/LINE1_3end.hmm",
+        fa="resources/LINE1_3end/LINE1_3end.fa",
     log:
         "resources/LINE1_3end/dfam_query.log",
     conda:
         "../envs/ref.yml"
     params:
         accessions=[
-            "DF0000225",
-            "DF0000339",
-            "DF0000340",
-            "DF0000341",
-            "DF0000342",
-            "DF0000343",
-            "DF0000344",
-            "DF0000345",
-            "DF0000347",
-            "DF0000327",
-            "DF0000329",
-            "DF0000331",
-            "DF0000333",
-            "DF0000335",
-            "DF0000336",
-            "DF0000337",
+            "DF000000225",
+            "DF000000339",
+            "DF000000340",
+            "DF000000341",
+            "DF000000342",
+            "DF000000343",
+            "DF000000344",
+            "DF000000345",
+            "DF000000347",
+            "DF000000327",
+            "DF000000329",
+            "DF000000331",
+            "DF000000333",
+            "DF000000335",
+            "DF000000336",
+            "DF000000337",
         ],
     shell:
         """
-        touch {log} && exec 1>{log} 2>&1
-        touch {output}
+        touch {output} {log}
         for a in {params.accessions}; do
-            curl -s https://dfam.org/api/families/$a/hmm?format=hmm >> {output}
+            curl -s https://dfam.org/api/families/$a/hmm?format=hmm >> {output.hmm} 2>> {log}
+            curl -s https://dfam.org/api/families/$a | jq -r '.name' | awk '{{print ">"$1}}' >> {output.fa} 2>> {log}
+            curl -s https://dfam.org/api/families/$a | jq -r '.consensus_sequence' >> {output.fa} 2>> {log}
         done
         """
 
@@ -58,13 +40,14 @@ rule get_line1_hmm:
 rule run_rmsk:
     input:
         fa=config["genome"]["fasta"],
-        lib=rules.get_line1_hmm.output,
+        lib=rules.get_line1_consensus.output.hmm,
     output:
-        multiext(
+        out=multiext(
             config["genome"]["fasta"],
             ".out",
             ".masked",
         ),
+        bed=config["genome"]["fasta"] + ".rmsk.bed",
     log:
         config["genome"]["fasta"] + ".rmsk.log",
     conda:
@@ -81,6 +64,7 @@ rule run_rmsk:
     shell:
         """
         RepeatMasker -pa {threads} -lib {input.lib} -no_is -e hmmer {params.speed} {input} > {log} 2>&1
+        rmsk2bed < {output.out[0]} | grep _3end > {output.bed}
         """
 
 
