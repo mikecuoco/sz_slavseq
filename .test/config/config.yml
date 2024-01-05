@@ -7,7 +7,8 @@ genome:
   bwa: resources/chr2122/BWA/chr2122.fasta
   rmsk: resources/chr2122/chr2122.fasta.out
   xtea: resources/chr2122/wgs_calls/xtea_LINE1.vcf
-  megane: resources/chr2122/wgs_calls/megane_MEIs.vcf
+  megane_percentile: resources/chr2122/wgs_calls/megane_MEIs.vcf
+  megane_gaussian: resources/chr2122/wgs_calls/megane_MEIs.vcf
   name: chr2122
 
 adapters:
@@ -21,17 +22,5 @@ adapters:
 bulk_peaks_params:
   size: 200
   step: 1
-  min_rpm: 0
-  min_reads: 0
-
-peaks_params:
-  size: 150
-  step: 1
-  min_rpm: 0
-  min_reads: 0
-
-windows_params:
-  size: 750
-  step: 250
-  min_rpm: 0
-  min_reads: 0
+  minreads: 3
+  minrpm: 1
