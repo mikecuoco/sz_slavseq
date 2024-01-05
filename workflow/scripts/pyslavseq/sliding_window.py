@@ -8,14 +8,20 @@ logger = logging.getLogger(__name__)  # configure logging
 from collections import deque
 from typing import Generator
 from pysam import AlignmentFile
-import numpy as np
 from math import ceil
-import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
-from .features import features, basic_stats, read_to_namedtuple
+import numpy as np
+from scipy.stats import poisson, false_discovery_control
+from .features import features, read_to_namedtuple
 
 CHROMOSOMES = [f"chr{c}" for c in range(1, 23)] + ["chrX", "chrY"]
+
+read_filter = (
+    lambda r: (not r.is_read2)
+    and r.is_mapped
+    and (not r.is_supplementary)
+    and (not r.is_secondary)
+    and (r.mapping_quality >= 10)
+)
 
 
 class SlidingWindow(object):
@@ -23,14 +29,12 @@ class SlidingWindow(object):
         self,
         bam: AlignmentFile,
         contigs: list | None = None,
-        read_filter: callable = lambda x: x.is_read1,
-        mode: str = "peaks",
-        collect_features: bool = False,
+        read_filter: callable = read_filter,
     ) -> None:
         # save inputs to attributes
         self.bam = bam
 
-        # validate contigs
+        # validate contigss
         if contigs:
             for c in contigs:
                 if c not in CHROMOSOMES:
@@ -43,57 +47,104 @@ class SlidingWindow(object):
                     self.contigs.append(bam.get_reference_name(i))
 
         self.read_filter = read_filter
-        self.mode = mode
-        self.collect_features = collect_features
 
-        # count reads in bam satisfying read filter
-        total_reads = bam.count(read_callback=self.read_filter)
-        self.size_factor = total_reads / 1e6
-        logger.info(f"{total_reads} filtered reads in the bam file")
+        # get library size
+        libsize_read_filter = (
+            lambda r: (not r.is_read2)
+            and r.is_mapped
+            and (not r.is_supplementary)
+            and (not r.is_secondary)
+            and (not r.is_duplicate)
+        )
+        library_size = bam.count(read_callback=libsize_read_filter)
+        self.size_factor = library_size / 1e6
+        logger.info(f"{library_size} filtered reads in the bam file")
 
     def windows(
         self,
-        reads,
         size: int = 200,
         step: int = 1,
-        min_reads: int = 0,
-        min_rpm: float = 0,
+        minreads: int = 0,
+        minrpm: float = 0,
     ) -> Generator:
         "Slide window across contig and yield each window"
+
+        self.wsize = size
+
+        # create generator of reads from contig from bam file
+        reads = filter(
+            self.read_filter, self.bam.fetch(self.contig, multiple_iterators=True)
+        )
+        reads = map(read_to_namedtuple, reads)
+
         try:
             r = next(reads)
-            contig = r.reference_name
-            reflen = self.bam.get_reference_length(r.reference_name)
         except StopIteration:
             return
 
-        rpm_reads = ceil(min_rpm * self.size_factor)
-        min_reads = max(min_reads, rpm_reads)
-        w = deque()
-        for start in range(0, reflen + 1, step):
-            end = start + size if start + size < reflen else reflen
+        rpm_reads = ceil(minrpm * self.size_factor)
+        minreads = max(minreads, rpm_reads)
+        logger.info(
+            f"Generating {size} bp windows on {self.contig} with minreads: {minreads}"
+        )
+        w = deque()  # initialize window for reads
+        n_dedup = 0  # initialize number of deduplicated reads
+        for start in range(0, self.reflen + 1, step):
+            end = start + size if start + size < self.reflen else self.reflen
 
             # while w is not empty and the first read is outside the window
-            while w and w[0].reference_start < start:
-                w.popleft()
+            while w and w[0].three_end < start:
+                r_out = w.popleft()
+                n_dedup -= not r_out.is_duplicate
 
             # while the next read is inside the window
-            while r.reference_start < end:
+            while r.three_end < end:
                 w.append(r)
+                n_dedup += not r.is_duplicate
                 try:
                     r = next(reads)
-                    assert r.reference_name == contig, "Reads are not sorted by contig"
                 except StopIteration:
-                    break
+                    return
 
-            # return window if it has min_rpm
-            if len(w) >= min_reads:
+            # return window if it has minreads
+            if n_dedup >= minreads:
                 yield {
-                    "Chromosome": contig,
                     "Start": start,
                     "End": end,
                     "reads": set(w),
                 }
+
+    def bgtest(self, windows: Generator, bg_windows: Generator):
+        """
+        Test if window signal is significantly enriched above local background
+        """
+
+        cov, bgcov = np.array([]), np.array([])
+        windows = list(windows)  # get values from generator into memory
+
+        half_bgsize = self.bgsize / 2
+        reflen_half_bgsize = self.reflen - (self.bgsize / 2)
+        for w in windows:
+            center = (w["Start"] + w["End"]) / 2
+            for bgw in bg_windows:
+                if center < half_bgsize:
+                    break
+                bg_center = (bgw["Start"] + bgw["End"]) / 2
+                if bg_center == center:
+                    break
+                if center > reflen_half_bgsize:
+                    continue
+
+            cov = np.append(cov, len(w["reads"]))
+            bgcov = np.append(bgcov, len(bgw["reads"]))
+
+        cov = cov / self.wsize
+        bgcov = bgcov / self.bgsize
+        p_values = 1 - poisson._cdf(cov, bgcov)
+        q_values = false_discovery_control(p_values)  # BH correction
+        for w, q in zip(windows, q_values):
+            if q < 0.05:
+                yield w
 
     def merge(self, windows: Generator, bandwidth: int = 0) -> Generator:
         """
@@ -119,100 +170,51 @@ class SlidingWindow(object):
             else:
                 # yield merged window
                 yield p
-                assert (
-                    p["Chromosome"] == n["Chromosome"]
-                ), "Windows are not sorted by contig"
                 # start new window
                 p = n
 
-    def make_regions(self, **kwargs) -> Generator:
+    def make_regions(
+        self,
+        mode: str = "peaks",
+        bgtest: bool = False,
+        bgsize: int = int(1e4),
+        collect_features: bool = False,
+        **kwargs,
+    ) -> Generator:
         """
         Make windows on the given contigs
+        :param mode: peaks or windows. Default = "peaks"
+        :param bgtest: whether to statistiacllyl test for enrichment of windows above local background. Default = False
+        :param bgsize: size of local background window to test against. Only applied if bgtest = True. Default = 10000
+        :param collect_features: whether to collect features for the regions. Default = False
         :param kwargs: arguments to pass to windows()
         """
+        if mode not in ["windows", "peaks"]:
+            raise Exception(f"Mode {mode} is not valid, must be 'peaks' or 'windows'")
 
         for c in self.contigs:
-            reads = filter(self.read_filter, self.bam.fetch(c))
-            reads = map(read_to_namedtuple, reads)
+            self.contig = c
+            self.reflen = self.bam.get_reference_length(c)
+            windows = self.windows(**kwargs)
+
+            if bgtest:
+                self.bgsize = bgsize
+                bgkwargs = kwargs.copy()
+                if "size" in bgkwargs:
+                    bgkwargs["size"] = self.bgsize
+                bg_windows = self.windows(**bgkwargs)
+                windows = self.bgtest(windows, bg_windows)
 
             # define window generator
-            if self.mode == "peaks":
-                windows = self.merge(self.windows(reads, **kwargs))
-            elif self.mode == "windows":
-                windows = self.windows(reads, **kwargs)
-            else:
-                raise Exception(
-                    f"Mode {self.mode} is not valid, must be 'peaks' or 'windows'"
-                )
+            if mode == "peaks":
+                windows = self.merge(windows)
 
             # yield windows
             for w in windows:
-                if self.collect_features:
+                w["Chromosome"] = c
+                if collect_features:
                     yield features(w)
                 else:
-                    yield basic_stats(w)
-
-    def write_regions(self, outfile: str, **kwargs) -> None:
-        """
-        Generate regions and write to disk
-        :param outfile: path to output file
-        :param kwargs: arguments to pass to make_regions(), to pass to windows()
-        """
-
-        # create generator of regions and get first region
-        gen_regions = self.make_regions(**kwargs)
-        r = next(gen_regions)  # get first region
-        regions = []  # initialize list of regions
-
-        schema = pa.Schema.from_pandas(pd.DataFrame([r]))
-        schema = schema.append(pa.field("rpm", pa.float64()))
-
-        # write regions to disk in batches by chromosome
-        with pq.ParquetWriter(outfile, schema, compression="gzip") as writer:
-            for c in self.contigs:
-                start = time.perf_counter()
-
-                # collect regions for this chromosome
-                while r["Chromosome"] == c:
-                    regions.append(r)
-                    try:
-                        r = next(gen_regions)
-                    except StopIteration:
-                        break
-
-                logger.info(
-                    f"Generated {len(regions)} {self.mode} on {c} in {time.perf_counter() - start:.2f} seconds"
-                )
-
-                # skip empty chromosomes
-                if len(regions) == 0:
-                    logger.info(f"Skipping {c} because it is empty")
-                    continue
-
-                # convert regions to dataframe and remove empty regions
-                regions = pd.DataFrame(regions).query("n_reads > 0")
-
-                # compute metrics on vector scale
-                regions["rpm"] = regions["n_reads"] / self.size_factor
-                if self.collect_features:
-                    regions["orientation_bias"] = (
-                        np.maximum(regions["n_fwd"], regions["n_rev"])
-                        / regions["n_reads"]
-                    )
-                    regions["frac_proper_pairs"] = (
-                        regions["n_proper_pairs"] / regions["n_reads"]
-                    )
-                    regions["frac_duplicates"] = regions["n_duplicates"] / (
-                        regions["n_reads"] + regions["n_duplicates"]
-                    )
-
-                # write to disk
-                logger.info(f"Writing {len(regions)} {self.mode} on {c} to disk")
-                try:
-                    writer.write_table(pa.Table.from_pandas(regions, schema=schema))
-                except:
-                    import pdb
-
-                    pdb.set_trace()
-                # reset regions list
-                regions = []
+                    w["n_reads"] = len(w["reads"])
+                    del w["reads"]
+                    yield w
