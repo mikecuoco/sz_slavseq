@@ -2,7 +2,7 @@
 # Created on: 10/26/22, 1:59 PM
 __author__ = "Michael Cuoco"
 
-import logging, os
+import logging, os, time
 
 logging.basicConfig(
     filename=snakemake.log[0],  # type: ignore
@@ -14,54 +14,58 @@ logger = logging.getLogger(__name__)
 
 from pysam import AlignmentFile
 from pyslavseq.sliding_window import SlidingWindow
+import pandas as pd
+import pyranges as pr
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 params = {}
-for p in snakemake.wildcards.params.split("/"):
+for p in snakemake.wildcards.params.split("/"):  # type: ignore
     name, value = p.split("~")
-    params[name] = int(value) if value.isdigit() else value
+    if value.replace(".", "").isdigit():
+        params[name] = int(float(value))
+    elif value in ["True", "False"]:
+        params[name] = True if value == "True" else False
+    else:
+        params[name] = value
 
 logger.info("Using parameters %s:", params)
 
-# define read filter
-if params["reads"] == "proper_pairs":
-    read_filter = (
-        lambda r: r.is_proper_pair
-        and r.is_mapped
-        and not r.is_supplementary
-        and not r.is_secondary
-        # and r.mapping_quality >= 10
+
+def write(regions: list, start):
+    logger.info(
+        f"Generated {len(regions)} {params['mode']} in {time.perf_counter() - start:.3f} seconds"
     )
-elif params["reads"] == "read1":
-    read_filter = (
-        lambda r: r.is_read1
-        and r.is_mapped
-        and not r.is_supplementary
-        and not r.is_secondary
-        # and r.mapping_quality >= 10
+    start = time.perf_counter()
+    writer.write_table(pa.Table.from_pylist(regions))
+    logger.info(
+        f"Wrote {len(regions)} {params['mode']} in {time.perf_counter() - start:.3f} seconds"
     )
-else:
-    raise Exception(f"Invalid read filter {params['reads']}")
+
 
 # generate the regions
-logger.info(f"Generating {params['region']} from {snakemake.input.bam}")  # type: ignore
+logger.info(f"Generating {params['mode']} from {snakemake.input.bam}")  # type: ignore
 with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
-    sw = SlidingWindow(
-        bam,
-        read_filter=read_filter,
-        mode=params["region"],  # type: ignore
-        collect_features=True if params["reads"] == "read1" else False,  # type: ignore
-    )
-    del params["region"]
-    del params["reads"]
-    try:
-        sw.write_regions(
-            outfile=snakemake.output[0],  # type: ignore
-            min_reads=3,
-            **params,
-        )
-        logger.info("Done")
-    except:
-        # import pdb; pdb.set_trace()
-        # delete output file if error/interrupt
-        os.remove(snakemake.output[0])  # type: ignore
-        logger.error(f"Detected Error/Interuption, deleted {snakemake.output[0]}")  # type: ignore
+    sw = SlidingWindow(bam)
+
+    # get regions
+    gen_regions = sw.make_regions(collect_features=True, **params)
+    regions = [next(gen_regions)]
+    schema = pa.Table.from_pylist(regions).schema
+    with pq.ParquetWriter(snakemake.output.pqt, schema, write_batch_size=1e6) as writer:
+        start = time.perf_counter()
+        for r in gen_regions:
+            if len(regions) == 1e6:
+                write(regions, start)
+                start = time.perf_counter()
+                regions = []
+            regions.append(r)
+
+        if len(regions) > 0:
+            write(regions, start)
+
+data = pd.read_parquet(snakemake.output.pqt)
+data["width"] = data["End"] - data["Start"]
+pr.PyRanges(data[["Chromosome", "Start", "End", "n_reads", "width"]]).to_bed(
+    snakemake.output.bed
+)
