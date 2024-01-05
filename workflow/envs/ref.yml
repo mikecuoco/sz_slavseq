@@ -12,3 +12,4 @@ dependencies:
   - bcftools>=1.15
   - bedtools>=2.30
   - jq
+  - bedops
