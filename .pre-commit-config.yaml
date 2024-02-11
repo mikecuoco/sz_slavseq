@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: check-yaml
       - id: check-json
@@ -10,7 +10,7 @@ repos:
       - id: check-executables-have-shebangs
       - id: detect-private-key
   - repo: https://github.com/snakemake/snakefmt
-    rev: v0.8.1
+    rev: v0.10.0
     hooks:
       - id: snakefmt
   - repo: https://github.com/psf/black
