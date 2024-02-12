@@ -26,8 +26,9 @@ CHROMOSOMES = [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"]
 ## CREATE MOTIF
 # Engineered L1 Insertion Coordinates, Characteristics, and Sequences from Flasch et al. 2019 PMID: 30955886
 logger.info("Loading L1 EN cleavage sites from Flasch et al. 2019")
-FLASCH_2019_SUPP1 = "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6558663/bin/NIHMS1523125-supplement-8.xls"
-flasch = pd.read_excel(FLASCH_2019_SUPP1)
+flasch = pd.read_excel(
+    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6558663/bin/NIHMS1523125-supplement-8.xls"
+)
 instances = [Seq(site.replace("/", "")) for site in flasch["L1 EN Cleavage"].values]
 m = motifs.create(instances)
 

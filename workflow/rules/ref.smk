@@ -64,7 +64,7 @@ rule run_rmsk:
     shell:
         """
         RepeatMasker -pa {threads} -lib {input.lib} -no_is -e hmmer {params.speed} {input} > {log} 2>&1
-        rmsk2bed < {output.out[0]} | grep _3end > {output.bed}
+        rmsk2bed < {output.out[0]} | grep _3end | cut -f 1-15 > {output.bed}
         """
 
 

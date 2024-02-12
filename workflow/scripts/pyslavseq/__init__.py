@@ -15,3 +15,12 @@ formatter = logging.Formatter(log_format, datefmt="%m-%d %H:%M:%S")
 
 # Set the logging level
 logger.setLevel(logging.INFO)
+
+# # Create a StreamHandler
+# handler = logging.FileHandler()
+
+# # Set the formatter for the handler
+# handler.setFormatter(formatter)
+
+# # Add the handler to the logger
+# logger.addHandler(handler)

@@ -61,6 +61,10 @@ df_pcr = pr.PyRanges(df[df["Name"] == "L1_PCR_primer"])
 df = df_pcr.overlap(df_capture.extend({"3": 1200})).extend({"3": 750}).df
 df["Name"] = "Predicted_SLAVseq_fragment"
 
+# remove alt and decoy chroms
+CHROMS = [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"]
+df = df[df["Chromosome"].isin(CHROMS)]
+
 # save as bed
 logging.info(f"Saving blast results to {snakemake.output.bed}")  # type: ignore
 pr.PyRanges(df).to_bed(snakemake.output.bed)  # type: ignore

@@ -107,11 +107,14 @@ def gini(array):
 TAGS = [
     "alignment_score",
     "L1_alignment_score",
+    "mate_alignment_score",
+    "alignment_score_normed",
+    "L1_alignment_score_normed",
+    "mate_alignment_score_normed",
     "L1_mapping_quality",
     "L1_reference_start",
     "L1_reference_end",
     "L1_Acount",
-    "mate_alignment_score",
     "num_supp_alignments",
 ]
 
@@ -162,15 +165,12 @@ def features(p: dict) -> dict:
         if r.is_read2:
             raise Exception("Reads must not be read2")
 
-        if i == 0:
-            start = r.reference_start
-
         if r.is_duplicate:
             f["n_duplicates"] += 1
             continue
 
-        l["3end"].append(r.three_end - start)
-        l["5end"].append(r.five_end - start)
+        l["3end"].append(r.three_end)
+        l["5end"].append(r.five_end)
         l["mapq"].append(r.mapping_quality)
         f["n_proper_pairs"] += r.is_proper_pair
         f["n_ref_reads"] += r.is_ref_read
@@ -182,7 +182,28 @@ def features(p: dict) -> dict:
             f["n_fwd"] += 1
 
         for tag in TAGS:
-            if getattr(r, tag):
+            if "_normed" in tag:
+                if getattr(r, tag.replace("_normed", "")):
+                    if tag in [
+                        "L1_alignment_score_normed",
+                        "mate_alignment_score_normed",
+                    ]:  # adjust alignments scores for read length
+                        if not r.is_read1:
+                            l[tag].append(
+                                getattr(r, tag.replace("_normed", ""))
+                                / getattr(r, "read_length")
+                            )
+                        else:
+                            l[tag].append(
+                                getattr(r, tag.replace("_normed", ""))
+                                / getattr(r, "mate_read_length")
+                            )
+                    elif tag in ["alignment_score_normed"]:
+                        l[tag].append(
+                            getattr(r, tag.replace("_normed", ""))
+                            / getattr(r, "read_length")
+                        )
+            elif getattr(r, tag):
                 l[tag].append(getattr(r, tag))
 
     # compute mean and quantiles for these features
@@ -193,14 +214,16 @@ def features(p: dict) -> dict:
                 f[tag + "_q" + str(n)] = float(q)
             f[tag + "_mean"] = np.mean(l[tag])
 
+    f["n_reads"] = f["n_fwd"] + f["n_rev"]
+
     # if reads are empty, return empty features
     if f["n_reads"] == 0:
         return f
 
-    f["n_reads"] = f["n_fwd"] + f["n_rev"]
     f["3end_gini"] = gini(np.array(l["3end"], dtype=np.float64))
     f["5end_gini"] = gini(np.array(l["5end"], dtype=np.float64))
     f["max_mapq"] = max(l["mapq"])
+    f["min_mapq"] = min(l["mapq"])
     f["n_unique_5end"] = len(set(l["5end"]))
     f["n_unique_3end"] = len(set(l["3end"]))
 

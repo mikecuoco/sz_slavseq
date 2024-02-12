@@ -32,21 +32,52 @@ donors = donors.set_index("donor_id", drop=False)
 
 # setup parameters for regions
 regions_params = []
-for wsize in [100, 200, 300]:
-    for bgtest in [True, False]:
-        for bgsize in [10000, 20000]:
-            regions_params.append(
-                {
-                    "mode": "peaks",
-                    "step": 1,
-                    "minreads": 3,
-                    "size": wsize,
-                    "bgtest": bgtest,
-                }
-            )
-            if bgtest:
-                regions_params[-1]["bgsize"] = int(bgsize)
+# for size in [200]:
+#     for bgtest in [False]:
+#         for bgsize in [500, 1000, 5000, 10000]:
+#             regions_params.append(
+#                 {
+#                     "mode": "peaks",
+#                     "size": size,
+#                     "step": 1,
+#                     "minreads": 5,
+#                     "bgtest": bgtest,
+#                 }
+#             )
+#             if bgtest:
+#                 regions_params[-1]["bgsize"] = bgsize
 
+
+regions_params.append(
+    {
+        "mode": "peaks",
+        "size": 200,
+        "step": 1,
+        "minreads": 10,
+        "bgtest": False,
+        "bgsize": "NA",
+    }
+)
+regions_params.append(
+    {
+        "mode": "peaks",
+        "size": 200,
+        "step": 1,
+        "minreads": 5,
+        "bgtest": False,
+        "bgsize": "NA",
+    }
+)
+# regions_params.append(
+#     {
+#         "mode": "windows",
+#         "size": 300,
+#         "step": 100,
+#         "minreads": 5,
+#         "bgtest": False,
+#         "bgsize": "NA",
+#     }
+# )
 regions_params = Paramspace(pd.DataFrame(regions_params))
 
 
@@ -71,16 +102,5 @@ rule all:
             rules.tune.output,
             genome=config["genome"]["name"],
             params=regions_params.instance_patterns,
-            outdir=config["outdir"],
-        ),
-        expand(
-            expand(
-                rules.flagstat.output,
-                zip,
-                donor=samples["donor_id"],
-                sample=samples["sample_id"],
-                allow_missing=True,
-            ),
-            genome=config["genome"]["name"],
             outdir=config["outdir"],
         ),

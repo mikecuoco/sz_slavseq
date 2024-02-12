@@ -1,36 +1,3 @@
-def get_bulk_sample(wildcards):
-    donor_samples = samples.loc[samples["donor_id"] == wildcards.donor]
-    bulk = donor_samples[donor_samples["sample_id"].str.contains("gDNA")]["sample_id"]
-    return {
-        "bam": expand(
-            rules.sambamba_sort.output[0],
-            sample=bulk,
-            allow_missing=True,
-        ),
-        "bai": expand(
-            rules.sambamba_index.output[0],
-            sample=bulk,
-            allow_missing=True,
-        ),
-    }
-
-
-rule call_bulk_peaks:
-    input:
-        unpack(get_bulk_sample),
-    output:
-        pqt="{outdir}/results/{genome}/bulk_peaks/{donor}.pqt",
-        bed="{outdir}/results/{genome}/bulk_peaks/{donor}.bed",
-    log:
-        "{outdir}/results/{genome}/bulk_peaks/{donor}.log",
-    conda:
-        "../envs/model.yml"
-    params:
-        **config["bulk_peaks_params"],
-    script:
-        "../scripts/call_bulk_peaks.py"
-
-
 rule make_regions:
     input:
         bam=rules.sambamba_sort.output[0],
@@ -46,45 +13,147 @@ rule make_regions:
         "../scripts/make_regions.py"
 
 
-rule local_background:
+rule coverage:
     input:
-        pqt=rules.make_regions.output[0],
-        bam=rules.sambamba_sort.output[0],
-        bai=rules.sambamba_index.output[0],
+        bam=rules.rmdup.output.bam,
+        bai=rules.rmdup.output.idx,
+        fai=config["genome"]["fai"],
+        primer_sites=rules.blast_primers.output.bed,
+        xtea_vcf=config["genome"]["xtea"],
+        megane_percentile_vcf=config["genome"]["megane_percentile"],
+        megane_gaussian_vcf=config["genome"]["megane_gaussian"],
+        rmsk=rules.run_rmsk.output.bed,
+        meta=config["donors"],
     output:
-        rules.make_regions.output.pqt.replace(".pqt", "_bg.pqt"),
+        xtea="{outdir}/results/{genome}/coverage/{donor}/{sample}.xtea.bed",
+        megane_gaussian="{outdir}/results/{genome}/coverage/{donor}/{sample}.megane_gaussian.bed",
+        megane_percentile="{outdir}/results/{genome}/coverage/{donor}/{sample}.megane_percentile.bed",
+        rmsk="{outdir}/results/{genome}/coverage/{donor}/{sample}.rmsk.bed",
+        primer_sites="{outdir}/results/{genome}/coverage/{donor}/{sample}.primer_sites.bed",
     log:
-        rules.make_regions.log[0].replace(".log", "_bg.log"),
+        "{outdir}/results/{genome}/coverage/{donor}/{sample}.log",
+    conda:
+        "../envs/ref.yml"
+    shell:
+        """
+        # send all stdout and stderr to log file
+        exec &> {log}
+
+        # setup temp file
+        tmp_bed=$(mktemp --suffix .bed)
+        trap "rm -f $tmp_bed" EXIT
+
+        # grep for wildcards.donor in first column, return 5th column
+        LIBDID=$(grep ^{wildcards.donor} {input.meta} | cut -f 5)
+        echo "LIBDID: $LIBDID"
+
+        echo "Running bedtools coverage for primer sites"
+        bedtools coverage -a {input.primer_sites} -b {input.bam} > {output.primer_sites}
+
+        echo "Running bedtools coverage for xtea"
+        bcftools view -s $LIBDID.md {input.xtea_vcf} | \
+            bcftools view -i "AC>0" | \
+            vcf2bed > $tmp_bed
+        bedtools coverage -a $tmp_bed -b {input.bam} > {output.xtea}
+
+        echo "Running bedtools coverage for megane gaussian"
+        bcftools view -s $LIBDID -i 'INFO/SVTYPE="LINE/L1"' {input.megane_gaussian_vcf} | \
+            bcftools view -i "AC>0" | \
+            vcf2bed | \
+            bedtools slop -b 200 -g {input.fai} > $tmp_bed
+        bedtools coverage -a $tmp_bed -b {input.bam} > {output.megane_gaussian}
+
+        echo "Running bedtools coverage for megane percentile"
+        bcftools view -s $LIBDID -i 'INFO/SVTYPE="LINE/L1"' {input.megane_percentile_vcf} | \
+            bcftools view -i "AC>0" | \
+            vcf2bed | \
+            bedtools slop -b 200 -g {input.fai} > $tmp_bed
+        bedtools coverage -a $tmp_bed -b {input.bam} > {output.megane_percentile}
+
+        echo "Running bedtools coverage for rmsk"
+        bedtools slop -l 0 -r 200 -s -g {input.fai} -i {input.rmsk} > $tmp_bed
+        bedtools coverage -a $tmp_bed -b {input.bam} > {output.rmsk}
+        """
+
+
+rule macs3:
+    input:
+        bam=rules.rmdup.output.bam,
+        bai=rules.rmdup.output.idx,
+        dup_bam=rules.sambamba_sort.output[0],
+        dup_bai=rules.sambamba_index.output[0],
+    output:
+        xls="{outdir}/results/{genome}/macs3/{donor}/{sample}_peaks.xls",
+        narrowPeak="{outdir}/results/{genome}/macs3/{donor}/{sample}_peaks.narrowPeak",
+        summits="{outdir}/results/{genome}/macs3/{donor}/{sample}_summits.bed",
+        cutoff_analysis="{outdir}/results/{genome}/macs3/{donor}/{sample}_cutoff_analysis.txt",
+    log:
+        "{outdir}/results/{genome}/macs3/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
-    script:
-        "../scripts/local_background.py"
+    shell:
+        """
+        macs3 predictd -i {input.dup_bam} -g hs -f BAMPE 2> {log}
+        insert_size=$(grep "Average insertion length" {log} | cut -d " " -f 18)
+        macs3 callpeak \
+            -t {input.bam} -f BAM -g hs \
+            --nomodel \
+            --extsize $insert_size \
+            --shift 0 \
+            --llocal 1000 --slocal 1000 \
+            -p 0.05 \
+            --outdir $(dirname {output[0]}) \
+            -n {wildcards.sample} \
+            --cutoff-analysis \
+            --keep-dup all 2>> {log}
+        """
 
 
 with open("resources/bad_cells.txt", "r") as f:
     bad_cells = [line.strip() for line in f.readlines()]
 
 
-def get_donor_regions(wildcards):
-    donor_cells = samples.loc[
+def get_donor_cells(wildcards):
+    cells = samples.loc[
         (samples["donor_id"] == wildcards.donor)
         & (~samples["sample_id"].str.contains("gDNA"))
     ]["sample_id"].values
-    cells = [c for c in donor_cells if c not in bad_cells]
+    cells = [c for c in cells if c not in bad_cells]
 
     return expand(
         rules.make_regions.output.pqt,
-        # rules.local_background.output,
+        # rules.macs3.output.narrowPeak,
         sample=cells,
         allow_missing=True,
     )
 
 
-rule join_donor_regions:
+def get_donor_bulk(wildcards):
+    bulk = samples.loc[
+        (samples["donor_id"] == wildcards.donor)
+        & (samples["sample_id"].str.contains("gDNA"))
+    ]["sample_id"].values
+    bulk = [c for c in bulk if c not in bad_cells]
+    return expand(
+        rules.make_regions.output.pqt,
+        # rules.coverage.output.xtea,
+        # rules.macs3.output.narrowPeak,
+        sample=bulk,
+        allow_missing=True,
+    )
+
+
+rule label:
     input:
-        cells=get_donor_regions,
+        cells=get_donor_cells,
+        bulk=get_donor_bulk,
         en_motif_pos=rules.en_motif.output.pos,
         en_motif_neg=rules.en_motif.output.neg,
+        primer_sites=rules.blast_primers.output.bed,
+        xtea_vcf=config["genome"]["xtea"],
+        megane_percentile_vcf=config["genome"]["megane_percentile"],
+        megane_gaussian_vcf=config["genome"]["megane_gaussian"],
+        rmsk=rules.run_rmsk.output.bed,
     output:
         "{outdir}/results/{genome}/{params}/{donor}.pqt",
     log:
@@ -92,37 +161,7 @@ rule join_donor_regions:
     conda:
         "../envs/features.yml"
     script:
-        "../scripts/join_donor_regions.py"
-
-
-def get_label_input(wildcards):
-    if wildcards.donor != "CommonBrain":
-        return {
-            "regions": rules.join_donor_regions.output,
-            "bulk_peaks": rules.call_bulk_peaks.output.bed,
-        }
-    else:
-        return {
-            "regions": rules.join_donor_regions.output,
-        }
-
-
-rule label_donor_regions:
-    input:
-        unpack(get_label_input),
-        primer_sites=rules.blast_primers.output.bed,
-        xtea_vcf=config["genome"]["xtea"],
-        megane_percentile_vcf=config["genome"]["megane_percentile"],
-        megane_gaussian_vcf=config["genome"]["megane_gaussian"],
-        rmsk=rules.run_rmsk.output.bed,
-    output:
-        rules.join_donor_regions.output[0].replace(".pqt", "_labelled.pqt"),
-    log:
-        rules.join_donor_regions.log[0].replace(".log", "_labelled.log"),
-    conda:
-        "../envs/features.yml"
-    script:
-        "../scripts/label_donor_regions.py"
+        "../scripts/label.py"
 
 
 # TODO: add rule to generate report on regions
@@ -135,7 +174,7 @@ rule label_donor_regions:
 rule tune:
     input:
         expand(
-            rules.label_donor_regions.output,
+            rules.label.output,
             donor=donors["donor_id"].unique(),
             allow_missing=True,
         ),

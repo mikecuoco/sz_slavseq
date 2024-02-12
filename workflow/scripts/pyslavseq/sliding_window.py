@@ -13,14 +13,13 @@ import numpy as np
 from scipy.stats import poisson, false_discovery_control
 from .features import features, read_to_namedtuple
 
-CHROMOSOMES = [f"chr{c}" for c in range(1, 23)] + ["chrX", "chrY"]
+CHROMOSOMES = [f"chr{c}" for c in range(1, 23)]
 
 read_filter = (
     lambda r: (not r.is_read2)
     and r.is_mapped
     and (not r.is_supplementary)
     and (not r.is_secondary)
-    and (r.mapping_quality >= 10)
 )
 
 
@@ -34,7 +33,7 @@ class SlidingWindow(object):
         # save inputs to attributes
         self.bam = bam
 
-        # validate contigss
+        # validate contigs
         if contigs:
             for c in contigs:
                 if c not in CHROMOSOMES:
@@ -82,8 +81,8 @@ class SlidingWindow(object):
         except StopIteration:
             return
 
-        rpm_reads = ceil(minrpm * self.size_factor)
-        minreads = max(minreads, rpm_reads)
+        rpmreads = ceil(minrpm * self.size_factor)
+        minreads = max(minreads, rpmreads)
         logger.info(
             f"Generating {size} bp windows on {self.contig} with minreads: {minreads}"
         )
@@ -104,7 +103,14 @@ class SlidingWindow(object):
                 try:
                     r = next(reads)
                 except StopIteration:
-                    return
+                    if n_dedup >= minreads:
+                        return {
+                            "Start": start,
+                            "End": end,
+                            "reads": set(w),
+                        }
+                    else:
+                        return
 
             # return window if it has minreads
             if n_dedup >= minreads:
@@ -114,16 +120,20 @@ class SlidingWindow(object):
                     "reads": set(w),
                 }
 
-    def bgtest(self, windows: Generator, bg_windows: Generator):
+    def bgtest(self, windows: Generator, bg_windows: Generator) -> Generator:
         """
         Test if window signal is significantly enriched above local background
         """
 
+        # TODO: do fold enrichment test rather than p-value test
         cov, bgcov = np.array([]), np.array([])
         windows = list(windows)  # get values from generator into memory
 
         half_bgsize = self.bgsize / 2
         reflen_half_bgsize = self.reflen - (self.bgsize / 2)
+        logger.info(
+            f"Testing windows agaist {self.bgsize} local background on {self.contig}"
+        )
         for w in windows:
             center = (w["Start"] + w["End"]) / 2
             for bgw in bg_windows:
@@ -141,9 +151,14 @@ class SlidingWindow(object):
         cov = cov / self.wsize
         bgcov = bgcov / self.bgsize
         p_values = 1 - poisson._cdf(cov, bgcov)
-        q_values = false_discovery_control(p_values)  # BH correction
-        for w, q in zip(windows, q_values):
-            if q < 0.05:
+        if self.bgqval:
+            cutoff = self.bgqval
+            p_values = false_discovery_control(p_values)  # BH correction
+        else:
+            cutoff = self.bgpval
+
+        for w, p in zip(windows, p_values):
+            if p < cutoff:
                 yield w
 
     def merge(self, windows: Generator, bandwidth: int = 0) -> Generator:
@@ -161,6 +176,7 @@ class SlidingWindow(object):
         except StopIteration:  # skip if no windows left
             return
 
+        logger.info(f"Merging overlapping windows on {self.contig}")
         for n in windows:
             # if the next window is within the bandwidth, merge
             if n["Start"] <= (p["End"] + bandwidth):
@@ -169,6 +185,14 @@ class SlidingWindow(object):
             # otherwise, yield the previous window and start a new one
             else:
                 # yield merged window
+                # refine start and end first
+                start, end = p["End"], p["Start"]
+                for r in p["reads"]:
+                    if r.three_end < start:
+                        start = r.three_end
+                    if r.three_end > end:
+                        end = r.three_end
+                p["Start"], p["End"] = start, end
                 yield p
                 # start new window
                 p = n
@@ -176,8 +200,11 @@ class SlidingWindow(object):
     def make_regions(
         self,
         mode: str = "peaks",
-        bgtest: bool = False,
+        size: int = 200,
         bgsize: int = int(1e4),
+        bgtest: bool = False,
+        bgpval: float | None = 0.05,
+        bgqval: float | None = None,
         collect_features: bool = False,
         **kwargs,
     ) -> Generator:
@@ -195,25 +222,29 @@ class SlidingWindow(object):
         for c in self.contigs:
             self.contig = c
             self.reflen = self.bam.get_reference_length(c)
-            windows = self.windows(**kwargs)
+            windows = self.windows(size, **kwargs)
 
             if bgtest:
                 self.bgsize = bgsize
+                self.bgpval = bgpval
+                self.bgqval = bgqval
+                if bgpval and bgqval:
+                    raise Exception("bgpval and bgqval cannot both be specified")
                 bgkwargs = kwargs.copy()
-                if "size" in bgkwargs:
-                    bgkwargs["size"] = self.bgsize
-                bg_windows = self.windows(**bgkwargs)
+                bg_windows = self.windows(size=bgsize, **bgkwargs)
                 windows = self.bgtest(windows, bg_windows)
 
             # define window generator
             if mode == "peaks":
-                windows = self.merge(windows)
+                windows = self.merge(windows, bandwidth=int(size / 2) * -1)
 
             # yield windows
             for w in windows:
                 w["Chromosome"] = c
                 if collect_features:
-                    yield features(w)
+                    w = features(w)
+                    w["size_factor"] = self.size_factor
+                    yield w
                 else:
                     w["n_reads"] = len(w["reads"])
                     del w["reads"]

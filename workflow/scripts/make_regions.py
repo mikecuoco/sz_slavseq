@@ -12,18 +12,23 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-from pysam import AlignmentFile
-from pyslavseq.sliding_window import SlidingWindow
+import subprocess
+import pysam
+import numpy as np
 import pandas as pd
 import pyranges as pr
 import pyarrow as pa
 import pyarrow.parquet as pq
+from pyslavseq.sliding_window import SlidingWindow
 
 params = {}
 for p in snakemake.wildcards.params.split("/"):  # type: ignore
     name, value = p.split("~")
     if value.replace(".", "").isdigit():
-        params[name] = int(float(value))
+        if "val" in name:
+            params[name] = float(value)
+        else:
+            params[name] = int(float(value))
     elif value in ["True", "False"]:
         params[name] = True if value == "True" else False
     else:
@@ -43,9 +48,25 @@ def write(regions: list, start):
     )
 
 
+# read_filter = (
+#     lambda r: (not r.is_duplicate)
+#     and r.is_read1
+#     and r.is_proper_pair
+# )
+
+# with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
+#     reads = filter(read_filter, bam.fetch())
+#     tlens = [abs(r.template_length) for r in reads]
+
+# logger.info(f"Max template length: {max(tlens)}")
+# logger.info(f"Mean template length: {np.mean(tlens)}")
+# logger.info(f"Median template length: {np.median(tlens)}")
+# logger.info(f"Min template length: {min(tlens)}")
+# size = int(np.mean(tlens) / 2)
+
 # generate the regions
 logger.info(f"Generating {params['mode']} from {snakemake.input.bam}")  # type: ignore
-with AlignmentFile(snakemake.input["bam"], "rb") as bam:  # type: ignore
+with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
     sw = SlidingWindow(bam)
 
     # get regions

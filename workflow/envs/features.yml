@@ -16,4 +16,4 @@ dependencies:
   - pyBigWig
   - xlrd>=1.0.0
   - pip:
-    - git+https://github.com/mikecuoco/myutils.git
+    - macs3
