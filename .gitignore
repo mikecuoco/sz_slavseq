@@ -5,6 +5,8 @@ workflow/envs/src/**
 .snakemake
 .snakemake/**
 .snakemake-cache/**
+.conda
+.conda/**
 .vscode/
 !resources/bad_cells.txt
 !resources/eul1db_SRIP.txt
