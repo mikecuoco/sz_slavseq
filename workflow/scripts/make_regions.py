@@ -16,7 +16,6 @@ import subprocess
 import pysam
 import numpy as np
 import pandas as pd
-import pyranges as pr
 import pyarrow as pa
 import pyarrow.parquet as pq
 from pyslavseq.sliding_window import SlidingWindow
@@ -67,10 +66,7 @@ def write(regions: list, start):
 # generate the regions
 logger.info(f"Generating {params['mode']} from {snakemake.input.bam}")  # type: ignore
 with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
-    sw = SlidingWindow(bam)
-
-    # get regions
-    gen_regions = sw.make_regions(collect_features=True, **params)
+    gen_regions = SlidingWindow(bam).make_regions(collect_features=True, **params)
     regions = [next(gen_regions)]
     schema = pa.Table.from_pylist(regions).schema
     with pq.ParquetWriter(snakemake.output.pqt, schema, write_batch_size=1e6) as writer:
@@ -84,9 +80,3 @@ with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
 
         if len(regions) > 0:
             write(regions, start)
-
-data = pd.read_parquet(snakemake.output.pqt)
-data["width"] = data["End"] - data["Start"]
-pr.PyRanges(data[["Chromosome", "Start", "End", "n_reads", "width"]]).to_bed(
-    snakemake.output.bed
-)

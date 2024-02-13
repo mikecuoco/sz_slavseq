@@ -4,7 +4,6 @@ rule make_regions:
         bai=rules.sambamba_index.output[0],
     output:
         pqt="{outdir}/results/{genome}/{params}/{donor}/{sample}.pqt",
-        bed="{outdir}/results/{genome}/{params}/{donor}/{sample}.bed",
     log:
         "{outdir}/results/{genome}/{params}/{donor}/{sample}.log",
     conda:
@@ -126,6 +125,21 @@ def get_donor_cells(wildcards):
         sample=cells,
         allow_missing=True,
     )
+
+
+rule profile_regions:
+    input:
+        bam=rules.sambamba_sort.output[0],
+        bai=rules.sambamba_index.output[0],
+    output:
+        pqt="{outdir}/results/{genome}/profile_regions/{donor}/{sample}.pqt",
+        stats="{outdir}/results/{genome}/profile_regions/{donor}/{sample}_stats.tsv",
+    log:
+        "{outdir}/results/{genome}/profile_regions/{donor}/{sample}.log",
+    conda:
+        "../envs/features.yml"
+    script:
+        "../scripts/profile_regions.py"
 
 
 def get_donor_bulk(wildcards):
