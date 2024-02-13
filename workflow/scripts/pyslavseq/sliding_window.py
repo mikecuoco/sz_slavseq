@@ -6,14 +6,14 @@ import logging, time
 
 logger = logging.getLogger(__name__)  # configure logging
 from collections import deque
+from itertools import chain, tee, takewhile
 from typing import Generator
 from pysam import AlignmentFile
 from math import ceil
 import numpy as np
-from scipy.stats import poisson, false_discovery_control
 from .features import features, read_to_namedtuple
 
-CHROMOSOMES = [f"chr{c}" for c in range(1, 23)]
+CHROMOSOMES = [f"chr{c}" for c in range(1, 23)] + ["chrX", "chrY"]
 
 read_filter = (
     lambda r: (not r.is_read2)
@@ -21,6 +21,45 @@ read_filter = (
     and (not r.is_supplementary)
     and (not r.is_secondary)
 )
+
+
+def cache_first_item(generator: Generator) -> (object, Generator):
+    try:
+        # Get the first item and cache it
+        first_item = next(generator)
+    except StopIteration:
+        # Handle empty generator
+        return None, generator
+
+    # Return a new generator that yields the first item, then the rest
+    return first_item, chain([first_item], generator)
+
+
+def before_and_after(predicate, it):
+    """Variant of takewhile() that allows complete
+    access to the remainder of the iterator.
+
+    >>> it = iter('ABCdEfGhI')
+    >>> all_upper, remainder = before_and_after(str.isupper, it)
+    >>> ''.join(all_upper)
+    'ABC'
+    >>> ''.join(remainder)     # takewhile() would lose the 'd'
+    'dEfGhI'
+
+    Note that the true iterator must be fully consumed
+    before the remainder iterator can generate valid results.
+    """
+    transition = []
+
+    def true_iterator():
+        for elem in it:
+            if predicate(elem):
+                yield elem
+            else:
+                transition.append(elem)
+                return
+
+    return true_iterator(), chain(transition, it)
 
 
 class SlidingWindow(object):
@@ -59,22 +98,20 @@ class SlidingWindow(object):
         self.size_factor = library_size / 1e6
         logger.info(f"{library_size} filtered reads in the bam file")
 
+        # get all reads from bam
+        self.reads = self.bam.fetch()
+        self.reads = filter(self.read_filter, self.reads)
+        self.reads = map(read_to_namedtuple, self.reads)
+
     def windows(
         self,
+        reads: Generator,
         size: int = 200,
         step: int = 1,
         minreads: int = 0,
         minrpm: float = 0,
     ) -> Generator:
         "Slide window across contig and yield each window"
-
-        self.wsize = size
-
-        # create generator of reads from contig from bam file
-        reads = filter(
-            self.read_filter, self.bam.fetch(self.contig, multiple_iterators=True)
-        )
-        reads = map(read_to_namedtuple, reads)
 
         try:
             r = next(reads)
@@ -83,13 +120,13 @@ class SlidingWindow(object):
 
         rpmreads = ceil(minrpm * self.size_factor)
         minreads = max(minreads, rpmreads)
-        logger.info(
-            f"Generating {size} bp windows on {self.contig} with minreads: {minreads}"
-        )
         w = deque()  # initialize window for reads
         n_dedup = 0  # initialize number of deduplicated reads
-        for start in range(0, self.reflen + 1, step):
-            end = start + size if start + size < self.reflen else self.reflen
+        count = 0  # initialize count of windows
+        reflen = self.reflen  # store reference length
+        for start in range(0, reflen + 1, step):
+            end = start + size
+            end = end if end < reflen else reflen
 
             # while w is not empty and the first read is outside the window
             while w and w[0].three_end < start:
@@ -104,64 +141,72 @@ class SlidingWindow(object):
                     r = next(reads)
                 except StopIteration:
                     if n_dedup >= minreads:
-                        return {
+                        count += 1
+                        yield {
                             "Start": start,
                             "End": end,
                             "reads": set(w),
                         }
-                    else:
-                        return
+                    logger.info(f"Generated {count} {size} bp windows on {self.contig}")
+                    return
 
             # return window if it has minreads
             if n_dedup >= minreads:
+                count += 1
                 yield {
                     "Start": start,
                     "End": end,
                     "reads": set(w),
                 }
 
-    def bgtest(self, windows: Generator, bg_windows: Generator) -> Generator:
+    def testbg(
+        self, windows: Generator, bg_windows: Generator, mfold: int = 5
+    ) -> Generator:
         """
-        Test if window signal is significantly enriched above local background
+        Test if window signal is enriched above local background
+        :param windows: generator of windows
+        :param bg_windows: generator of background windows
+        :param mfold: minimum fold change to consider window enriched above local background, default = 5
         """
 
-        # TODO: do fold enrichment test rather than p-value test
-        cov, bgcov = np.array([]), np.array([])
-        windows = list(windows)  # get values from generator into memory
+        windows = filter(lambda x: len(x["reads"]) > 0, windows)
+        w = next(windows)
+        wsize = w["End"] - w["Start"]
+        windows = chain([w], windows)
 
-        half_bgsize = self.bgsize / 2
-        reflen_half_bgsize = self.reflen - (self.bgsize / 2)
-        logger.info(
-            f"Testing windows agaist {self.bgsize} local background on {self.contig}"
-        )
+        bgw = next(bg_windows)
+        bgsize = bgw["End"] - bgw["Start"]
+        bg_windows = chain([bgw], bg_windows)
+
+        half_bgsize = bgsize / 2
+        reflen_half_bgsize = self.reflen - (bgsize / 2)
+        count = 0
         for w in windows:
             center = (w["Start"] + w["End"]) / 2
+            # find the background window that contains the center of the window
             for bgw in bg_windows:
+                # if the center of the window is at the beginning of the chromosome
                 if center < half_bgsize:
                     break
                 bg_center = (bgw["Start"] + bgw["End"]) / 2
                 if bg_center == center:
                     break
+                # if the center of the window is at the end of the chromosome
                 if center > reflen_half_bgsize:
                     continue
 
-            cov = np.append(cov, len(w["reads"]))
-            bgcov = np.append(bgcov, len(bgw["reads"]))
-
-        cov = cov / self.wsize
-        bgcov = bgcov / self.bgsize
-        p_values = 1 - poisson._cdf(cov, bgcov)
-        if self.bgqval:
-            cutoff = self.bgqval
-            p_values = false_discovery_control(p_values)  # BH correction
-        else:
-            cutoff = self.bgpval
-
-        for w, p in zip(windows, p_values):
-            if p < cutoff:
+            # test for fold enrichment
+            if ((len(w["reads"]) / wsize) / (len(bgw["reads"]) / bgsize)) > mfold:
+                count += 1
                 yield w
 
-    def merge(self, windows: Generator, bandwidth: int = 0) -> Generator:
+        logger.info(
+            f"Found {count} {wsize} bp windows {mfold}x enriched above {bgsize} bp background on {self.contig}"
+        )
+
+    def merge(
+        self, windows: Generator, bandwidth: int = -100, refine: bool = False
+    ) -> Generator:
         """
         Merge overlapping windows.
         :param windows: generator of windows
@@ -171,12 +216,9 @@ class SlidingWindow(object):
         # filter for non-empty windows
         windows = filter(lambda x: len(x["reads"]) > 0, windows)
 
-        try:
-            p = next(windows)  # grab first window
-        except StopIteration:  # skip if no windows left
-            return
+        p = next(windows)  # grab first window
 
-        logger.info(f"Merging overlapping windows on {self.contig}")
+        count = 0
         for n in windows:
             # if the next window is within the bandwidth, merge
             if n["Start"] <= (p["End"] + bandwidth):
@@ -186,32 +228,33 @@ class SlidingWindow(object):
             else:
                 # yield merged window
                 # refine start and end first
-                start, end = p["End"], p["Start"]
-                for r in p["reads"]:
-                    if r.three_end < start:
-                        start = r.three_end
-                    if r.three_end > end:
-                        end = r.three_end
-                p["Start"], p["End"] = start, end
+                if refine:
+                    start, end = p["End"], p["Start"]
+                    for r in p["reads"]:
+                        if r.three_end < start:
+                            start = r.three_end
+                        if r.three_end > end:
+                            end = r.three_end
+                    p["Start"], p["End"] = start, end
+                count += 1
                 yield p
                 # start new window
                 p = n
 
+        logger.info(f"Merged windows into {count} peaks on {self.contig}")
+
     def make_regions(
         self,
         mode: str = "peaks",
-        size: int = 200,
         bgsize: int = int(1e4),
         bgtest: bool = False,
-        bgpval: float | None = 0.05,
-        bgqval: float | None = None,
         collect_features: bool = False,
         **kwargs,
     ) -> Generator:
         """
         Make windows on the given contigs
         :param mode: peaks or windows. Default = "peaks"
-        :param bgtest: whether to statistiacllyl test for enrichment of windows above local background. Default = False
+        :param bgtest: whether to test for fold enrichment of windows above local background. Default = False
         :param bgsize: size of local background window to test against. Only applied if bgtest = True. Default = 10000
         :param collect_features: whether to collect features for the regions. Default = False
         :param kwargs: arguments to pass to windows()
@@ -222,21 +265,25 @@ class SlidingWindow(object):
         for c in self.contigs:
             self.contig = c
             self.reflen = self.bam.get_reference_length(c)
-            windows = self.windows(size, **kwargs)
 
+            # get reads on contig
+            reads, self.reads = before_and_after(
+                lambda r: r.reference_name == c, self.reads
+            )
             if bgtest:
-                self.bgsize = bgsize
-                self.bgpval = bgpval
-                self.bgqval = bgqval
-                if bgpval and bgqval:
-                    raise Exception("bgpval and bgqval cannot both be specified")
-                bgkwargs = kwargs.copy()
-                bg_windows = self.windows(size=bgsize, **bgkwargs)
-                windows = self.bgtest(windows, bg_windows)
+                bgreads, reads = tee(reads)
 
             # define window generator
+            windows = self.windows(reads=reads, **kwargs)
+
+            if bgtest:
+                bgkwargs = kwargs.copy()
+                bgkwargs["size"] = bgsize
+                bg_windows = self.windows(reads=bgreads, **bgkwargs)
+                windows = self.testbg(windows, bg_windows)
+
             if mode == "peaks":
-                windows = self.merge(windows, bandwidth=int(size / 2) * -1)
+                windows = self.merge(windows)
 
             # yield windows
             for w in windows:
