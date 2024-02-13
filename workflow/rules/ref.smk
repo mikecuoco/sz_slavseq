@@ -28,7 +28,8 @@ rule get_line1_consensus:
     shell:
         """
         touch {output} {log}
-        for a in {params.accessions}; do
+        accessions=({params.accessions})
+        for a in "${{accessions[@]}}"; do
             curl -s https://dfam.org/api/families/$a/hmm?format=hmm >> {output.hmm} 2>> {log}
             curl -s https://dfam.org/api/families/$a | jq -r '.name' | awk '{{print ">"$1}}' >> {output.fa} 2>> {log}
             curl -s https://dfam.org/api/families/$a | jq -r '.consensus_sequence' >> {output.fa} 2>> {log}
