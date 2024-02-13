@@ -23,18 +23,6 @@ read_filter = (
 )
 
 
-def cache_first_item(generator: Generator) -> (object, Generator):
-    try:
-        # Get the first item and cache it
-        first_item = next(generator)
-    except StopIteration:
-        # Handle empty generator
-        return None, generator
-
-    # Return a new generator that yields the first item, then the rest
-    return first_item, chain([first_item], generator)
-
-
 def before_and_after(predicate, it):
     """Variant of takewhile() that allows complete
     access to the remainder of the iterator.
