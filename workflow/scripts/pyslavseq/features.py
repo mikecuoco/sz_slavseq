@@ -147,10 +147,11 @@ def features(p: dict) -> dict:
         "n_proper_pairs": 0,
         "n_ref_reads": 0,
         "max_mapq": 0,
+        "min_mapq": 0,
         "n_unique_5end": 0,
         "n_unique_3end": 0,
-        "3end_gini": 0,
-        "5end_gini": 0,
+        "3end_gini": float(0),
+        "5end_gini": float(0),
     }
 
     for tag in TAGS:
