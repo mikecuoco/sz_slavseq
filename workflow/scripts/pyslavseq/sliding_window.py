@@ -82,9 +82,9 @@ class SlidingWindow(object):
             and (not r.is_secondary)
             and (not r.is_duplicate)
         )
-        library_size = bam.count(read_callback=libsize_read_filter)
-        self.size_factor = library_size / 1e6
-        logger.info(f"{library_size} filtered reads in the bam file")
+        self.library_size = bam.count(read_callback=libsize_read_filter)
+        self.size_factor = self.library_size / 1e6
+        logger.info(f"{self.library_size} filtered reads in the bam file")
 
         # get all reads from bam
         self.reads = self.bam.fetch()
@@ -108,7 +108,7 @@ class SlidingWindow(object):
 
         rpmreads = ceil(minrpm * self.size_factor)
         minreads = max(minreads, rpmreads)
-        w = deque()  # initialize window for reads
+        w = deque(maxlen=self.library_size)  # initialize window for reads
         n_dedup = 0  # initialize number of deduplicated reads
         count = 0  # initialize count of windows
         reflen = self.reflen  # store reference length
@@ -135,7 +135,9 @@ class SlidingWindow(object):
                             "End": end,
                             "reads": set(w),
                         }
-                    logger.info(f"Generated {count} {size} bp windows on {self.contig}")
+                    logger.info(
+                        f"Generated {count} {size} bp windows on {self.contig} with >= {minreads} reads"
+                    )
                     return
 
             # return window if it has minreads
@@ -160,6 +162,7 @@ class SlidingWindow(object):
         windows = filter(lambda x: len(x["reads"]) > 0, windows)
         w = next(windows)
         wsize = w["End"] - w["Start"]
+        half_wsize = wsize / 2
         windows = chain([w], windows)
 
         bgw = next(bg_windows)
@@ -167,17 +170,16 @@ class SlidingWindow(object):
         bg_windows = chain([bgw], bg_windows)
 
         half_bgsize = bgsize / 2
-        reflen_half_bgsize = self.reflen - (bgsize / 2)
+        reflen_half_bgsize = self.reflen - half_bgsize
         count = 0
         for w in windows:
-            center = (w["Start"] + w["End"]) / 2
+            center = w["Start"] + half_wsize
             # find the background window that contains the center of the window
             for bgw in bg_windows:
                 # if the center of the window is at the beginning of the chromosome
                 if center < half_bgsize:
                     break
-                bg_center = (bgw["Start"] + bgw["End"]) / 2
-                if bg_center == center:
+                if (bgw["Start"] + half_bgsize) == center:
                     break
                 # if the center of the window is at the end of the chromosome
                 if center > reflen_half_bgsize:
@@ -236,6 +238,8 @@ class SlidingWindow(object):
         mode: str = "peaks",
         bgsize: int = int(1e4),
         bgtest: bool = False,
+        mfold: int = 5,
+        refine: bool = False,
         collect_features: bool = False,
         **kwargs,
     ) -> Generator:
@@ -264,14 +268,15 @@ class SlidingWindow(object):
             # define window generator
             windows = self.windows(reads=reads, **kwargs)
 
+            # TODO: handle if testbg results in no windows
             if bgtest:
                 bgkwargs = kwargs.copy()
                 bgkwargs["size"] = bgsize
                 bg_windows = self.windows(reads=bgreads, **bgkwargs)
-                windows = self.testbg(windows, bg_windows)
+                windows = self.testbg(windows, bg_windows, mfold=mfold)
 
             if mode == "peaks":
-                windows = self.merge(windows)
+                windows = self.merge(windows, refine=refine)
 
             # yield windows
             for w in windows:
