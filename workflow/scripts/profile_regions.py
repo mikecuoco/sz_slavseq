@@ -25,8 +25,8 @@ from pyslavseq.sliding_window import SlidingWindow
 logger.info(f"Profiling peak generation from {snakemake.input.bam}")  # type: ignore
 with cProfile.Profile() as pr:
     with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
-        gen_regions = SlidingWindow(bam).make_regions(
-            collect_features=True, mode="peaks", bgtest=True, minreads=5
+        gen_regions = SlidingWindow(bam, minreads=5).make_regions(
+            collect_features=True, mode="peaks", bgtest=True
         )
         regions = [next(gen_regions)]
         schema = pa.Table.from_pylist(regions).schema

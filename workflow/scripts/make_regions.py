@@ -66,7 +66,9 @@ def write(regions: list, start):
 # generate the regions
 logger.info(f"Generating {params['mode']} from {snakemake.input.bam}")  # type: ignore
 with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
-    gen_regions = SlidingWindow(bam).make_regions(collect_features=True, **params)
+    gen_regions = SlidingWindow(bam, minreads=5).make_regions(
+        collect_features=True, **params
+    )
     regions = [next(gen_regions)]
     schema = pa.Table.from_pylist(regions).schema
     with pq.ParquetWriter(snakemake.output.pqt, schema, write_batch_size=1e6) as writer:
