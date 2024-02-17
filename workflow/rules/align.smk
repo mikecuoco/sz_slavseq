@@ -40,7 +40,7 @@ if not Path(config["genome"]["bwa"] + ".amb").exists():
     raise ValueError("BWA index not found for genome: " + config["genome"]["name"])
 
 
-rule tag_reads:
+rule tag:
     input:
         genome_bam=rules.bwa_mem.output[0],
         line1_bam=rules.filter_l1hs.output.bam,
@@ -54,38 +54,59 @@ rule tag_reads:
         "../scripts/tag_reads.py"
 
 
-rule sambamba_sort:
+rule sort:
     input:
-        rules.tag_reads.output,
+        rules.tag.output,
     output:
-        rules.tag_reads.output[0].replace("tagged", "tagged.sorted"),
+        rules.tag.output[0].replace("tagged", "tagged.sorted"),
     log:
-        rules.tag_reads.log[0].replace("tag_reads", "sort"),
+        rules.tag.log[0].replace("tag_reads", "sort"),
     threads: 1
     wrapper:
         "v1.31.1/bio/sambamba/sort"
 
 
-rule sambamba_index:
+rule index:
     input:
-        rules.sambamba_sort.output,
+        rules.sort.output,
     output:
-        rules.sambamba_sort.output[0].replace("bam", "bam.bai"),
+        rules.sort.output[0].replace("bam", "bam.bai"),
     params:
         extra="",  # optional parameters
     log:
-        rules.sambamba_sort.log[0].replace("sort", "index"),
+        rules.sort.log[0].replace("sort", "index"),
     threads: 1
     wrapper:
         "v1.31.1/bio/sambamba/index"
 
 
+rule rmdup:
+    input:
+        rules.sort.output,
+    output:
+        bam=rules.sort.output[0].replace("tagged.sorted", "tagged.rmdup.sorted"),
+        idx=rules.sort.output[0].replace(
+            "tagged.sorted.bam", "tagged.rmdup.sorted.bam.bai"
+        ),
+    log:
+        rules.sort.log[0].replace("sort", "rmdup"),
+    params:
+        extra="-h -F 1024 -F 128 -b",  # optional params string
+        region="",  # optional region string
+    threads: 1
+    wrapper:
+        "v3.3.3/bio/samtools/view"
+
+
 rule flagstat:
     input:
-        rules.sambamba_sort.output,
+        rules.sort.output,
     output:
-        rules.sambamba_sort.output[0].replace("bam", "bam.flagstat"),
+        rules.sort.output[0].replace("bam", "bam.flagstat"),
     log:
-        rules.sambamba_sort.log[0].replace("sort", "flagstat"),
+        rules.sort.log[0].replace("sort", "flagstat"),
+    params:
+        extra="",  # optional parameters
+    threads: 1
     wrapper:
-        "v1.21.0/bio/samtools/flagstat"
+        "v3.3.6/bio/sambamba/flagstat"

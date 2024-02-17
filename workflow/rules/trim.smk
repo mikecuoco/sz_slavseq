@@ -12,7 +12,7 @@ rule fastp:
     output:
         trimmed=[
             "{outdir}/results/fastp/{donor}/{sample}_R1.fastq.gz",
-            "{outdir}/results/fastq/{donor}/{sample}_R2.fastq.gz",
+            "{outdir}/results/fastp/{donor}/{sample}_R2.fastq.gz",
         ],
         merged="{outdir}/results/fastp/{donor}/{sample}_merged.fastq.gz",
         html="{outdir}/results/fastp/{donor}/{sample}.html",
