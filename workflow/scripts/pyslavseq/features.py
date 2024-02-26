@@ -2,7 +2,7 @@
 # Created on: Nov 21, 2023 at 12:13:28 PM
 __author__ = "Michael Cuoco"
 
-import logging, re
+import logging
 
 logger = logging.getLogger(__name__)  # configure logging
 from collections import namedtuple
@@ -160,7 +160,7 @@ def features(p: dict) -> dict:
         f[tag + "_mean"] = float(0)
 
     # collect features from the reads in the window
-    for i, r in enumerate(p["reads"]):
+    for r in p["reads"]:
         if type(r) != Read:
             raise Exception("Reads must be of type Read")
         if r.is_read2:
@@ -176,6 +176,7 @@ def features(p: dict) -> dict:
         f["n_proper_pairs"] += r.is_proper_pair
         f["n_ref_reads"] += r.is_ref_read
         f["n_contigs"] += not r.is_read1
+        f["n_reads"] += 1
 
         if r.is_reverse:
             f["n_rev"] += 1
@@ -214,8 +215,6 @@ def features(p: dict) -> dict:
             for n, q in zip([0, 0.25, 0.5, 0.75, 1], quantiles):
                 f[tag + "_q" + str(n)] = float(q)
             f[tag + "_mean"] = np.mean(l[tag])
-
-    f["n_reads"] = f["n_fwd"] + f["n_rev"]
 
     # if reads are empty, return empty features
     if f["n_reads"] == 0:

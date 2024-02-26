@@ -2,7 +2,7 @@
 # Created on: May 12, 2023 at 2:22:04 PM
 __author__ = "Michael Cuoco"
 
-import pysam, sys, re, pdb
+import pysam, sys, re
 
 sys.stderr = open(snakemake.log[0], "w")
 
@@ -57,7 +57,7 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
         ) as out_bam:
             # iterate over alignments in line1_bam
             for r_l1 in line1_bam:
-                # skip secondary and supplementary alignments
+                # skip secondary, supplementary, and unmapped alignments
                 if (
                     r_l1.is_secondary
                     or r_l1.is_supplementary
