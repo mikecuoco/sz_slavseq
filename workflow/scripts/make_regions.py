@@ -2,7 +2,7 @@
 # Created on: 10/26/22, 1:59 PM
 __author__ = "Michael Cuoco"
 
-import logging, os, time
+import logging, time, warnings
 
 logging.basicConfig(
     filename=snakemake.log[0],  # type: ignore
@@ -12,9 +12,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-import subprocess
 import pysam
-import numpy as np
+import pyranges as pr
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -82,3 +81,10 @@ with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
 
         if len(regions) > 0:
             write(regions, start)
+
+data = pd.read_parquet(snakemake.output.pqt)
+data["width"] = data["End"] - data["Start"]
+warnings.filterwarnings("ignore")
+pr.PyRanges(data[["Chromosome", "Start", "End", "n_reads", "width"]]).to_bed(
+    snakemake.output.bed
+)
