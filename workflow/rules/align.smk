@@ -80,29 +80,11 @@ rule index:
         "v1.31.1/bio/sambamba/index"
 
 
-rule rmdup:
-    input:
-        rules.sort.output,
-    output:
-        bam=rules.sort.output[0].replace("tagged.sorted", "tagged.rmdup.sorted"),
-        idx=rules.sort.output[0].replace(
-            "tagged.sorted.bam", "tagged.rmdup.sorted.bam.bai"
-        ),
-    log:
-        rules.sort.log[0].replace("sort", "rmdup"),
-    params:
-        extra="-h -F 1024 -F 128 -b",  # optional params string
-        region="",  # optional region string
-    threads: 1
-    wrapper:
-        "v3.3.3/bio/samtools/view"
-
-
 rule flagstat:
     input:
         rules.sort.output,
     output:
-        rules.sort.output[0].replace("bam", "bam.flagstat"),
+        rules.sort.output[0].replace("bam", "flagstat.txt"),
     log:
         rules.sort.log[0].replace("sort", "flagstat"),
     params:
