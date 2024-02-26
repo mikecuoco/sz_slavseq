@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+from collections import defaultdict
 from snakemake.utils import validate, min_version, Paramspace
 
 
@@ -32,53 +33,33 @@ donors = donors.set_index("donor_id", drop=False)
 
 # setup parameters for regions
 regions_params = []
-# for size in [200]:
-#     for bgtest in [False]:
-#         for bgsize in [500, 1000, 5000, 10000]:
-#             regions_params.append(
-#                 {
-#                     "mode": "peaks",
-#                     "size": size,
-#                     "step": 1,
-#                     "minreads": 5,
-#                     "bgtest": bgtest,
-#                 }
-#             )
-#             if bgtest:
-#                 regions_params[-1]["bgsize"] = bgsize
+for bgtest in [False, True]:
+    for bgsize in [1000, 2500, 5000, 10000, 20000]:
+        for mfold in [3, 4]:
+            for greedy in [False, True]:
+                regions_params.append(
+                    {
+                        "mode": "peaks",
+                        "size": 200,
+                        "step": 1,
+                        "bgtest": bgtest,
+                    }
+                )
+                if bgtest:
+                    regions_params[-1]["bgsize"] = bgsize
+                    regions_params[-1]["mfold"] = mfold
+                else:
+                    regions_params[-1]["greedy"] = greedy
 
-
-regions_params.append(
-    {
-        "mode": "peaks",
-        "size": 200,
-        "step": 1,
-        "minreads": 10,
-        "bgtest": False,
-        "bgsize": "NA",
-    }
-)
-regions_params.append(
-    {
-        "mode": "peaks",
-        "size": 200,
-        "step": 1,
-        "minreads": 5,
-        "bgtest": False,
-        "bgsize": "NA",
-    }
-)
-# regions_params.append(
+# regions_params = [
 #     {
-#         "mode": "windows",
-#         "size": 300,
-#         "step": 100,
-#         "minreads": 5,
+#         "mode": "peaks",
+#         "size": 200,
+#         "step": 1,
 #         "bgtest": False,
-#         "bgsize": "NA",
 #     }
-# )
-regions_params = Paramspace(pd.DataFrame(regions_params))
+# ]
+regions_params = Paramspace(pd.DataFrame(regions_params).drop_duplicates())
 
 
 wildcard_constraints:
@@ -103,4 +84,22 @@ rule all:
             genome=config["genome"]["name"],
             params=regions_params.instance_patterns,
             outdir=config["outdir"],
+        ),
+        expand(
+            rules.profile_regions.output,
+            outdir=config["outdir"],
+            genome=config["genome"]["name"],
+            donor=samples["donor_id"].values[0],
+            sample=samples["sample_id"].values[0],
+        ),
+        expand(
+            expand(
+                rules.flagstat.output,
+                zip,
+                donor=samples["donor_id"],
+                sample=samples["sample_id"],
+                allow_missing=True,
+            ),
+            outdir=config["outdir"],
+            genome=config["genome"]["name"],
         ),

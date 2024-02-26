@@ -2,12 +2,11 @@
 # Created on: Jul 1, 2023 at 9:50:48 AM
 __author__ = "Michael Cuoco"
 
-from asyncio import start_server
-import logging, time
+import logging
 
 logger = logging.getLogger(__name__)  # configure logging
 from collections import deque
-from itertools import chain, tee, takewhile
+from itertools import chain, tee
 from typing import Generator
 from pysam import AlignmentFile
 from math import ceil
@@ -110,7 +109,7 @@ class SlidingWindow(object):
         except StopIteration:
             return
 
-        w = deque(maxlen=self.library_size)  # initialize window for reads
+        w = deque()  # initialize window for reads
         n_dedup = 0  # initialize number of deduplicated reads
         count = 0  # initialize count of windows
         reflen = self.reflen  # store reference length
@@ -135,6 +134,7 @@ class SlidingWindow(object):
                             "Start": start,
                             "End": end,
                             "reads": w,
+                            "n_dedup": n_dedup,
                         }
                     logger.info(
                         f"Generated {count} {size} bp windows on {self.contig} with >= {minreads} reads"
@@ -147,7 +147,8 @@ class SlidingWindow(object):
                 yield {
                     "Start": start,
                     "End": end,
-                    "reads": w,
+                    "reads": w.copy(),
+                    "n_dedup": n_dedup,
                 }
 
     def testbg(
@@ -181,7 +182,7 @@ class SlidingWindow(object):
                     continue
 
             # test for fold enrichment
-            if ((len(w["reads"]) / size) / (len(bgw["reads"]) / bgsize)) > mfold:
+            if ((w["n_dedup"] * bgsize) / (bgw["n_dedup"] * size)) > mfold:
                 count += 1
                 yield w
 
@@ -198,7 +199,6 @@ class SlidingWindow(object):
         :param bandwidth: maximum distance between windows to merge
         """
 
-        # filter for non-empty windows
         windows = map(
             lambda x: {"Start": x["Start"], "End": x["End"], "reads": set(x["reads"])},
             windows,
@@ -232,14 +232,46 @@ class SlidingWindow(object):
                 # start new window
                 p = n
 
+        count += 1
+        yield p
+
         logger.info(f"Merged windows into {count} peaks on {self.contig}")
+
+    def greedy_windows(
+        self, windows: Generator, blacklist_size: int = 1000
+    ) -> Generator:
+        """
+        Greedily choose windows with maximum number of reads
+        :param windows: generator of windows
+        :param blacklist_size: size of region to exclude around chosen window
+        """
+
+        # TODO: what to do with ties?
+        # exhaust windows generator and sort by number of deduplicated reads
+        windows = sorted(windows, key=lambda w: w["n_dedup"], reverse=True)
+        blacklist = []  # initialize list of regions to exclude
+        for w in windows:
+            # if the window is not in the blacklist, yield it
+            if not any(
+                ((w["Start"] <= x[1]) and (w["End"] >= x[0])) for x in blacklist
+            ):
+                yield w
+                blacklist.append(
+                    (w["Start"] - blacklist_size, w["End"] + blacklist_size)
+                )
+
+        logger.info(
+            f"Found {len(blacklist)} {self.size} bp windows using greedy algorithm"
+        )
 
     def make_regions(
         self,
         mode: str = "peaks",
-        bgsize: int = int(1e4),
         bgtest: bool = False,
+        bgsize: int = int(1e4),
         mfold: int = 5,
+        greedy: bool = False,
+        greedy_blacklist_size: int = 1000,
         refine: bool = False,
         collect_features: bool = False,
         **kwargs,
@@ -255,10 +287,12 @@ class SlidingWindow(object):
         if mode not in ["windows", "peaks"]:
             raise Exception(f"Mode {mode} is not valid, must be 'peaks' or 'windows'")
 
-        self.size = kwargs.get("size", 200)
-        self.half_size = self.size / 2
-        self.bgsize = bgsize
-        self.half_bgsize = bgsize / 2
+        self.size = int(kwargs.get("size", 200))
+
+        if bgtest:
+            self.half_size = int(self.size) / 2
+            self.bgsize = int(bgsize)
+            self.half_bgsize = int(bgsize) / 2
 
         for c in self.contigs:
             self.contig = c
@@ -279,6 +313,14 @@ class SlidingWindow(object):
                 bgkwargs["size"] = bgsize
                 bg_windows = self.windows(reads=bgreads, **bgkwargs)
                 windows = self.testbg(windows, bg_windows, mfold=mfold)
+
+            if greedy:
+                windows = self.greedy_windows(
+                    windows, blacklist_size=greedy_blacklist_size
+                )
+                windows = sorted(
+                    windows, key=lambda w: w["Start"]
+                )  # re-sort windows by start position
 
             if mode == "peaks":
                 windows = self.merge(windows, refine=refine)
