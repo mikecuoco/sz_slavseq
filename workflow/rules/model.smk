@@ -330,3 +330,89 @@ rule tune:
     threads: 32
     script:
         "../scripts/tune.py"
+
+
+rule igv_report:
+    input:
+        unpack(get_vcfs),
+        bed=rules.make_regions.output.bed,
+        bam=rules.sort.output[0],
+        bai=rules.index.output[0],
+        bulk_bam=lambda wc: expand(
+            rules.sort.output[0],
+            sample=get_donor_bulk(wc.donor),
+            allow_missing=True,
+        ),
+        bulk_bai=lambda wc: expand(
+            rules.index.output[0],
+            sample=get_donor_bulk(wc.donor),
+            allow_missing=True,
+        ),
+        primer_sites=rules.blast_primers.output.bed,
+        rmsk=rules.run_rmsk.output.bed,
+        fasta=config["genome"]["fasta"],
+        fai=config["genome"]["fai"],
+    output:
+        "{outdir}/results/{genome}/{params}/{donor}/{sample}_report.html",
+    conda:
+        "../envs/igv.yml"
+    log:
+        "{outdir}/results/{genome}/{params}/{donor}/{sample}_report.log",
+    shell:
+        """
+        exec &> {log}
+
+        # generate track config
+        tmp=$(mktemp --suffix .json)
+        trap "rm -f $tmp" EXIT
+
+        echo '[
+                {{
+                    "type": "annotation",
+                    "format": "bed",
+                    "url": "{input.xtea}",
+                    "name": "Donor {wildcards.donor} 30x WGS calls: xTEA"
+                }},
+                {{
+                    "type": "annotation",
+                    "format": "bed",
+                    "url": "{input.megane_gaussian}",
+                    "name": "Donor {wildcards.donor} 30x WGS calls: Megane"
+                }},
+                {{
+                    "type": "annotation",
+                    "format": "bed",
+                    "url": "{input.primer_sites}",
+                    "name": "SLAVseq primer sites"
+                }},
+                {{
+                    "type": "annotation",
+                    "format": "bed",
+                    "url": "{input.rmsk}",
+                    "name": "LINE1_3end RepeatMasker"
+                }},
+                {{
+                    "type": "alignment",
+                    "format": "bam",
+                    "url": "{input.bulk_bam}",
+                    "indexURL": "{input.bulk_bai}",
+                    "name": "Donor {wildcards.donor} bulk SLAVseq",
+                    "height": "200"
+                }},
+                {{
+                    "type": "alignment",
+                    "format": "bam",
+                    "url": "{input.bam}",
+                    "indexURL": "{input.bai}",
+                    "name": "{wildcards.sample}",
+                    "height": "200"
+                }}
+            ]' > $tmp
+
+        create_report \
+            --fasta {input.fasta} \
+            --track-config $tmp \
+            --flanking 1000 \
+            --output {output} \
+            {input.bed}
+        """

@@ -103,3 +103,15 @@ rule all:
             outdir=config["outdir"],
             genome=config["genome"]["name"],
         ),
+        expand(
+            expand(
+                rules.igv_report.output,
+                zip,
+                donor=samples["donor_id"],
+                sample=samples["sample_id"],
+                allow_missing=True,
+            ),
+            outdir=config["outdir"],
+            params=regions_params.instance_patterns,
+            genome=config["genome"]["name"],
+        ),
