@@ -19,10 +19,10 @@ rule make_regions:
         bam=rules.sort.output[0],
         bai=rules.index.output[0],
     output:
-        pqt="{outdir}/results/{genome}/{params}/{donor}/{sample}.pqt",
-        bed="{outdir}/results/{genome}/{params}/{donor}/{sample}.bed",
+        pqt="{outdir}/results/{genome}/peaks/{donor}/{sample}.pqt",
+        bed="{outdir}/results/{genome}/peaks/{donor}/{sample}.bed",
     log:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
     script:
@@ -164,64 +164,55 @@ rule macs3:
         """
 
 
-with open("resources/bad_cells.txt", "r") as f:
-    bad_cells = [line.strip() for line in f.readlines()]
-
-
-def get_donor_cells(donor):
-    cells = samples.loc[
-        (samples["donor_id"] == donor) & (~samples["sample_id"].str.contains("gDNA"))
-    ]["sample_id"].values
-    cells = [c for c in cells if c not in bad_cells]
-    return cells
-
-
-def get_donor_bulk(donor):
-    return samples.loc[
-        (samples["donor_id"] == donor) & (samples["sample_id"].str.contains("gDNA"))
-    ]["sample_id"].values
-
-
 # TODO: add closest and overlap labels
 rule label:
     input:
         unpack(get_vcfs),
         bulk_regions=lambda wc: expand(
             rules.make_regions.output.bed,
-            sample=get_donor_bulk(wc.donor),
+            sample=bulk.loc[wc.donor, "sample_id"],
             allow_missing=True,
         ),
-        cell_regions=rules.make_regions.output.bed,
+        cell_regions=rules.profile_regions.output.bed,
         primer_sites=rules.blast_primers.output.bed,
         fai=config["genome"]["fai"],
-        rmsk=rules.run_rmsk.output.bed,
+        l1hs=rules.filter_rmsk.output.l1hs,
+        l1pa2=rules.filter_rmsk.output.l1pa2,
+        l1pa3=rules.filter_rmsk.output.l1pa3,
+        l1pa4=rules.filter_rmsk.output.l1pa4,
+        l1pa5=rules.filter_rmsk.output.l1pa5,
+        l1pa6=rules.filter_rmsk.output.l1pa6,
     output:
-        bulk="{outdir}/results/{genome}/{params}/{donor}/{sample}.bulk.bed",
-        xtea="{outdir}/results/{genome}/{params}/{donor}/{sample}.xtea.bed",
-        megane_gaussian="{outdir}/results/{genome}/{params}/{donor}/{sample}.megane_gaussian.bed",
-        megane_percentile="{outdir}/results/{genome}/{params}/{donor}/{sample}.megane_percentile.bed",
-        rmsk="{outdir}/results/{genome}/{params}/{donor}/{sample}.rmsk.bed",
-        primer_sites="{outdir}/results/{genome}/{params}/{donor}/{sample}.primer_sites.bed",
+        bulk="{outdir}/results/{genome}/peaks/{donor}/{sample}.bulk.bed",
+        xtea="{outdir}/results/{genome}/peaks/{donor}/{sample}.xtea.bed",
+        megane_gaussian="{outdir}/results/{genome}/peaks/{donor}/{sample}.megane_gaussian.bed",
+        megane_percentile="{outdir}/results/{genome}/peaks/{donor}/{sample}.megane_percentile.bed",
+        primer_sites="{outdir}/results/{genome}/peaks/{donor}/{sample}.primer_sites.bed",
+        l1hs="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1hs.bed",
+        l1pa2="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa2.bed",
+        l1pa3="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa3.bed",
+        l1pa4="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa4.bed",
+        l1pa5="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa5.bed",
+        l1pa6="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa6.bed",
     conda:
         "../envs/ref.yml"
     log:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_label.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_label.log",
     shell:
         """
         exec &> {log}
 
         bedtools intersect -a {input.cell_regions} -b {input.bulk_regions} -wa > {output.bulk}
-
         bedtools intersect -a {input.cell_regions} -b {input.primer_sites} -wa > {output.primer_sites}
-
         bedtools slop -l 100 -r 100 -g {input.fai} -i {input.xtea} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.xtea}
-
         bedtools slop -l 100 -r 100 -g {input.fai} -i {input.megane_gaussian} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.megane_gaussian}
-
         bedtools slop -l 100 -r 100 -g {input.fai} -i {input.megane_percentile} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.megane_percentile}
-
-        # TODO: move this code to rmsk rule filter rmsk for repEnd > 860
-        awk '$13 > 860' {input.rmsk} | bedtools slop -l -500 -r 100 -s -g {input.fai} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.rmsk}
+        bedtools slop -l -500 -r 100 -s -g {input.fai} -i {input.l1hs} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.l1hs}
+        bedtools slop -l -500 -r 100 -s -g {input.fai} -i {input.l1pa2} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.l1pa2}
+        bedtools slop -l -500 -r 100 -s -g {input.fai} -i {input.l1pa3} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.l1pa3}
+        bedtools slop -l -500 -r 100 -s -g {input.fai} -i {input.l1pa4} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.l1pa4}
+        bedtools slop -l -500 -r 100 -s -g {input.fai} -i {input.l1pa5} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.l1pa5}
+        bedtools slop -l -500 -r 100 -s -g {input.fai} -i {input.l1pa6} | bedtools intersect -a {input.cell_regions} -b - -wa > {output.l1pa6}
         """
 
 
@@ -229,23 +220,28 @@ rule final_features:
     input:
         regions=rules.make_regions.output.pqt,
         annotations=expand(
-            "{outdir}/results/{genome}/{params}/{donor}/{sample}.{annotation}.bed",
+            "{outdir}/results/{genome}/peaks/{donor}/{sample}.{annotation}.bed",
             annotation=[
                 "bulk",
                 "xtea",
                 "megane_gaussian",
                 "megane_percentile",
-                "rmsk",
                 "primer_sites",
+                "l1hs",
+                "l1pa2",
+                "l1pa3",
+                "l1pa4",
+                "l1pa5",
+                "l1pa6",
             ],
             allow_missing=True,
         ),
         en_motif_pos=rules.en_motif.output.pos,
         en_motif_neg=rules.en_motif.output.neg,
     output:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_labelled.pqt",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_labelled.pqt",
     log:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_labelled.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_labelled.log",
     conda:
         "../envs/features.yml"
     script:
@@ -257,7 +253,7 @@ rule eval_regions:
         cell_regions=rules.final_features.output,
         bulk_regions=lambda wc: expand(
             rules.final_features.output,
-            sample=get_donor_bulk(wc.donor),
+            sample=bulk.loc[wc.donor, "sample_id"],
             allow_missing=True,
         ),
         cell_coverage=expand(
@@ -266,7 +262,6 @@ rule eval_regions:
                 "xtea",
                 "megane_gaussian",
                 "megane_percentile",
-                "rmsk",
                 "primer_sites",
             ],
             allow_missing=True,
@@ -277,142 +272,199 @@ rule eval_regions:
                 "xtea",
                 "megane_gaussian",
                 "megane_percentile",
-                "rmsk",
                 "primer_sites",
             ],
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_eval.tsv",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_eval.tsv",
     log:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_eval.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_eval.log",
     conda:
         "../envs/model.yml"
     script:
         "../scripts/eval_regions.py"
 
 
-def aggregate(wildcards):
-    out = defaultdict(list)
-    for d in donors["donor_id"].unique():
-        r = expand(
+rule peak_coverage:
+    input:
+        cell=rules.final_features.output,
+        bulk=lambda wc: expand(
             rules.final_features.output,
-            sample=get_donor_cells(d),
-            donor=d,
+            sample=bulk.loc[wc.donor, "sample_id"],
             allow_missing=True,
-        )
-        out["regions"].extend(r)
-        r = expand(
-            rules.eval_regions.output,
-            sample=get_donor_cells(d),
-            donor=d,
+        ),
+    output:
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_coverage.pqt",
+    log:
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}_coverage.log",
+    conda:
+        "../envs/model.yml"
+    script:
+        "../scripts/peak_coverage.py"
+
+
+rule germline_report:
+    input:
+        bulk=expand(
+            rules.final_features.output,
+            zip,
+            sample=bulk["sample_id"],
+            donor=bulk["donor_id"],
             allow_missing=True,
-        )
-        out["eval"].extend(r)
-    return out
+        ),
+        peak_coverage=expand(
+            rules.peak_coverage.output,
+            zip,
+            donor=bulk["donor_id"],
+            sample=bulk["sample_id"],
+            allow_missing=True,
+        ),
+        megane=expand(
+            rules.vcf2bed.output,
+            vcf="megane_gaussian",
+            donor=donors["donor_id"].unique(),
+            allow_missing=True,
+        ),
+        flagstat=expand(
+            rules.flagstat.output,
+            zip,
+            donor=bulk["donor_id"],
+            sample=bulk["sample_id"],
+            allow_missing=True,
+        ),
+        meta=config["donors"],
+    output:
+        "{outdir}/results/{genome}/peaks/bulk.pqt",
+    conda:
+        "../envs/model.yml"
+    log:
+        notebook="{outdir}/results/{genome}/peaks/germline_report.ipynb",
+    params:
+        pos_label="megane_gaussian",
+    notebook:
+        "../scripts/germline_report.py.ipynb"
+
+
+rule regions_report:
+    input:
+        cells=expand(
+            rules.final_features.output,
+            zip,
+            donor=cells["donor_id"],
+            sample=cells["sample_id"],
+            allow_missing=True,
+        ),
+        peak_coverage=expand(
+            rules.peak_coverage.output,
+            zip,
+            donor=cells["donor_id"],
+            sample=cells["sample_id"],
+            allow_missing=True,
+        ),
+        bulk=rules.germline_report.output,
+        flagstat=expand(
+            rules.flagstat.output,
+            zip,
+            donor=cells["donor_id"],
+            sample=cells["sample_id"],
+            allow_missing=True,
+        ),
+    output:
+        "{outdir}/results/{genome}/peaks/data.pqt",
+    conda:
+        "../envs/model.yml"
+    log:
+        notebook="{outdir}/results/{genome}/peaks/regions_report.ipynb",
+    params:
+        pos_label="megane_gaussian",
+    notebook:
+        "../scripts/regions_report.py.ipynb"
 
 
 rule tune:
     input:
-        unpack(aggregate),
+        data=rules.regions_report.output,
     output:
-        model="{outdir}/results/{genome}/{params}/model/model.pkl",
-        best_hp="{outdir}/results/{genome}/{params}/model/best_hp.json",
-        history="{outdir}/results/{genome}/{params}/model/history.log",
-        tuning_curve="{outdir}/results/{genome}/{params}/model/tuning_curve.png",
-        precision_recall_curve="{outdir}/results/{genome}/{params}/model/precision_recall_curve.png",
+        model="{outdir}/results/{genome}/peaks/model/model.pkl",
+        best_hp="{outdir}/results/{genome}/peaks/model/best_hp.json",
+        history="{outdir}/results/{genome}/peaks/model/history.log",
     log:
-        "{outdir}/results/{genome}/{params}/tune.log",
+        "{outdir}/results/{genome}/peaks/model/tune.log",
     conda:
         "../envs/model.yml"
     params:
-        max_iter=50,
+        max_iter=100,
+        random_state=1,
     threads: 32
     script:
         "../scripts/tune.py"
 
 
-rule igv_report:
+rule model_report:
     input:
-        unpack(get_vcfs),
-        bed=rules.make_regions.output.bed,
-        bam=rules.sort.output[0],
-        bai=rules.index.output[0],
-        bulk_bam=lambda wc: expand(
-            rules.sort.output[0],
-            sample=get_donor_bulk(wc.donor),
+        data=rules.regions_report.output,
+        bulk=rules.germline_report.output,
+        history=rules.tune.output.history,
+        best_hp=rules.tune.output.best_hp,
+        model=rules.tune.output.model,
+    output:
+        "{outdir}/results/{genome}/peaks/model/predictions.pqt",
+    conda:
+        "../envs/model.yml"
+    params:
+        random_state=1,
+    log:
+        notebook="{outdir}/results/{genome}/peaks/model_report.ipynb",
+    notebook:
+        "../scripts/model_report.py.ipynb"
+
+
+rule calls_report:
+    input:
+        data=rules.model_report.output,
+        bulk=rules.germline_report.output,
+    output:
+        expand(
+            "{outdir}/results/{genome}/peaks/calls/{donor}.bed",
+            donor=donors["donor_id"].unique(),
             allow_missing=True,
         ),
-        bulk_bai=lambda wc: expand(
-            rules.index.output[0],
-            sample=get_donor_bulk(wc.donor),
-            allow_missing=True,
-        ),
-        primer_sites=rules.blast_primers.output.bed,
+    conda:
+        "../envs/model.yml"
+    log:
+        notebook="{outdir}/results/{genome}/peaks/calls_report.ipynb",
+    notebook:
+        "../scripts/calls_report.py.ipynb"
+
+
+def get_donor_bams(wildcards):
+    return expand(
+        rules.sort.output,
+        sample=samples.loc[wildcards.donor, "sample_id"],
+        donor=wildcards.donor,
+        allow_missing=True,
+    )
+
+
+rule igv_snapshots:
+    input:
+        regions="{outdir}/results/{genome}/peaks/calls/{donor}.bed",
+        bams=get_donor_bams,
         rmsk=rules.run_rmsk.output.bed,
+        megane_gaussian="{outdir}/results/{genome}/vcf2bed/{donor}/megane_gaussian.bed",
+        primer_sites=rules.blast_primers.output.bed,
         fasta=config["genome"]["fasta"],
         fai=config["genome"]["fai"],
     output:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_report.html",
+        directory("{outdir}/results/{genome}/peaks/calls/{donor}"),
+    log:
+        "{outdir}/results/{genome}/peaks/calls/{donor}_igv_snapshots.log",
     conda:
         "../envs/igv.yml"
-    log:
-        "{outdir}/results/{genome}/{params}/{donor}/{sample}_report.log",
-    shell:
-        """
-        exec &> {log}
-
-        # generate track config
-        tmp=$(mktemp --suffix .json)
-        trap "rm -f $tmp" EXIT
-
-        echo '[
-                {{
-                    "type": "annotation",
-                    "format": "bed",
-                    "url": "{input.xtea}",
-                    "name": "Donor {wildcards.donor} 30x WGS calls: xTEA"
-                }},
-                {{
-                    "type": "annotation",
-                    "format": "bed",
-                    "url": "{input.megane_gaussian}",
-                    "name": "Donor {wildcards.donor} 30x WGS calls: Megane"
-                }},
-                {{
-                    "type": "annotation",
-                    "format": "bed",
-                    "url": "{input.primer_sites}",
-                    "name": "SLAVseq primer sites"
-                }},
-                {{
-                    "type": "annotation",
-                    "format": "bed",
-                    "url": "{input.rmsk}",
-                    "name": "LINE1_3end RepeatMasker"
-                }},
-                {{
-                    "type": "alignment",
-                    "format": "bam",
-                    "url": "{input.bulk_bam}",
-                    "indexURL": "{input.bulk_bai}",
-                    "name": "Donor {wildcards.donor} bulk SLAVseq",
-                    "height": "200"
-                }},
-                {{
-                    "type": "alignment",
-                    "format": "bam",
-                    "url": "{input.bam}",
-                    "indexURL": "{input.bai}",
-                    "name": "{wildcards.sample}",
-                    "height": "200"
-                }}
-            ]' > $tmp
-
-        create_report \
-            --fasta {input.fasta} \
-            --track-config $tmp \
-            --flanking 1000 \
-            --output {output} \
-            {input.bed}
-        """
+    params:
+        maxPanelHeight=500,
+        colorBy="MATE_CHROMOSOME",
+    threads: 100  # prevent from running in parallel
+    script:
+        "../scripts/igv_snapshots.py"

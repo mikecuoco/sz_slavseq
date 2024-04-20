@@ -69,6 +69,24 @@ rule run_rmsk:
         """
 
 
+rule filter_rmsk:
+    input:
+        rules.run_rmsk.output.bed,
+    output:
+        l1hs=config["genome"]["fasta"] + ".rmsk.l1hs.bed",
+        l1pa2=config["genome"]["fasta"] + ".rmsk.l1pa2.bed",
+        l1pa3=config["genome"]["fasta"] + ".rmsk.l1pa3.bed",
+        l1pa4=config["genome"]["fasta"] + ".rmsk.l1pa4.bed",
+        l1pa5=config["genome"]["fasta"] + ".rmsk.l1pa5.bed",
+        l1pa6=config["genome"]["fasta"] + ".rmsk.l1pa6.bed",
+    log:
+        config["genome"]["fasta"] + ".rmsk.filter.log",
+    conda:
+        "../envs/model.yml"
+    script:
+        "../scripts/filter_rmsk.py"
+
+
 rule blast_primers:
     input:
         ref_fa=config["genome"]["fasta"],

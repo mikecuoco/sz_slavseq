@@ -8,6 +8,55 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pandas as pd
+import pyranges as pr
+
+
+def collate_labels(row):
+    if row.n_ref_reads > 0:
+        return "KRGL"
+    elif hasattr(row, "primer_sites") and row.primer_sites:
+        return "KRGL"
+    elif hasattr(row, "rmsk") and row.rmsk:
+        return "KRGL"
+    elif hasattr(row, "ref") and row.ref:
+        return "KRGL"
+    elif hasattr(row, "bulk_ref") and row.bulk_ref:
+        return "KRGL"
+    elif hasattr(row, "l1hs") and row.l1hs:
+        return "KRGL"
+    elif hasattr(row, "l1pa2") and row.l1pa2:
+        return "KRGL"
+    elif hasattr(row, "l1pa3") and row.l1pa3:
+        return "KRGL"
+    elif hasattr(row, "l1pa4") and row.l1pa4:
+        return "KRGL"
+    elif hasattr(row, "l1pa5") and row.l1pa5:
+        return "KRGL"
+    elif hasattr(row, "l1pa6") and row.l1pa5:
+        return "KRGL"
+    elif hasattr(row, "KNRGL") and row.KNRGL:
+        return "KNRGL"
+    else:
+        return "OTHER"
+
+
+def label_ref_peaks(df: pd.DataFrame):
+    """
+    Using n_ref_reads, find peaks across all cells from a single donor
+    """
+    # silence warnings
+    import warnings
+
+    warnings.filterwarnings("ignore", category=FutureWarning)
+
+    df = pr.PyRanges(df).cluster().df
+    labelled = df.groupby("Cluster", observed=True)["n_ref_reads"].apply(
+        lambda d: d.sum() > 0
+    )
+    labelled.name = "ref"
+
+    return df.set_index("Cluster").join(labelled).reset_index(drop=True)
+
 
 # source: Genome In A Bottle (GIAB) genome stratifications
 # https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/
@@ -46,38 +95,4 @@ def get_stratification(genome: str, name: str) -> pd.DataFrame:
         header=None,
         skiprows=1,
         names=["Chromosome", "Start", "End"],
-    )
-
-
-def read_rmsk_bed(file: str):
-    "read rmsk bed file into dataframe"
-
-    coord_conv = lambda x: int(x.rstrip(")").lstrip("("))
-
-    return pd.read_csv(
-        file,
-        sep="\t",
-        header=None,
-        usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-        names=[
-            "Chromosome",
-            "Start",
-            "End",
-            "repName",
-            "Score",
-            "Strand",
-            "milliDiv",
-            "milliDel",
-            "milliIns",
-            "genoLeft",
-            "repClassFamily",
-            "repStart",
-            "repEnd",
-            "repLeft",
-        ],
-        converters={
-            "repStart": coord_conv,
-            "repLeft": coord_conv,
-            "genoLeft": coord_conv,
-        },
     )
