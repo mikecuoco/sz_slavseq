@@ -1,0 +1,33 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - ipykernel
+  - pysam>=0.22.0
+  - pandas>=2
+  - seaborn>=0.13.0
+  - flaml>=2
+  - pyranges>=0.0.129
+  - pyarrow>=14
+  - joblib
+  - scikit-learn>=1.4.0
+  - tqdm
+  - git>=2
+  - git-lfs
+  - samtools>=1.18
+  - bcftools>=1.18
+  - nbconvert
+  - biopython
+  - bedtools>=2.31.0
+  - bedops>=2.4.41
+  - snakemake==7.32.0
+  - snakefmt
+  - clustalo
+  - dvc
+  - pip
+  - pip:
+      - pymsaviz
+      - macs3
+      - sequentia>=1.1.1
+      - git+https://github.com/mikecuoco/myutils.git
