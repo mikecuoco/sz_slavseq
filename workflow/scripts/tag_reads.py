@@ -97,9 +97,11 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
                 r1.set_tag("MS", r2.get_tag("AS"))  # mate alignment score
                 r1.set_tag(
                     "ML",
-                    r2.infer_read_length()
-                    if r2.infer_read_length()
-                    else len(r2.query_sequence),
+                    (
+                        r2.infer_read_length()
+                        if r2.infer_read_length()
+                        else len(r2.query_sequence)
+                    ),
                 )  # mate read length
 
                 # write reads to output bam
