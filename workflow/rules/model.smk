@@ -173,7 +173,7 @@ rule label:
             sample=bulk.loc[wc.donor, "sample_id"],
             allow_missing=True,
         ),
-        cell_regions=rules.profile_regions.output.bed,
+        cell_regions=rules.make_regions.output.bed,
         primer_sites=rules.blast_primers.output.bed,
         fai=config["genome"]["fai"],
         l1hs=rules.filter_rmsk.output.l1hs,
@@ -426,7 +426,7 @@ rule calls_report:
         bulk=rules.germline_report.output,
     output:
         expand(
-            "{outdir}/results/{genome}/peaks/calls/{donor}.bed",
+            "{outdir}/results/{genome}/peaks/{donor}/calls.bed",
             donor=donors["donor_id"].unique(),
             allow_missing=True,
         ),
@@ -447,9 +447,9 @@ def get_donor_bams(wildcards):
     )
 
 
-rule igv_snapshots:
+rule make_igv_batch_script:
     input:
-        regions="{outdir}/results/{genome}/peaks/calls/{donor}.bed",
+        regions="{outdir}/results/{genome}/peaks/{donor}/calls.bed",
         bams=get_donor_bams,
         rmsk=rules.run_rmsk.output.bed,
         megane_gaussian="{outdir}/results/{genome}/vcf2bed/{donor}/megane_gaussian.bed",
@@ -457,14 +457,40 @@ rule igv_snapshots:
         fasta=config["genome"]["fasta"],
         fai=config["genome"]["fai"],
     output:
-        directory("{outdir}/results/{genome}/peaks/calls/{donor}"),
+        "{outdir}/results/{genome}/peaks/{donor}/igv_snapshots.bat",
     log:
-        "{outdir}/results/{genome}/peaks/calls/{donor}_igv_snapshots.log",
+        "{outdir}/results/{genome}/peaks/{donor}/make_igv_batch_script.log",
     conda:
         "../envs/igv.yml"
     params:
-        maxPanelHeight=500,
-        colorBy="MATE_CHROMOSOME",
-    threads: 100  # prevent from running in parallel
+        maxPanelHeight=200,
+        colorBy="READ_STRAND",
     script:
         "../scripts/igv_snapshots.py"
+
+
+rule igv_download:
+    output:
+        "resources/IGV_Linux_2.17.4/igv.sh",
+    params:
+        runtime="600",
+        memory="1G",
+    shell:
+        """
+        cd resources
+        curl https://data.broadinstitute.org/igv/projects/downloads/2.17/IGV_Linux_2.17.4_WithJava.zip > IGV.zip; unzip IGV.zip
+        """
+
+
+rule igv_snapshots:
+    input:
+        script=rules.make_igv_batch_script.output,
+        igv=rules.igv_download.output,
+    output:
+        directory("{outdir}/results/{genome}/peaks/{donor}/snapshots"),
+    log:
+        "{outdir}/results/{genome}/peaks/{donor}/igv_snapshots.log",
+    shell:
+        """
+        xvfb-run --auto-servernum {input.igv} -b {input.script} &> {log}
+        """

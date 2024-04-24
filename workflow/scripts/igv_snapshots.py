@@ -12,33 +12,44 @@ logging.basicConfig(
 
 from pathlib import Path
 import pyranges as pr
-from snakemake.shell import shell
 
-batch_script_fn = Path(snakemake.output[0]) / "igv_snapshots.bat"  # type: ignore
-bamlist_fn = Path(snakemake.output[0]) / "bamlist.txt"  # type: ignore
-batch_script_fn.parent.mkdir(parents=True, exist_ok=True)
-with open(batch_script_fn, "w") as b, open(bamlist_fn, "w") as l:
-    b.write(f"new\ngenome {snakemake.input.fasta}\nsnapshotDirectory {snakemake.output[0]}\n")  # type: ignore
-    # b.write(f"new\ngenome hs1\nsnapshotDirectory {snakemake.output[0]}\n") # type: ignore
+batch_script_fn = snakemake.output[0]  # type: ignore
+outdir = Path(batch_script_fn).parent
+Path(outdir).mkdir(parents=True, exist_ok=True)
+regions = pr.read_bed(snakemake.input.regions).merge().df  # type: ignore
 
-    b.write(f"load {snakemake.input.megane_gaussian}\n")  # type: ignore
-    b.write(f"load {snakemake.input.rmsk}\n")  # type: ignore
-    b.write(f"load {snakemake.input.primer_sites}\n")  # type: ignore
+with open(batch_script_fn, "w") as b:
+    b.write(f"new\ngenome {snakemake.input.fasta}\nsnapshotDirectory {outdir}/snapshots\n")  # type: ignore
 
+    hip, dlpfc = [], []
     for bam in snakemake.input.bams:  # type: ignore
-        l.write(bam + "\n")
+        if "gDNA" in Path(bam).name:
+            bulk_bam = bam
+        if "ush" in Path(bam).name.lower():
+            hip.append(bam)
+        elif "usd" in Path(bam).name.lower():
+            dlpfc.append(bam)
 
-    b.write(f"load {str(bamlist_fn)}\n")
+    for bam in hip:
+        name = Path(bam).name.split(".")[0]
+        b.write(f"load {bam} name={name}\n")
+    for bam in dlpfc:
+        name = Path(bam).name.split(".")[0]
+        b.write(f"load {bam} name={name}\n")
+
     b.write(f"maxPanelHeight {snakemake.params.maxPanelHeight}\n")  # type: ignore
+    b.write(f'load {snakemake.input.megane_gaussian} name="wgs calls"\n')  # type: ignore
+    b.write(f'load {snakemake.input.rmsk}   name="RepeatMasker LINE-1"\n')  # type: ignore
+    b.write(f'load {snakemake.input.primer_sites} name="predicted SLAVseq primer sites"\n')  # type: ignore
+    b.write(f'load {snakemake.input.regions} name="SLAVseq calls"\n')  # type: ignore
+    name = Path(bulk_bam).name.split(".")[0]
+    b.write(f"load {bulk_bam} name={name}\n")  # type: ignore
+    b.write("squish\n")
 
-    for _, row in pr.read_bed(snakemake.input.regions).df.iterrows():  # type: ignore
+    for _, row in regions.iterrows():  # type: ignore
         locus = f"{row['Chromosome']}:{row['Start']-1000}-{row['End']+1000}"
         b.write(f"goto {locus}\n")
         b.write(f"colorBy {snakemake.params.colorBy}\n")  # type: ignore
         b.write(f"snapshot {locus}.png\n")
 
     b.write("exit\n")
-
-shell(
-    'xvfb-run --auto-servernum --server-num=1 java -Xmx4000m --module-path="${{CONDA_PREFIX}}/bin/igv" -b {batch_script_fn} &> {snakemake.log[0]}'
-)
