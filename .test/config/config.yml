@@ -1,26 +1,22 @@
 samples: config/samples.tsv
 donors: config/donors.tsv
-outdir: /iblm/logglun02/mcuoco/workflows/sz_slavseq/.test
+outdir: /iblm/netapp/data3/mcuoco/sz_slavseq/.test
 
 genome:
   fasta: resources/chr2122/chr2122.fasta
+  fai: resources/chr2122/chr2122.fasta.fai
   bwa: resources/chr2122/BWA/chr2122.fasta
   rmsk: resources/chr2122/chr2122.fasta.out
-  xtea: resources/chr2122/wgs_calls/xtea_LINE1.vcf
-  megane_percentile: resources/chr2122/wgs_calls/megane_MEIs.vcf
-  megane_gaussian: resources/chr2122/wgs_calls/megane_MEIs.vcf
+  xtea: data/xtea_LINE1.vcf
+  megane_percentile: data/usd7_LINE1.vcf
+  megane_gaussian: data/usd7_LINE1.vcf
   name: chr2122
+  size: 3117292070
 
 adapters:
-  p7_i7: 'AATGATACGGCGACCACCGAGATCTACACNNNNNNNN'
-  r1: 'ACACTCTTTCCCTACACGACGCTCTTCCGATCT'
-  p5_i5: 'CAAGCAGAAGACGGCATACGAGANNNNNNNN'
+  p7_i7: "AATGATACGGCGACCACCGAGATCTACACNNNNNNNN"
+  r1: "ACACTCTTTCCCTACACGACGCTCTTCCGATCT"
+  p5_i5: "CAAGCAGAAGACGGCATACGAGANNNNNNNN"
   r2: "GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT"
   L1_nested: "TAACTAACCTGCACAATGTGCAC"
   L1_downstream: "ATGTACCCTAAAACTTAGAGTATAATAAAAAAAAAAAAA"
-
-bulk_peaks_params:
-  size: 200
-  step: 1
-  minreads: 3
-  minrpm: 1
