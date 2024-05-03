@@ -38,7 +38,7 @@ rule vcf2bed:
     log:
         "{outdir}/results/{genome}/vcf2bed/{donor}/{vcf}.log",
     conda:
-        "../envs/ref.yml"
+        "../envs/ref.lock.yml"
     shell:
         """
         exec &> {log}
@@ -96,7 +96,7 @@ rule coverage:
     log:
         "{outdir}/results/{genome}/coverage/{donor}/{sample}.log",
     conda:
-        "../envs/ref.yml"
+        "../envs/ref.lock.yml"
     shell:
         """
         # send all stdout and stderr to log file
@@ -195,7 +195,7 @@ rule label:
         l1pa5="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa5.bed",
         l1pa6="{outdir}/results/{genome}/peaks/{donor}/{sample}.l1pa6.bed",
     conda:
-        "../envs/ref.yml"
+        "../envs/ref.lock.yml"
     log:
         "{outdir}/results/{genome}/peaks/{donor}/{sample}_label.log",
     shell:
@@ -461,7 +461,7 @@ rule make_igv_batch_script:
     log:
         "{outdir}/results/{genome}/peaks/{donor}/make_igv_batch_script.log",
     conda:
-        "../envs/igv.yml"
+        "../envs/model.yml"
     params:
         maxPanelHeight=200,
         colorBy="READ_STRAND",
@@ -478,7 +478,8 @@ rule igv_download:
     shell:
         """
         cd resources
-        curl https://data.broadinstitute.org/igv/projects/downloads/2.17/IGV_Linux_2.17.4_WithJava.zip > IGV.zip; unzip IGV.zip
+        curl https://data.broadinstitute.org/igv/projects/downloads/2.17/IGV_Linux_2.17.4_WithJava.zip > IGV.zip 2> /dev/null
+        unzip -o IGV.zip 2>&1 > /dev/null
         """
 
 

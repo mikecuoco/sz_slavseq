@@ -5,7 +5,7 @@ rule get_line1_consensus:
     log:
         "resources/LINE1_3end/dfam_query.log",
     conda:
-        "../envs/ref.yml"
+        "../envs/ref.lock.yml"
     params:
         accessions=[
             "DF000000225",
@@ -52,7 +52,7 @@ rule run_rmsk:
     log:
         config["genome"]["fasta"] + ".rmsk.log",
     conda:
-        "../envs/ref.yml"
+        "../envs/ref.lock.yml"
     params:
         # -s Slow search; 0-5% more sensitive, 2-3 times slower than default;
         # empty string is default
@@ -107,7 +107,7 @@ rule blast_primers:
     log:
         "resources/{genome}/blast_primers/blast_primers.log",
     conda:
-        "../envs/blast.yml"
+        "../envs/ref.lock.yml"
     script:
         "../scripts/blast_primers.py"
 

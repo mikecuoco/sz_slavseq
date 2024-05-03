@@ -9,15 +9,14 @@ dependencies:
   - pandas=2
   - pyarrow>=14
   - jupyter
-  - pyranges
+  - pyranges==0.0.124
   - jupyterlab_code_formatter
+  - ipykernel
   - nbconvert
   - seaborn>=0.12
   - numpy>=1.18
   - scikit-learn==1.4.2
   - flaml==2.1.2
   - ray-all
-  - igv-reports
-  - bamsnap
   - datashader
   - dask

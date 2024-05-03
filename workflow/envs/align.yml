@@ -4,10 +4,13 @@ channels:
   - nodefaults
 dependencies:
   - python>=3.7
-  - bwa
-  - samtools>=1.15
-  - pysam>=0.19.1
-  - biopython>=1.79
+  - bwa==0.7.18-0
+  - samtools==1.20
+  - pysam==0.22.1
+  - biopython==1.83
   - pyfaidx>=0.7.0
-  - gcc>=12.1.0
-  - samblaster
+  - sambamba==1.0
+  - samblaster==0.1.26
+  - deeptools==3.5.5
+  - fastp==0.23.4
+  - seqtk==1.4
