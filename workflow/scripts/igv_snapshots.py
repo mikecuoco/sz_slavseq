@@ -25,7 +25,7 @@ with open(batch_script_fn, "w") as b:
     for bam in snakemake.input.bams:  # type: ignore
         if "gDNA" in Path(bam).name:
             bulk_bam = bam
-        if "ush" in Path(bam).name.lower():
+        elif "ush" in Path(bam).name.lower():
             hip.append(bam)
         elif "usd" in Path(bam).name.lower():
             dlpfc.append(bam)
@@ -38,10 +38,10 @@ with open(batch_script_fn, "w") as b:
         b.write(f"load {bam} name={name}\n")
 
     b.write(f"maxPanelHeight {snakemake.params.maxPanelHeight}\n")  # type: ignore
-    b.write(f'load {snakemake.input.megane_gaussian} name="wgs calls"\n')  # type: ignore
-    b.write(f'load {snakemake.input.rmsk}   name="RepeatMasker LINE-1"\n')  # type: ignore
-    b.write(f'load {snakemake.input.primer_sites} name="predicted SLAVseq primer sites"\n')  # type: ignore
-    b.write(f'load {snakemake.input.regions} name="SLAVseq calls"\n')  # type: ignore
+    b.write(f"load {snakemake.input.megane_gaussian} name=wgs_calls\n")  # type: ignore
+    b.write(f"load {snakemake.input.rmsk} name=RepeatMasker_LINE-1\n")  # type: ignore
+    b.write(f"load {snakemake.input.primer_sites} name=predicted_SLAVseq_primer_sites\n")  # type: ignore
+    b.write(f"load {snakemake.input.regions} name=SLAVseq_calls\n")  # type: ignore
     name = Path(bulk_bam).name.split(".")[0]
     b.write(f"load {bulk_bam} name={name}\n")  # type: ignore
     b.write("squish\n")
