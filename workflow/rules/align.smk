@@ -86,21 +86,31 @@ rule bigwig:
     output:
         r1=rules.sort.output[0].replace("bam", "r1.bw"),
         r2=rules.sort.output[0].replace("bam", "r2.bw"),
+        contig=rules.sort.output[0].replace("bam", "contig.bw"),
     log:
         rules.sort.log[0].replace("sort", "bigwig"),
     params:
         effective_genome_size=config["genome"]["size"],
         mapq=30,
+    conda:
+        "../envs/align.lock.yml"
     shell:
         """
         bamCoverage -b {input} -o {output.r1} -p {threads} \
             --minMappingQuality {params.mapq} \
             --effectiveGenomeSize {params.effective_genome_size} \
-            --samFlagInclude 64
+            --ignoreDuplicates \
+            --samFlagInclude 64 2> {log}
         bamCoverage -b {input} -o {output.r2} -p {threads} \
             --minMappingQuality {params.mapq} \
             --effectiveGenomeSize {params.effective_genome_size} \
-            --samFlagInclude 128
+            --ignoreDuplicates \
+            --samFlagInclude 128 2>> {log}
+        bamCoverage -b {input} -o {output.contig} -p {threads} \
+            --minMappingQuality {params.mapq} \
+            --effectiveGenomeSize {params.effective_genome_size} \
+            --ignoreDuplicates \
+            --samFlagExclude 192 2>> {log}
         """
 
 
@@ -122,7 +132,7 @@ rule map:
     input:
         expand(
             expand(
-                rules.flagstat.output,
+                rules.bigwig.output,
                 zip,
                 sample=samples["sample_id"],
                 donor=samples["donor_id"],
