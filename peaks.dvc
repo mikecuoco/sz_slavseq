@@ -1,0 +1,6 @@
+outs:
+- md5: a1444e2081d7c10a244a97045019d260.dir
+  size: 10626118948
+  nfiles: 95148
+  hash: md5
+  path: peaks
