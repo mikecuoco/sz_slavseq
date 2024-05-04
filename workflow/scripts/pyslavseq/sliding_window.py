@@ -135,6 +135,7 @@ class SlidingWindow(object):
                             "End": end,
                             "reads": w,
                             "n_dedup": n_dedup,
+                            "width": end - start,
                         }
                     logger.info(
                         f"Generated {count} {size} bp windows on {self.contig} with >= {minreads} reads"
@@ -149,45 +150,54 @@ class SlidingWindow(object):
                     "End": end,
                     "reads": w.copy(),
                     "n_dedup": n_dedup,
+                    "width": end - start,
                 }
 
-    def testbg(
-        self, windows: Generator, bg_windows: Generator, mfold: int = 5
+    def findbg(
+        self, windows: Generator, bg_windows: Generator, bgsize: int = 1e4
     ) -> Generator:
+        """
+        Find bg_windows centered around windows
+        :param windows: generator of windows
+        :param bg_windows: generator of background windows
+        :param bgsize: size of background window
+        """
+
+        half_bgsize = bgsize / 2
+        reflen_half_bgsize = self.reflen - half_bgsize
+
+        for w in windows:
+            center = int(w["Start"] + (w["width"] / 2))
+            # find the background window that contains the center of the window
+            # import pdb; pdb.set_trace()
+            for bgw in bg_windows:
+                # if the center of the window is at the beginning of the chromosome
+                if center < half_bgsize:
+                    break
+                elif center == (bgw["Start"] + half_bgsize):
+                    break
+                # if the center of the window is at the end of the chromosome
+                elif center > reflen_half_bgsize:
+                    continue
+
+            yield w, bgw
+
+    def testbg(self, windows: Generator, bg_windows: Generator, mfold: int = 5):
         """
         Test if window signal is enriched above local background
         :param windows: generator of windows
         :param bg_windows: generator of background windows
         :param mfold: minimum fold change to consider window enriched above local background, default = 5
         """
-
-        size = self.size
-        bgsize = self.bgsize
-        half_size = self.half_size
-        half_bgsize = self.half_bgsize
-        reflen_half_bgsize = self.reflen - half_bgsize
-
         count = 0
-        for w in windows:
-            center = w["Start"] + half_size
-            # find the background window that contains the center of the window
-            for bgw in bg_windows:
-                # if the center of the window is at the beginning of the chromosome
-                if center < half_bgsize:
-                    break
-                if (bgw["Start"] + half_bgsize) == center:
-                    break
-                # if the center of the window is at the end of the chromosome
-                if center > reflen_half_bgsize:
-                    continue
-
-            # test for fold enrichment
-            if ((w["n_dedup"] * bgsize) / (bgw["n_dedup"] * size)) > mfold:
+        for w, bgw in self.findbg(windows, bg_windows):
+            # if window is enriched above local background, yield it
+            if ((w["n_dedup"] * bgw["width"]) / (bgw["n_dedup"] * w["width"])) > mfold:
                 count += 1
                 yield w
 
         logger.info(
-            f"Found {count} {size} bp windows {mfold}x enriched above {bgsize} bp background on {self.contig}"
+            f"Found {count} windows {mfold}x enriched above {bgw['width']} bp background on {self.contig}"
         )
 
     def merge(
@@ -228,11 +238,13 @@ class SlidingWindow(object):
                             end = r.three_end
                     p["Start"], p["End"] = start, end
                 count += 1
+                p["width"] = p["End"] - p["Start"]
                 yield p
                 # start new window
                 p = n
 
         count += 1
+        p["width"] = p["End"] - p["Start"]
         yield p
 
         logger.info(f"Merged windows into {count} peaks on {self.contig}")
@@ -287,31 +299,31 @@ class SlidingWindow(object):
         if mode not in ["windows", "peaks"]:
             raise Exception(f"Mode {mode} is not valid, must be 'peaks' or 'windows'")
 
-        self.size = int(kwargs.get("size", 200))
-
-        if bgtest:
-            self.half_size = int(self.size) / 2
-            self.bgsize = int(bgsize)
-            self.half_bgsize = int(bgsize) / 2
-
         for c in self.contigs:
+            logger.info(f"PROCESSING {c}")
             self.contig = c
             self.reflen = self.bam.get_reference_length(c)
 
             # get reads on contig
-            reads, self.reads = before_and_after(
+            chr_reads, self.reads = before_and_after(
                 lambda r: r.reference_name == c, self.reads
             )
-            if bgtest:
-                bgreads, reads = tee(reads)
+
+            # copy iterator for initial windows, background test, and background feature collection
+            read_dict = {
+                k: reads
+                for k, reads in zip(
+                    ["windows", "bgtest", 5e3, 1e4, 2e4], tee(chr_reads, 5)
+                )
+            }
 
             # define window generator
-            windows = self.windows(reads=reads, **kwargs)
+            windows = self.windows(reads=read_dict["windows"], **kwargs)
 
             if bgtest:
                 bgkwargs = kwargs.copy()
-                bgkwargs["size"] = bgsize
-                bg_windows = self.windows(reads=bgreads, **bgkwargs)
+                bgkwargs["size"] = int(bgsize)
+                bg_windows = self.windows(reads=read_dict["bgtest"], **bgkwargs)
                 windows = self.testbg(windows, bg_windows, mfold=mfold)
 
             if greedy:
@@ -325,12 +337,26 @@ class SlidingWindow(object):
             if mode == "peaks":
                 windows = self.merge(windows, refine=refine)
 
+            # add flanking windows for background features
+            bgw_dict = {}
+            for bgsize, w in zip([5e3, 1e4, 2e4], tee(windows, 3)):
+                bgkwargs = kwargs.copy()
+                bgkwargs["size"] = int(bgsize)
+                bg_windows = self.windows(reads=read_dict[bgsize], **bgkwargs)
+                bgw_dict[bgsize] = self.findbg(w, bg_windows, bgsize=bgsize)
+
             # yield windows
-            for w in windows:
+            for (w, bgw5), (_, bgw10), (_, bgw20) in zip(
+                bgw_dict[5e3], bgw_dict[1e4], bgw_dict[2e4]
+            ):
                 w["Chromosome"] = c
                 if collect_features:
                     w = features(w)
                     w["size_factor"] = self.size_factor
+                    for bgsize, bgw in zip([5e3, 1e4, 2e4], [bgw5, bgw10, bgw20]):
+                        bgw["Chromosome"] = c
+                        for k, v in features(bgw).items():
+                            w[f"bg{int(bgsize)}_{k}"] = v
                     yield w
                 else:
                     w["n_reads"] = len(w["reads"])

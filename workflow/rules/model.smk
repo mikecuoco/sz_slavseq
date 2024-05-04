@@ -18,6 +18,8 @@ rule make_regions:
     input:
         bam=rules.sort.output[0],
         bai=rules.index.output[0],
+        en_motif_pos=rules.en_motif.output.pos,
+        en_motif_neg=rules.en_motif.output.neg,
     output:
         pqt="{outdir}/results/{genome}/peaks/{donor}/{sample}.pqt",
         bed="{outdir}/results/{genome}/peaks/{donor}/{sample}.bed",
@@ -197,10 +199,10 @@ rule label:
     conda:
         "../envs/ref.lock.yml"
     log:
-        "{outdir}/results/{genome}/peaks/{donor}/{sample}_label.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}.log",
     shell:
         """
-        exec &> {log}
+        exec &>> {log}
 
         bedtools intersect -a {input.cell_regions} -b {input.bulk_regions} -wa > {output.bulk}
         bedtools intersect -a {input.cell_regions} -b {input.primer_sites} -wa > {output.primer_sites}
@@ -216,7 +218,7 @@ rule label:
         """
 
 
-rule final_features:
+rule merge_labels:
     input:
         regions=rules.make_regions.output.pqt,
         annotations=expand(
@@ -236,23 +238,21 @@ rule final_features:
             ],
             allow_missing=True,
         ),
-        en_motif_pos=rules.en_motif.output.pos,
-        en_motif_neg=rules.en_motif.output.neg,
     output:
         "{outdir}/results/{genome}/peaks/{donor}/{sample}_labelled.pqt",
     log:
-        "{outdir}/results/{genome}/peaks/{donor}/{sample}_labelled.log",
+        "{outdir}/results/{genome}/peaks/{donor}/{sample}.log",
     conda:
         "../envs/features.yml"
     script:
-        "../scripts/final_features.py"
+        "../scripts/merge_labels.py"
 
 
 rule eval_regions:
     input:
-        cell_regions=rules.final_features.output,
+        cell_regions=rules.merge_labels.output,
         bulk_regions=lambda wc: expand(
-            rules.final_features.output,
+            rules.merge_labels.output,
             sample=bulk.loc[wc.donor, "sample_id"],
             allow_missing=True,
         ),
@@ -288,9 +288,9 @@ rule eval_regions:
 
 rule peak_coverage:
     input:
-        cell=rules.final_features.output,
+        cell=rules.merge_labels.output,
         bulk=lambda wc: expand(
-            rules.final_features.output,
+            rules.merge_labels.output,
             sample=bulk.loc[wc.donor, "sample_id"],
             allow_missing=True,
         ),
@@ -307,7 +307,7 @@ rule peak_coverage:
 rule germline_report:
     input:
         bulk=expand(
-            rules.final_features.output,
+            rules.merge_labels.output,
             zip,
             sample=bulk["sample_id"],
             donor=bulk["donor_id"],
@@ -349,7 +349,7 @@ rule germline_report:
 rule regions_report:
     input:
         cells=expand(
-            rules.final_features.output,
+            rules.merge_labels.output,
             zip,
             donor=cells["donor_id"],
             sample=cells["sample_id"],
