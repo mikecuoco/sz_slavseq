@@ -3,3 +3,6 @@
 .test/data/gDNA_usd7_R1.fastq.gz filter=lfs diff=lfs merge=lfs -text
 .test/data/gDNA_usd7_R2.fastq.gz filter=lfs diff=lfs merge=lfs -text
 .test/data/USD7_F2_S100_R1.fastq.gz filter=lfs diff=lfs merge=lfs -text
+.test/data/breakpoint_pairs_pooled_all.txt.gz filter=lfs diff=lfs merge=lfs -text
+.test/data/GraffiTE.merged.genotypes.vcf.gz filter=lfs diff=lfs merge=lfs -text
+.test/data/xtea_LINE1.vcf filter=lfs diff=lfs merge=lfs -text

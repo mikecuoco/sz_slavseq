@@ -5,11 +5,13 @@ outdir: /iblm/netapp/data3/mcuoco/sz_slavseq/.test
 genome:
   fasta: resources/chr2122/chr2122.fasta
   fai: resources/chr2122/chr2122.fasta.fai
+  genome: resources/chr2122/chr2122.chrom.sizes
   bwa: resources/chr2122/BWA/chr2122.fasta
   rmsk: resources/chr2122/chr2122.fasta.out
   xtea: data/xtea_LINE1.vcf
   megane_percentile: data/usd7_LINE1.vcf
   megane_gaussian: data/usd7_LINE1.vcf
+  graffite: data/GraffiTE.merged.genotypes.vcf.gz
   name: chr2122
   size: 3117292070
 
