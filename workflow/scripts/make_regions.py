@@ -47,7 +47,7 @@ with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
         )
     else:
         gen_regions = SlidingWindow(bam, minreads=5).make_regions(
-            collect_features=True, bgtest=True, size=200, step=1, bgsize=10000, mfold=3
+            collect_features=True, bgtest=True, size=200, step=1, bgsize=10000, mfold=4
         )
     regions = [next(gen_regions)]
     schema = pa.Table.from_pylist(regions).schema

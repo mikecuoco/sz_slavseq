@@ -20,6 +20,7 @@ read_filter = (
     and r.is_mapped
     and (not r.is_supplementary)
     and (not r.is_secondary)
+    and r.mapping_quality >= 20
 )
 
 
@@ -196,10 +197,6 @@ class SlidingWindow(object):
                 count += 1
                 yield w
 
-        logger.info(
-            f"Found {count} windows {mfold}x enriched above {bgw['width']} bp background on {self.contig}"
-        )
-
     def merge(
         self, windows: Generator, bandwidth: int = -100, refine: bool = False
     ) -> Generator:
@@ -338,24 +335,22 @@ class SlidingWindow(object):
                 windows = self.merge(windows, refine=refine)
 
             # add flanking windows for background features
-            bgw_dict = {}
+            bgw = {}
             for bgsize, w in zip([5e3, 1e4, 2e4], tee(windows, 3)):
                 bgkwargs = kwargs.copy()
                 bgkwargs["size"] = int(bgsize)
                 bg_windows = self.windows(reads=read_dict[bgsize], **bgkwargs)
-                bgw_dict[bgsize] = self.findbg(w, bg_windows, bgsize=bgsize)
+                bgw[bgsize] = self.findbg(w, bg_windows, bgsize=bgsize)
 
             # yield windows
-            for (w, bgw5), (_, bgw10), (_, bgw20) in zip(
-                bgw_dict[5e3], bgw_dict[1e4], bgw_dict[2e4]
-            ):
+            for (w, bgw5), (_, bgw10), (_, bgw20) in zip(bgw[5e3], bgw[1e4], bgw[2e4]):
                 w["Chromosome"] = c
                 if collect_features:
                     w = features(w)
                     w["size_factor"] = self.size_factor
-                    for bgsize, bgw in zip([5e3, 1e4, 2e4], [bgw5, bgw10, bgw20]):
-                        bgw["Chromosome"] = c
-                        for k, v in features(bgw).items():
+                    for bgsize, bg in zip([5e3, 1e4, 2e4], [bgw5, bgw10, bgw20]):
+                        bg["Chromosome"] = c
+                        for k, v in features(bg).items():
                             w[f"bg{int(bgsize)}_{k}"] = v
                     yield w
                 else:

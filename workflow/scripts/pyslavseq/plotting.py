@@ -8,7 +8,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import datashader as ds
-import datashader.transfer_functions as tf
+from datashader.mpl_ext import dsshow
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 
 def joint_ecdfplot(df: pd.DataFrame, x: str, y: str, **kwargs):
@@ -35,58 +36,57 @@ def joint_ecdfplot(df: pd.DataFrame, x: str, y: str, **kwargs):
     return g
 
 
-def germline_dist(df: pd.DataFrame, y: str, hue=None):
+def datashader_plot(
+    df: pd.DataFrame, x: str, y: str, log_scale=(False, False), **kwargs
+):
     """
-    Plot the germline distance vs. a given y variable for all peaks in df.
-    Use log scale for x-axis. Use datashaer for visualization.
+    Plot an x vs. y variable for all peaks, split by their labels in df using datashader
+
+    TODO:
+     - [ ]
     """
 
-    assert "germline_dist" in df.columns, "Column 'germline_dist' not in DataFrame"
-    assert y in df.columns, f"Column '{y}' not in DataFrame"
+    df = df.copy()  # Avoid modifying the original DataFrame
 
-    if not hue:
-        df["germline_dist_log"] = np.log10(df["germline_dist"])
-        nlabels = df["label"].nunique()
-        g, axs = plt.subplots(
-            1, nlabels, figsize=(5 * nlabels, 5), sharey=True, sharex=True
-        )
-        g.subplots_adjust(wspace=0)
-        cvs = ds.Canvas(
-            plot_width=400,
-            plot_height=400,
-            x_range=(0, df["germline_dist_log"].max()),
-            y_range=(df[y].min(), df[y].max()),
-        )
+    for c in [x, y, "label"]:
+        assert c in df.columns, f"Column '{c}' not in DataFrame"
 
-        for ax, (l, d) in zip(axs, df.groupby("label")):
-            agg = cvs.points(d, "germline_dist_log", y)
-            img = tf.shade(agg, how="log").to_pil()
-            ax.imshow(
-                img,
-                extent=[0, df["germline_dist_log"].max(), df[y].min(), df[y].max()],
-                aspect="auto",
-            )
-            ax.set_title(f"label = {l}")
-            ax.set_xlabel("Distance to nearest germline (bp)")
-            ax.set_xlim(0, df["germline_dist_log"].max())
+    if log_scale[0]:
+        df[x] = np.log10(df[x])
+    if log_scale[1]:
+        df[y] = np.log10(df[y])
+
+    nlabels = df["label"].nunique()
+    fig, axs = plt.subplots(
+        1, nlabels, figsize=(nlabels * 7, 6), sharey=True, sharex=True
+    )
+    if nlabels == 1:
+        axs = [axs]
+    fig.subplots_adjust(wspace=0)
+
+    for ax, (l, d) in zip(axs, df.groupby("label")):
+        artist = dsshow(
+            d,
+            ds.Point(x, y),
+            ds.count(),
+            norm="log",
+            aspect="auto",
+            x_range=(0, d[x].max()),
+            y_range=(0, d[y].max()),
+            ax=ax,
+            **kwargs,
+        )
+        plt.colorbar(artist, ax=ax)
+
+        ax.set_title(f"label = {l} (n = {d.shape[0]})")
+        ax.set_xlabel(x)
+        if log_scale[0]:
             ax.xaxis.set_major_formatter(
                 FuncFormatter(lambda val, pos: f"$10^{{{int(val)}}}$")
             )
+        if log_scale[1]:
+            ax.yaxis.set_major_formatter(
+                FuncFormatter(lambda val, pos: f"$10^{{{int(val)}}}$")
+            )
 
-        axs[0].set_ylabel(y)
-
-    else:
-        assert hue in df.columns, f"Column '{hue}' not in DataFrame"
-        g = sns.relplot(
-            data=df,
-            x="germline_dist",
-            y=y,
-            hue=hue,
-            kind="scatter",
-            col="label",
-            alpha=0.5,
-            s=3,
-        )
-        g.set(xscale="log")
-
-    return g
+    axs[0].set_ylabel(y)

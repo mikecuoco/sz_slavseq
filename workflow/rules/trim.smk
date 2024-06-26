@@ -129,10 +129,24 @@ def get_fastqc_input(wc):
             samples.loc[wc.donor, wc.sample][["R2"]],
         ]
     elif wc.fastq == "trimmed":
-        reads = [rules.fastp.output.fastq1, rules.fastp.output.fastq2]
+        reads = [
+            rules.fastp.output.trimmed[0],
+            rules.fastp.output.trimmed[1],
+            rules.fastp.output.merged,
+        ]
     elif wc.fastq == "filtered":
-        reads = [rules.filter_l1hs.output.fastq1, rules.filter_l1hs.output.fastq2]
-    return reads[0] if wc.read == "R1" else reads[1]
+        reads = [
+            rules.filter_l1hs.output.r1,
+            rules.filter_l1hs.output.r2,
+            rules.filter_l1hs.output.merged,
+        ]
+
+    if wc.read == "R1":
+        return reads[0]
+    elif wc.read == "R2":
+        return reads[1]
+    elif wc.read == "merged":
+        return reads[2]
 
 
 rule fastqc:

@@ -1,14 +1,27 @@
+def get_bwa_input(wildcards):
+    out = {}
+    out["idx"] = config["genome"]["bwa"] + ".amb"
+    if wildcards.reads == "trimmed":
+        out["r1"] = rules.fastp.output.trimmed[0]
+        out["r2"] = rules.fastp.output.trimmed[1]
+        out["merged"] = rules.fastp.output.merged
+    elif wildcards.reads == "filtered":
+        out["r1"] = rules.filter_l1hs.output.r1
+        out["r2"] = rules.filter_l1hs.output.r2
+        out["merged"] = rules.filter_l1hs.output.merged
+    else:
+        raise ValueError("Invalid reads wildcard: " + wildcards.reads)
+    return out
+
+
 rule bwa_mem:
     input:
-        idx=config["genome"]["bwa"] + ".amb",
-        r1=rules.filter_l1hs.output.r1,
-        r2=rules.filter_l1hs.output.r2,
-        merged=rules.filter_l1hs.output.merged,
+        unpack(get_bwa_input),
     output:
-        "{outdir}/results/{genome}/align/{donor}/{sample}.genome.bam",
+        "{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.genome.bam",
     log:
-        bwa="{outdir}/results/{genome}/align/{donor}/{sample}.bwa.log",
-        samblaster="{outdir}/results/{genome}/align/{donor}/{sample}.samblaster.log",
+        bwa="{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.bwa.log",
+        samblaster="{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.samblaster.log",
     threads: 2
     conda:
         "../envs/align.lock.yml"
@@ -80,40 +93,6 @@ rule index:
         "sambamba index {input} 2> {log}"
 
 
-rule bigwig:
-    input:
-        rules.sort.output,
-    output:
-        r1=rules.sort.output[0].replace("bam", "r1.bw"),
-        r2=rules.sort.output[0].replace("bam", "r2.bw"),
-        contig=rules.sort.output[0].replace("bam", "contig.bw"),
-    log:
-        rules.sort.log[0].replace("sort", "bigwig"),
-    params:
-        effective_genome_size=config["genome"]["size"],
-        mapq=30,
-    conda:
-        "../envs/align.lock.yml"
-    shell:
-        """
-        bamCoverage -b {input} -o {output.r1} -p {threads} \
-            --minMappingQuality {params.mapq} \
-            --effectiveGenomeSize {params.effective_genome_size} \
-            --ignoreDuplicates \
-            --samFlagInclude 64 2> {log}
-        bamCoverage -b {input} -o {output.r2} -p {threads} \
-            --minMappingQuality {params.mapq} \
-            --effectiveGenomeSize {params.effective_genome_size} \
-            --ignoreDuplicates \
-            --samFlagInclude 128 2>> {log}
-        bamCoverage -b {input} -o {output.contig} -p {threads} \
-            --minMappingQuality {params.mapq} \
-            --effectiveGenomeSize {params.effective_genome_size} \
-            --ignoreDuplicates \
-            --samFlagExclude 192 2>> {log}
-        """
-
-
 rule flagstat:
     input:
         rules.sort.output,
@@ -128,16 +107,42 @@ rule flagstat:
         "sambamba flagstat {input} > {output} 2> {log}"
 
 
-rule map:
+rule reads_report:
     input:
-        expand(
+        fastqc=expand(
             expand(
-                rules.bigwig.output,
+                rules.fastqc.output.zip,
                 zip,
-                sample=samples["sample_id"],
                 donor=samples["donor_id"],
+                sample=samples["sample_id"],
                 allow_missing=True,
             ),
-            genome=config["genome"]["name"],
-            outdir=config["outdir"],
+            zip,
+            read=["R1", "R2", "R1", "R2", "merged", "R1", "R2", "merged"],
+            fastq=[
+                "raw",
+                "raw",
+                "trimmed",
+                "trimmed",
+                "trimmed",
+                "filtered",
+                "filtered",
+                "filtered",
+            ],
+            allow_missing=True,
         ),
+        flagstat=expand(
+            rules.flagstat.output,
+            zip,
+            donor=samples["donor_id"],
+            sample=samples["sample_id"],
+            allow_missing=True,
+        ),
+    output:
+        "{outdir}/results/{genome}/{reads}/reads_report.ipynb",
+    log:
+        notebook="{outdir}/results/{genome}/{reads}/reads_report.ipynb",
+    conda:
+        "../envs/model.yml"
+    notebook:
+        "../scripts/reads_report.py.ipynb"

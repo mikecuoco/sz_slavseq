@@ -14,3 +14,5 @@ dependencies:
   - deeptools==3.5.5
   - fastp==0.23.4
   - seqtk==1.4
+  - bedtools==2.31.1
+  - ucsc-bedgraphtobigwig
