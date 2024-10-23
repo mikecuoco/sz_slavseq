@@ -23,4 +23,6 @@ dependencies:
   - shap
   - datashader
   - dask
+  - pysam==0.22.1
   - py-xgboost-gpu
+  - upsetplot==0.9

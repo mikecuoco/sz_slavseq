@@ -132,17 +132,85 @@ rule reads_report:
             allow_missing=True,
         ),
         flagstat=expand(
-            rules.flagstat.output,
+            expand(
+                rules.flagstat.output,
+                reads="filtered",
+                allow_missing=True,
+            ),
             zip,
             donor=samples["donor_id"],
             sample=samples["sample_id"],
             allow_missing=True,
         ),
     output:
-        "{outdir}/results/{genome}/{reads}/reads_report.ipynb",
+        "{outdir}/results/{genome}/reads_report.ipynb",
     log:
-        notebook="{outdir}/results/{genome}/{reads}/reads_report.ipynb",
+        notebook="{outdir}/results/{genome}/reads_report.ipynb",
     conda:
         "../envs/model.yml"
     notebook:
         "../scripts/reads_report.py.ipynb"
+
+
+# TODO: compute features here
+rule coverage:
+    input:
+        bam=rules.sort.output[0],
+        bai=rules.index.output[0],
+        l1hs_rmsk="resources/{genome}/{genome}.fasta.rmsk.l1hs.bed",
+        chrom_sizes=config["genome"]["genome"],
+        megane=expand(rules.merge_bed.output, vcf="megane", allow_missing=True),
+    output:
+        meg=temp("{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.meg.bed"),
+        cov_temp=temp(
+            "{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.coverage.bed.tmp"
+        ),
+        cov="{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.coverage.bed",
+    log:
+        "{outdir}/results/{genome}/{reads}/align/{donor}/{sample}.coverage.log",
+    conda:
+        "../envs/align.yml"
+    shell:
+        """
+        exec &>> {log}
+
+        bedtools slop -i {input.megane} -g {input.chrom_sizes} -b 100 > {output.meg}
+        samtools view -F 1412 -b {input.bam} -q 30 | bedtools coverage -a {output.meg} -b stdin -counts > {output.cov_temp}
+
+        LIBSIZE=$(samtools view -F 1412 -c {input.bam})
+        awk -v libsize=$LIBSIZE '{{print $0"\t"$(NF)/libsize * 1e6}}' {output.cov_temp} > {output.cov}
+        """
+
+
+rule coverage_report:
+    input:
+        cov=expand(
+            rules.coverage.output.cov,
+            zip,
+            sample=samples["sample_id"],
+            donor=samples["donor_id"],
+            allow_missing=True,
+        ),
+    output:
+        "{outdir}/results/{genome}/{reads}/align/coverage.ipynb",
+    log:
+        notebook="{outdir}/results/{genome}/{reads}/align/coverage.ipynb",
+    conda:
+        "../envs/model.yml"
+    notebook:
+        "../scripts/coverage.py.ipynb"
+
+
+rule collect_coverage:
+    input:
+        expand(
+            rules.reads_report.output,
+            genome=config["genome"]["name"],
+            outdir=config["outdir"],
+        ),
+        expand(
+            rules.coverage_report.output,
+            reads="filtered",
+            genome=config["genome"]["name"],
+            outdir=config["outdir"],
+        ),

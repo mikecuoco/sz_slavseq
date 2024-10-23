@@ -3,7 +3,7 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - python>=3.10
+  - python==3.11
   - ipykernel
   - pandas>=2
   - seaborn>=0.13.0
@@ -22,3 +22,13 @@ dependencies:
   - flaml>=2.1.2
   - datashader
   - nbdime
+  - igv>=2.17.4
+  - picard
+  - reportlab
+  - black-jupyter
+  - pysam>=0.22.1
+  - bedops
+  - pyranges==0.1.2
+  - bionumpy>=1
+  - pip:
+    - ipynb==0.5.1

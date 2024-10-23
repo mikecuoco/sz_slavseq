@@ -5,7 +5,7 @@ channels:
 dependencies:
   - python>=3.8
   - pysam>=0.21.0
-  - pandas
+  - pandas>=2
   - scipy
   - pyarrow
   - pyranges
@@ -13,7 +13,6 @@ dependencies:
   - seaborn
   - git-lfs
   - pip
-  - pyBigWig
+  - pyBigWig>=0.3.22
   - xlrd>=1.0.0
-  - pip:
-    - macs3
+  - bionumpy>=1

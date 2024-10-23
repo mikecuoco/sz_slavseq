@@ -4,7 +4,6 @@ import os, shutil
 from collections import defaultdict
 from snakemake.utils import validate, min_version, Paramspace
 
-
 ##### set minimum snakemake version #####
 min_version("7.22.0")
 
@@ -35,55 +34,15 @@ with open("resources/bad_cells.txt", "r") as f:
 samples = samples[~samples["sample_id"].isin(bad_cells)]
 cells = samples[
     ~samples["sample_id"].str.contains("gDNA")
+    & ~samples["sample_id"].str.contains("Bulk")
 ]  # single-cells only, exclude bulk samples
 bulk = samples[
     samples["sample_id"].str.contains("gDNA")
+    | samples["sample_id"].str.contains("Bulk")
 ]  # bulk samples only, exclude single-cells
 
 # create donor sheet
 donors = donors.set_index("donor_id", drop=False)
-
-
-wildcard_constraints:
-    donor="|".join(donors["donor_id"]),
-    sample="|".join(samples["sample_id"]),
-    genome=config["genome"]["name"],
-    outdir=config["outdir"],
-
-
-include: "rules/ref.smk"
-include: "rules/trim.smk"
-include: "rules/align.smk"
-include: "rules/model.smk"
-include: "rules/model_nn.smk"
-
-
-rule map:
-    input:
-        expand(
-            expand(
-                rules.bedGraphToBigWig.output,
-                zip,
-                sample=samples["sample_id"],
-                donor=samples["donor_id"],
-                allow_missing=True,
-            ),
-            reads="filtered",
-            read=["r1", "r2", "contig"],
-            genome=config["genome"]["name"],
-            outdir=config["outdir"],
-        ),
-
-
-rule qc:
-    input:
-        expand(
-            rules.reads_report.output,
-            reads="filtered",
-            genome=config["genome"]["name"],
-            outdir=config["outdir"],
-        ),
-
 
 # setup feature sets for model training
 feature_sets = {
@@ -112,15 +71,14 @@ feature_sets = {
         "frac_unique_5end",
         "frac_unique_3end",
     ],
+    "set3": [
+        "n_reads",
+        "n_duplicates",
+        "n_unique_5end",
+        "n_unique_3end",
+        "orientation_bias",
+    ],
 }
-
-feature_sets["set3"] = [
-    "n_reads",
-    "n_duplicates",
-    "n_unique_5end",
-    "n_unique_3end",
-    "orientation_bias",
-]
 
 extra = defaultdict(list)
 for bg in ["bg5000", "bg10000", "bg20000"]:
@@ -136,23 +94,76 @@ feature_sets["set2_germdist"] = feature_sets["set2"] + ["germline_dist"]
 feature_sets["set3_germdist"] = feature_sets["set3"] + ["germline_dist"]
 
 
-rule model:
+wildcard_constraints:
+    donor="|".join(donors["donor_id"]),
+    sample="|".join(samples["sample_id"]),
+    genome=config["genome"]["name"],
+    outdir=config["outdir"],
+
+
+include: "rules/ref.smk"
+include: "rules/trim.smk"
+include: "rules/align.smk"
+include: "rules/regions.smk"
+
+
+# include: "rules/peaks.smk"
+# include: "rules/windows.smk"
+# include: "rules/greedy_windows.smk"
+# include: "rules/breakpoints.smk"
+# include: "rules/model.smk"
+# include: "rules/validate.smk"
+
+
+rule map:
     input:
         expand(
-            rules.calls_report.output,
+            expand(
+                rules.sort.output,
+                zip,
+                sample=samples["sample_id"],
+                donor=samples["donor_id"],
+                allow_missing=True,
+            ),
             reads="filtered",
-            features=feature_sets.keys(),
             genome=config["genome"]["name"],
             outdir=config["outdir"],
         ),
 
 
-rule igv:
+rule qc:
     input:
         expand(
-            rules.igv_snapshots.output,
+            rules.reads_report.output,
             reads="filtered",
             genome=config["genome"]["name"],
             outdir=config["outdir"],
-            donor=donors["donor_id"].unique(),
         ),
+
+
+# rule model:
+#     input:
+#         expand(
+#             rules.calls_report.output,
+#             reads="filtered",
+#             features=feature_sets.keys(),
+#             genome=config["genome"]["name"],
+#             outdir=config["outdir"],
+#         ),
+# rule igv:
+#     input:
+#         expand(
+#             rules.igv_snapshots.output,
+#             reads="filtered",
+#             genome=config["genome"]["name"],
+#             outdir=config["outdir"],
+#             donor=donors["donor_id"].unique(),
+#         ),
+# rule validate:
+#     input:
+#         expand(
+#             rules.wgs_igv.output,
+#             reads="filtered",
+#             genome=config["genome"]["name"],
+#             outdir=config["outdir"],
+#         ),

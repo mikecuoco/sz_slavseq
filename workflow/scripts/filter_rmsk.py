@@ -56,27 +56,55 @@ def merge(df):
             "Chromosome": df["Chromosome"].iloc[0],
             "Start": df["Start"].min(),
             "End": df["End"].max(),
+            "Strand": df["Strand"].unique()[0]
+            if len(df["Strand"].unique()) == 1
+            else "+/-",
             "repStart": df["repStart"][df["repStart"].idxmin()],
             "repEnd": df["repEnd"][df["repStart"].idxmax()],
         }
     )
 
 
+def adjust_line1(row):
+    "adjust to the last 200 bases of line" ""
+    if row["Strand"] == "+":
+        row["Start"] = row["End"] - 300
+        row["End"] = row["End"] + 300
+    elif row["Strand"] == "-":
+        row["End"] = row["Start"] + 300
+        row["Start"] = row["Start"] - 300
+    else:
+        logger.warning(f"Strand is not unique for {row}")
+    return row
+
+
 rmsk = read_rmsk_bed(snakemake.input[0])
 rmsk = (
     pr.PyRanges(rmsk)
-    .extend(200)
+    .extend(200)  # extend for clustering purposes
     .cluster()
     .df.groupby(["Cluster", "repName"], observed=True)
     .apply(merge)
-    .query("repEnd > 860")
     .reset_index("repName")
     .rename(columns={"repName": "Name"})
     .reset_index(drop=True)
 )
 
-for name in ["l1hs", "l1pa2", "l1pa3", "l1pa4", "l1pa5", "l1pa6"]:
-    g = name.upper() + "_3end"
-    df = rmsk.query("Name == @g")
-    print(f"writing {name}")
-    pr.PyRanges(df).to_bed(snakemake.output[name])  # type: ignore
+reps = {
+    "l1hs": "L1HS_3end",
+    "l1pa2": "L1PA2_3end",
+    "l1pa3": "L1PA3_3end",
+    "l1pa4": "L1PA4_3end",
+    "l1pa5": "L1PA5_3end",
+    "l1pa6": "L1PA6_3end",
+    "polyA": "(A)n",
+    "polyT": "(T)n",
+}
+
+for i, name in reps.items():
+    df = rmsk.query("Name == @name")
+    if "_3end" in name:
+        df = df.query("repEnd > 860").apply(adjust_line1, axis=1)
+
+    logger.info(f"writing {i} to {snakemake.output[i]}")  # type: ignore
+    pr.PyRanges(df).to_bed(snakemake.output[i])  # type: ignore

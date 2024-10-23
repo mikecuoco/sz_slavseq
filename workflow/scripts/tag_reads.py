@@ -28,6 +28,45 @@ def is_ref_read(read: pysam.AlignedSegment) -> bool:
         return clipped < 30
 
 
+def clippedA_bp(read: pysam.AlignedSegment) -> int:
+    """Return the length of 3' clipped A's in read and clipped sequence"""
+
+    # store read attributes
+    is_read2 = read.is_read2
+    is_reverse = read.is_reverse
+
+    # if read1 and forward, get end of query_sequence
+    # if read1 and reverse, get beginning of query_sequence
+    # if read2 and forward, get beginning of query_sequence
+    # if read2 and reverse, get end of query_sequence
+    o, l = read.cigartuples[0 if is_read2 ^ is_reverse else -1]
+
+    if o != 4:
+        return 0, 0
+
+    length = read.query_length - l
+    clipped = (
+        read.query_sequence[0:l]
+        if is_read2 ^ is_reverse
+        else read.query_sequence[length : read.query_length]
+    )
+    matches = re.findall(r"A+" if is_read2 != is_reverse else r"T+", clipped)
+    clippedA = max([len(m) for m in matches]) if matches else 0
+
+    # FOR DEBUGGING
+    # if "S" in read.cigarstring:
+    #     print(f"IS_READ2: {read.is_read2}")
+    #     print(f"COORDS: {read.reference_name}:{read.reference_start}-{read.reference_end}")
+    #     print(f"CIGAR: {read.cigarstring}")
+    #     print(f"SEQ: {read.query_sequence}")
+    #     print(f"ORIENTATION: {'Reverse' if read.is_reverse else 'Forward'}")
+    #     print(f"CLIPPED: {clipped} ({len(clipped)}bp)")
+    #     print(f"CLIPPEDA: {clippedA}bp")
+    #     import pdb; pdb.set_trace()
+
+    return len(clipped), clippedA
+
+
 def reset_reads():
     """Return empty r1 and r2"""
     r1, r2 = type("", (), {})(), type("", (), {})()
@@ -50,10 +89,10 @@ def next_primary(bam):
 
 # iterate over read IDs in line1_bam, match with genome_bam reads
 # save primary r1 from genome, primary r2 from genome, and primary r2 from line-1 to tab-delimited file
-with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
-    with pysam.AlignmentFile(snakemake.input["line1_bam"], "rb") as line1_bam:
+with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:  # type: ignore
+    with pysam.AlignmentFile(snakemake.input["line1_bam"], "rb") as line1_bam:  # type: ignore
         with pysam.AlignmentFile(
-            snakemake.output[0], "wb", template=genome_bam
+            snakemake.output[0], "wb", template=genome_bam  # type: ignore
         ) as out_bam:
             # iterate over alignments in line1_bam
             for r_l1 in line1_bam:
@@ -73,11 +112,13 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
                     r_genome = next_primary(genome_bam)
 
                     # get the read, save as r1 or r2
+                    is_contig = False
                     if r_genome.is_read1:
                         r1 = r_genome
                     elif r_genome.is_read2:
                         r2 = r_genome
                     else:
+                        is_contig = True
                         r1 = r_genome
                         r2 = r_genome
 
@@ -88,7 +129,12 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
                 assert (
                     r1.query_name == r2.query_name == r_l1.query_name
                 ), "Read IDs do not match"
-                r1.set_tag("RR", int(is_ref_read(r1)))
+
+                r1_clippedL, r1_clippedA = clippedA_bp(r1)
+
+                r1.set_tag("CA", r1_clippedA)  # 3 soft-clipped A count
+                r1.set_tag("CL", r1_clippedL)  # 3 soft-clipped length
+                r1.set_tag("RR", int(is_ref_read(r1)))  # is ref read for read1
                 r1.set_tag("LQ", r_l1.mapping_quality)  # L1 mapping quality
                 r1.set_tag("L1", r_l1.get_tag("AS"))  # L1 alignment score
                 r1.set_tag("LS", r_l1.reference_start)  # L1 start
@@ -104,9 +150,16 @@ with pysam.AlignmentFile(snakemake.input["genome_bam"], "rb") as genome_bam:
                     ),
                 )  # mate read length
 
-                # write reads to output bam
                 out_bam.write(r1)
-                if r1.is_read1:
+                if (not is_contig) and (not r2.is_unmapped):
+                    r2_clippedL, r2_clippedA = clippedA_bp(r2)
+                    r2.set_tag("CA", r2_clippedA)  # 3 soft-clipped A count
+                    r2.set_tag("CL", r2_clippedL)
+                    r2.set_tag("RR", int(is_ref_read(r1)))  # is ref read for read2
+                    r2.set_tag("L1", r_l1.get_tag("AS"))  # L1 alignment score
+                    r2.set_tag("LS", r_l1.reference_start)  # L1 start
+                    r2.set_tag("LQ", r_l1.mapping_quality)  # L1 mapping quality
+                    r2.set_tag("LE", r_l1.reference_end)  # L1 end
                     out_bam.write(r2)
 
 sys.stderr.close()

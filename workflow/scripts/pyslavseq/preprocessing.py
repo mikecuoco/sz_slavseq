@@ -12,7 +12,7 @@ import pyranges as pr
 
 
 def collate_labels(row):
-    if row.n_ref_reads > 0:
+    if hasattr(row, "n_ref_reads") and row.n_ref_reads > 0:
         return "KRGL"
     elif hasattr(row, "primer_sites") and row.primer_sites:
         return "KRGL"
@@ -24,20 +24,20 @@ def collate_labels(row):
         return "KRGL"
     elif hasattr(row, "l1hs") and row.l1hs:
         return "KRGL"
-    elif hasattr(row, "l1pa2") and row.l1pa2:
-        return "KRGL"
-    elif hasattr(row, "l1pa3") and row.l1pa3:
-        return "KRGL"
-    elif hasattr(row, "l1pa4") and row.l1pa4:
-        return "KRGL"
-    elif hasattr(row, "l1pa5") and row.l1pa5:
-        return "KRGL"
-    elif hasattr(row, "l1pa6") and row.l1pa6:
-        return "KRGL"
-    elif hasattr(row, "megane_gaussian") and row.megane_gaussian:
+    # elif hasattr(row, "l1pa2") and row.l1pa2:
+    #     return "KRGL"
+    # elif hasattr(row, "l1pa3") and row.l1pa3:
+    #     return "KRGL"
+    # elif hasattr(row, "l1pa4") and row.l1pa4:
+    #     return "KRGL"
+    # elif hasattr(row, "l1pa5") and row.l1pa5:
+    #     return "KRGL"
+    # elif hasattr(row, "l1pa6") and row.l1pa6:
+    #     return "KRGL"
+    elif hasattr(row, "megane") and row.megane:
         return "KNRGL"
-    elif hasattr(row, "megane_breakpoints") and row.megane_breakpoints:
-        return "KNRGL"
+    # elif hasattr(row, "megane_breakpoints") and row.megane_breakpoints:
+    #     return "KNRGL"
     elif hasattr(row, "graffite") and row.graffite:
         return "KNRGL"
     elif hasattr(row, "xtea") and row.xtea:
@@ -46,24 +46,6 @@ def collate_labels(row):
         return "KNRGL"
     else:
         return "OTHER"
-
-
-def label_ref_peaks(df: pd.DataFrame):
-    """
-    Using n_ref_reads, find peaks across all cells from a single donor
-    """
-    # silence warnings
-    import warnings
-
-    warnings.filterwarnings("ignore", category=FutureWarning)
-
-    df = pr.PyRanges(df).cluster().df
-    labelled = df.groupby("Cluster", observed=True)["n_ref_reads"].apply(
-        lambda d: d.sum() > 0
-    )
-    labelled.name = "ref"
-
-    return df.set_index("Cluster").join(labelled).reset_index(drop=True)
 
 
 # source: Genome In A Bottle (GIAB) genome stratifications
@@ -106,3 +88,26 @@ def get_stratification(genome: str, name: str) -> pd.DataFrame:
         skiprows=1,
         names=["Chromosome", "Start", "End"],
     )
+
+
+def df2tabix(df: pd.DataFrame, path: str):
+    """
+    Write a pandas DataFrame to a tabix-indexed file
+    """
+    import pysam
+
+    assert path.endswith(".bed.gz"), "Path must end with .bed"
+    if not df.columns[0].startswith("#"):
+        print("Renaming " + df.columns[0] + " to #" + df.columns[0])
+        df.columns = ["#" + c if i == 0 else c for i, c in enumerate(df.columns)]
+
+    for c, d in zip(["#Chromosome", "Start", "End"], df.columns[0:2]):
+        assert c == d, f"Column {c} not found in DataFrame but is required"
+
+    # write to file
+    df.to_csv(path.rstrip(".gz"), sep="\t", index=False)
+
+    # create tabix index
+    pysam.tabix_index(path.rstrip(".gz"), preset="bed", force=True)
+
+    return path

@@ -17,24 +17,21 @@ properties:
     properties:
       fasta:
         type: string
+      fai:
+        type: string
       bwa:
         type: string
       rmsk:
         type: string
       xtea:
         type: string
-      megane_percentile:
-        type: string
-      megane_gaussian:
-        type: string
       name:
         type: string
     required:
       - fasta
+      - fai
       - bwa
       - xtea
-      - megane_percentile
-      - megane_gaussian
       - name
 
   adapters:

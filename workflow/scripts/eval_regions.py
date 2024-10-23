@@ -32,9 +32,8 @@ import pandas as pd
 cell_regions = pd.read_parquet(snakemake.input.cell_regions)  # type: ignore
 
 ov = {}
-for f in snakemake.input.cell_coverage:  # type: ignore
-    name = Path(f).name.split(".")[1]
-
+cov_files = {Path(f).name.split(".")[1]: f for f in snakemake.input.cell_coverage}  # type: ignore
+for name, f in cov_files.items():  # type: ignore
     anno = pd.read_csv(f, sep="\t", header=None)
     anno = anno.iloc[:, list(range(3)) + list(range(-4, 0))]
     # set names
@@ -59,6 +58,9 @@ for f in snakemake.input.cell_coverage:  # type: ignore
     )
     ov[(name, "total_covered_5reads")] = len(anno)
 
+# get regions where names are all false
+names = cov_files.keys()
+ov[("other", "regions")] = len(cell_regions[~cell_regions[names].all(axis=1)])
 
 if "gDNA" not in snakemake.input.cell_regions:  # type: ignore
     anno = pd.read_parquet(snakemake.input.bulk_regions)  # type: ignore

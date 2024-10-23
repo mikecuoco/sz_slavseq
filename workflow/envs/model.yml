@@ -10,17 +10,23 @@ dependencies:
   - pyarrow>=14
   - jupyter
   - tqdm
-  - pyranges==0.0.124
+  - pyranges>=0.1.2
   - jupyterlab_code_formatter
   - ipywidgets
   - ipykernel
+  - xlrd
   - nbconvert
   - seaborn>=0.12
   - numpy>=1.18
-  - scikit-learn==1.4.2
+  - scikit-learn>=1.5.1
   - flaml==2.1.2
   - ray-all
   - shap
   - datashader
   - dask
+  - pysam==0.22.1
   - fastcluster
+  - upsetplot==0.9
+  - anndata>=0.10.9
+  - pyfaidx
+  - gw>=1.1.0
