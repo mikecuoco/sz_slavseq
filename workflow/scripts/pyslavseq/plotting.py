@@ -7,33 +7,61 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
-import datashader as ds
-from datashader.mpl_ext import dsshow
-from mpl_toolkits.axes_grid1 import ImageGrid
+
+HUE_ORDER = ["KNRGL", "OTHER", "KRGL"]
 
 
-def joint_ecdfplot(df: pd.DataFrame, x: str, y: str, **kwargs):
+def peaks_per_cell(df, by_label=False):
     """
-    Plot the number of cells and donors per peak in a joint plot.
-    :param df: DataFrame with columns "n_cells" and a specified y variable.
-    :param kwargs: Additional keyword arguments to pass to seaborn functions.
+    Compute number of peaks per cell and plot
+    :param df: DataFrame of peaks
+    :param by_label: Group by label
     """
-
-    for c in [x, y]:
+    for c in ["cell_id", "donor_id"]:
         assert c in df.columns, f"Column '{c}' not in DataFrame"
-    if "hue" in kwargs:
-        assert kwargs["hue"] in df.columns, f"Column '{kwargs['hue']}' not in DataFrame"
 
-    g = sns.JointGrid(data=df, x=x, y=y)
-    sns.ecdfplot(data=df, x=x, ax=g.ax_marg_x, **kwargs)
-    sns.ecdfplot(data=df, y=y, ax=g.ax_marg_y, **kwargs)
-
-    g.plot_joint(sns.scatterplot, data=df, alpha=0.3, s=3, **kwargs)
-    if g.ax_marg_x.get_legend():
-        g.ax_marg_y.get_legend().remove()
-        g.ax_joint.get_legend().remove()
-
-    return g
+    g, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12))
+    if not by_label:
+        ppc = df.groupby(["cell_id", "donor_id"]).size().reset_index(name="n_peaks")
+        total, mean, sd = (
+            ppc["n_peaks"].sum(),
+            ppc["n_peaks"].mean(),
+            ppc["n_peaks"].std(),
+        )
+        sns.histplot(ppc, x="n_peaks", ax=ax1, bins=100)
+        ax1.annotate(
+            f"Total: {total:,}, Mean: {mean:.2f}+/-{sd:.2f}",
+            xy=(0.65, 0.95),
+            xycoords="axes fraction",
+        )
+        ax1.set_ylabel("Number of cells")
+        sns.boxplot(ppc, x="donor_id", y="n_peaks", ax=ax2)
+    else:
+        ppc = (
+            df.groupby(["cell_id", "donor_id", "label"])
+            .size()
+            .reset_index(name="n_peaks")
+        )
+        total = ppc.groupby("label")["n_peaks"].sum()
+        mean = ppc.groupby("label")["n_peaks"].mean()
+        sd = ppc.groupby("label")["n_peaks"].std()
+        sns.histplot(
+            ppc, x="n_peaks", hue="label", ax=ax1, bins=100, hue_order=HUE_ORDER
+        )
+        ax1.set_ylabel("Number of cells")
+        for i, l in enumerate(HUE_ORDER):
+            adj = (i + 1) * 0.05
+            ax1.annotate(
+                f"{l}: Total: {total[l]:,}, Mean: {mean[l]:.2f}+/-{sd[l]:.2f}",
+                xy=(0.5, 1 - adj),
+                xycoords="axes fraction",
+            )
+        sns.boxplot(
+            ppc, x="donor_id", y="n_peaks", hue="label", ax=ax2, hue_order=HUE_ORDER
+        )
+        ax2.get_legend().remove()
+    # rotate xlabels
+    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, horizontalalignment="right")
 
 
 def datashader_plot(

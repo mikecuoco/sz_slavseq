@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
 import pyranges as pr
+import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.metrics._ranking import stable_cumsum, column_or_1d, assert_all_finite
 
 
@@ -20,7 +22,7 @@ def my_precision_recall_curve(
     My custom implementation of precision recall curve, adjusting for additional false negatives. For binary classification only.
     Adapted from https://github.com/scikit-learn/scikit-learn/blob/f07e0138b/sklearn/metrics/_ranking.py#L865.
     :param y_true: array-like of shape (n_samples,)
-                    True binary labels. If labels are not binary, pos_label should be explicitly given.
+                                    True binary labels. If labels are not binary, pos_label should be explicitly given.
     :param y_score: array-like of shape (n_samples,)
     :param extra_fn: int, optional, extra false negatives to add to recall
     """
@@ -75,7 +77,7 @@ def my_recall_score(y_true: np.ndarray, y_pred: np.ndarray, extra_fn=0) -> float
     My custom implementation of recall score, adjusting for additional false negatives. For binary classification only.
     Adapted from https://github.com/scikit-learn/scikit-learn/blob/f07e0138bfee41cd2c0a5d0251dc3fe03e6e1084/sklearn/metrics/_classification.py#L1592
     :param y_true: array-like of shape (n_samples,)
-                    True binary labels. If labels are not binary, pos_label should be explicitly given.
+                                    True binary labels. If labels are not binary, pos_label should be explicitly given.
     :param y_pred: array-like of shape (n_samples,)
     :param extra_fn: int, optional, extra false negatives to add to recall
     """
@@ -92,34 +94,40 @@ def my_recall_score(y_true: np.ndarray, y_pred: np.ndarray, extra_fn=0) -> float
     return tps / (tps + fns + extra_fn)
 
 
-def missing_germline(sc: pd.DataFrame, bulk: pd.DataFrame) -> int:
+def missing_germline(data: pd.DataFrame, ref: pd.DataFrame) -> pd.DataFrame:
     """
     Calculate the number of germline variants missing from the single-cell data for each chromosome.
-    :param sc: DataFrame with single-cell data.
-    :param bulk: DataFrame with bulk data.
+    :param data: DataFrame with single-cell data.
+    :param ref: DataFrame of reference intervals
     """
 
-    # Define a function to count overlaps for a group of cells
+    for c in ["cell_id", "Chromosome"]:
+        assert c in data.columns, f"Column '{c}' not in DataFrame"
+    assert data.donor_id.nunique() == 1, "Data must be from a single donor"
+
+    # groupby function
     def count_overlaps(group):
-        donor_id, cell_id, chr = group.name
-        brdf = pr.PyRanges(
-            bulk.query("donor_id == @donor_id and L1HS_3end and Chromosome == chr")
-        )
-        bnrdf = pr.PyRanges(
-            bulk.query("donor_id == @donor_id and KNRGL and Chromosome == chr")
-        )
-        df = pr.PyRanges(
-            sc.query(
-                "donor_id == @donor_id and cell_id == @cell_id and Chromosome == chr"
-            )
-        )
-        group["l1hs_covered"] = df.count_overlaps(brdf).df["NumberOverlaps"].sum()
-        group["l1hs_missing"] = len(brdf) - group["l1hs_covered"]
-        group["l1hs_fraction"] = group["l1hs_covered"] / len(brdf)
-        group["knrgl_covered"] = df.count_overlaps(bnrdf).df["NumberOverlaps"].sum()
-        group["knrgl_missing"] = len(bnrdf) - group["knrgl_covered"]
-        group["knrgl_fraction"] = group["knrgl_covered"] / len(bnrdf)
-        return group
+
+        # check group is unique
+        out = {}
+        for c in ["cell_id", "Chromosome", "donor_id"]:
+            assert group[c].nunique() == 1, f"Group must be unique by '{c}'"
+            out[c] = group[c].unique()[0]
+            if out[c] in group.name:
+                out.pop(c)
+
+        chrom = group["Chromosome"].unique[0]
+        df = pr.PyRanges(group)
+        rdf = pr.PyRanges(ref.query("Chromosome == @chrom"))
+
+        out["covered"] = df.count_overlaps(rdf).df["NumberOverlaps"].sum()
+        out["missing"] = len(rdf) - out["covered"]
+        out["fraction"] = out["covered"] / len(rdf)
+
+        return pd.Series(out)
 
     # Apply the function to each group of cells
-    return sc.groupby(["donor_id", "cell_id", "Chromosome"]).apply(count_overlaps)
+    return data.groupby(["cell_id", "Chromosome"]).apply(count_overlaps)
+
+
+# def summarize_cns_peaks(df):

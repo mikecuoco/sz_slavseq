@@ -8,45 +8,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pandas as pd
-import pyranges as pr
-
-
-def collate_labels(row):
-    if hasattr(row, "n_ref_reads") and row.n_ref_reads > 0:
-        return "KRGL"
-    elif hasattr(row, "primer_sites") and row.primer_sites:
-        return "KRGL"
-    elif hasattr(row, "rmsk") and row.rmsk:
-        return "KRGL"
-    elif hasattr(row, "ref") and row.ref:
-        return "KRGL"
-    elif hasattr(row, "bulk_ref") and row.bulk_ref:
-        return "KRGL"
-    elif hasattr(row, "l1hs") and row.l1hs:
-        return "KRGL"
-    # elif hasattr(row, "l1pa2") and row.l1pa2:
-    #     return "KRGL"
-    # elif hasattr(row, "l1pa3") and row.l1pa3:
-    #     return "KRGL"
-    # elif hasattr(row, "l1pa4") and row.l1pa4:
-    #     return "KRGL"
-    # elif hasattr(row, "l1pa5") and row.l1pa5:
-    #     return "KRGL"
-    # elif hasattr(row, "l1pa6") and row.l1pa6:
-    #     return "KRGL"
-    elif hasattr(row, "megane") and row.megane:
-        return "KNRGL"
-    # elif hasattr(row, "megane_breakpoints") and row.megane_breakpoints:
-    #     return "KNRGL"
-    elif hasattr(row, "graffite") and row.graffite:
-        return "KNRGL"
-    elif hasattr(row, "xtea") and row.xtea:
-        return "KNRGL"
-    elif hasattr(row, "KNRGL") and row.KNRGL:
-        return "KNRGL"
-    else:
-        return "OTHER"
-
 
 # source: Genome In A Bottle (GIAB) genome stratifications
 # https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/
@@ -88,26 +49,3 @@ def get_stratification(genome: str, name: str) -> pd.DataFrame:
         skiprows=1,
         names=["Chromosome", "Start", "End"],
     )
-
-
-def df2tabix(df: pd.DataFrame, path: str):
-    """
-    Write a pandas DataFrame to a tabix-indexed file
-    """
-    import pysam
-
-    assert path.endswith(".bed.gz"), "Path must end with .bed"
-    if not df.columns[0].startswith("#"):
-        print("Renaming " + df.columns[0] + " to #" + df.columns[0])
-        df.columns = ["#" + c if i == 0 else c for i, c in enumerate(df.columns)]
-
-    for c, d in zip(["#Chromosome", "Start", "End"], df.columns[0:2]):
-        assert c == d, f"Column {c} not found in DataFrame but is required"
-
-    # write to file
-    df.to_csv(path.rstrip(".gz"), sep="\t", index=False)
-
-    # create tabix index
-    pysam.tabix_index(path.rstrip(".gz"), preset="bed", force=True)
-
-    return path
