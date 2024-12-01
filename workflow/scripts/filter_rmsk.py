@@ -4,11 +4,6 @@ __author__ = "Michael Cuoco"
 
 import logging
 
-logging.basicConfig(
-    filename=snakemake.log[0],  # type: ignore
-    filemode="w",
-    level=logging.INFO,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +61,7 @@ def merge(df):
 
 
 def adjust_line1(row):
-    "adjust to the last 200 bases of line" ""
+    "adjust to the last 200 bases of line"
     if row["Strand"] == "+":
         row["Start"] = row["End"] - 300
         row["End"] = row["End"] + 300
@@ -78,33 +73,41 @@ def adjust_line1(row):
     return row
 
 
-rmsk = read_rmsk_bed(snakemake.input[0])
-rmsk = (
-    pr.PyRanges(rmsk)
-    .extend(200)  # extend for clustering purposes
-    .cluster()
-    .df.groupby(["Cluster", "repName"], observed=True)
-    .apply(merge)
-    .reset_index("repName")
-    .rename(columns={"repName": "Name"})
-    .reset_index(drop=True)
-)
+if __name__ == "__main__":
 
-reps = {
-    "l1hs": "L1HS_3end",
-    "l1pa2": "L1PA2_3end",
-    "l1pa3": "L1PA3_3end",
-    "l1pa4": "L1PA4_3end",
-    "l1pa5": "L1PA5_3end",
-    "l1pa6": "L1PA6_3end",
-    "polyA": "(A)n",
-    "polyT": "(T)n",
-}
+    logging.basicConfig(
+        filename=snakemake.log[0],  # type: ignore
+        filemode="w",
+        level=logging.INFO,
+    )
 
-for i, name in reps.items():
-    df = rmsk.query("Name == @name")
-    if "_3end" in name:
-        df = df.query("repEnd > 860").apply(adjust_line1, axis=1)
+    rmsk = read_rmsk_bed(snakemake.input[0])
+    rmsk = (
+        pr.PyRanges(rmsk)
+        .extend(200)  # extend for clustering purposes
+        .cluster()
+        .df.groupby(["Cluster", "repName"], observed=True)
+        .apply(merge)
+        .reset_index("repName")
+        .rename(columns={"repName": "Name"})
+        .reset_index(drop=True)
+    )
 
-    logger.info(f"writing {i} to {snakemake.output[i]}")  # type: ignore
-    pr.PyRanges(df).to_bed(snakemake.output[i])  # type: ignore
+    reps = {
+        "l1hs": "L1HS_3end",
+        "l1pa2": "L1PA2_3end",
+        "l1pa3": "L1PA3_3end",
+        "l1pa4": "L1PA4_3end",
+        "l1pa5": "L1PA5_3end",
+        "l1pa6": "L1PA6_3end",
+        "polyA": "(A)n",
+        "polyT": "(T)n",
+    }
+
+    for i, name in reps.items():
+        df = rmsk.query("Name == @name")
+        if "_3end" in name:
+            df = df.query("repEnd > 860").apply(adjust_line1, axis=1)
+
+        logger.info(f"writing {i} to {snakemake.output[i]}")  # type: ignore
+        pr.PyRanges(df).to_bed(snakemake.output[i])  # type: ignore

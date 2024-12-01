@@ -13,10 +13,11 @@ from collections import defaultdict
 import pandas as pd
 
 
-def greedy(windows, blacklist_size: int = 1000):
+def greedy(windows, minreads: int, blacklist_size: int = 1000):
     """
     Greedily choose windows with maximum number of reads
     :param windows: generator of windows from a bigwig file of a chromosome
+    :param minreads: minimum number of reads to call a peak
     :param blacklist_size: size of region to exclude around chosen window
     """
 
@@ -24,6 +25,8 @@ def greedy(windows, blacklist_size: int = 1000):
     windows = sorted(windows, key=lambda w: w["n_reads"], reverse=True)
     blacklist = []  # initialize list of regions to exclude
     for w in windows:
+        if w["n_reads"] < minreads:
+            break
         # if the window is not in the blacklist, yield it
         if not any(((w["Start"] <= x[1]) and (w["End"] >= x[0])) for x in blacklist):
             yield w
@@ -34,10 +37,13 @@ def greedy(windows, blacklist_size: int = 1000):
     )
 
 
-def make_greedy_peaks(bw: str, blacklist_size: int, extend_bp: int) -> pd.DataFrame:
+def make_greedy_peaks(
+    bw: str, minreads: int, blacklist_size: int, extend_bp: int
+) -> pd.DataFrame:
     """
     Make greedy peaks from a bigwig file
     :param bw: path to bigwig file
+    :param minreads: minimum number of reads to call a peak
     :param blacklist_size: size of region to exclude around each max position in greedy algorithm
     :param extend_bp: number of base pairs to extend the peak in each direction
     """
@@ -49,21 +55,36 @@ def make_greedy_peaks(bw: str, blacklist_size: int, extend_bp: int) -> pd.DataFr
     tup_to_dict = lambda x: dict(zip(["Start", "End", "n_reads"], x))
     for c in bw.chroms():
         for w in greedy(
-            map(tup_to_dict, bw.intervals(c)), blacklist_size=blacklist_size
+            map(tup_to_dict, bw.intervals(c)),
+            minreads=minreads,
+            blacklist_size=blacklist_size,
         ):
             peaks[c].append(w)
         peaks[c] = sorted(peaks[c], key=lambda x: x["Start"])
 
     # concantenate results across chromosomes, convert to bigwig
     df = pd.concat({k: pd.DataFrame(v) for k, v in peaks.items()}, axis=0)
-    df = df.drop(columns="n_reads")
     df = (
         df.reset_index(level=0)
         .rename(columns={"level_0": "Chromosome"})
         .reset_index(drop=True)
     )
+    logger.info(f"Found {len(df):,} peaks")
+    df = pr.PyRanges(df).sort().extend(extend_bp).df
 
-    return pr.PyRanges(df).sort().extend(extend_bp).df
+    # ensure peaks do not extend beyond chromosome boundaries
+    for d in df.itertuples():
+        if d.End > bw.chroms(d.Chromosome):
+            df.at[d[0], "End"] = bw.chroms(d.Chromosome)
+            logger.warning(
+                f"Peak at {d.Chromosome}:{d.Start}-{d.End} extended beyond chromosome boundary. Truncated."
+            )
+        if d.Start < 1:
+            df.at[d[0], "Start"] = 1
+            logger.warning(
+                f"Peak at {d.Chromosome}:{d.Start}-{d.End} extended beyond chromosome boundary. Truncated."
+            )
+    return df
 
 
 if __name__ == "__main__":
@@ -75,5 +96,10 @@ if __name__ == "__main__":
     )
     logger = logging.getLogger(__name__)
 
-    df = make_greedy_peaks(snakemake.input.bw, snakemake.params.blacklist_bp, snakemake.params.extend_bp)  # type: ignore
+    df = make_greedy_peaks(
+        snakemake.input.bw,
+        int(snakemake.params.minreads),
+        int(snakemake.params.blacklist_bp),
+        int(snakemake.params.extend_bp),
+    )
     df.to_csv(snakemake.output.bed, sep="\t", index=False, header=False)

@@ -8,7 +8,6 @@ import pysam
 import pyranges as pr
 import numpy as np
 import pandas as pd
-from make_bw_peaks import GenomicIndexer
 from time import time
 
 
@@ -53,6 +52,7 @@ FEATURES = [
     "n_duplicates",
     "n_proper_pairs",
     "n_ref_reads",
+    "n_clipped_3end",
     "n_unique_5end",
     "n_unique_3end",
     "n_unique_clipped_3end",
@@ -92,6 +92,8 @@ def features(p: dict) -> dict:
     logger.info(
         f"Extracting features from {len(p['reads'])} for {p['Chromosome']}:{p['Start']}-{p['End']}"
     )
+    reads = p["reads"]
+    n_reads = len(reads)
     start = time()
     for r in p["reads"]:
         # check if read is valid
@@ -107,28 +109,30 @@ def features(p: dict) -> dict:
             f["n_duplicates"] += 1
             continue
 
-        l["3end"].append(r.reference_start if r.is_reverse else r.reference_end)
-        l["5end"].append(r.reference_end if r.is_reverse else r.reference_start)
+        ref_start = r.reference_start
+        ref_end = r.reference_end
+        is_reverse = r.is_reverse
+
+        l["3end"].append(ref_start if is_reverse else ref_end)
+        l["5end"].append(ref_end if is_reverse else ref_start)
         l["mapq"].append(r.mapping_quality)
         f["n_proper_pairs"] += r.is_proper_pair
         f["n_ref_reads"] += r.get_tag("RR")
         f["n_contigs"] += not r.is_read1
         f["n_reads"] += 1
-        f["n_rev" if r.is_reverse else "n_fwd"] += 1
+        f["n_rev" if is_reverse else "n_fwd"] += 1
 
         if r.get_tag(TAGS["three_end_clipped_length"]) > 0:
-            l["clipped_3end"].append(
-                r.reference_start if r.is_reverse else r.reference_end
-            )
+            l["clipped_3end"].append(ref_start if is_reverse else ref_end)
 
-        # add read length based features
         read_length = r.infer_read_length()
         mate_read_length = r.get_tag("ML") if r.is_read1 else read_length
 
         for name, tag in TAGS.items():
             if "_normed" in tag:
-                if r.has_tag(tag.replace("_normed", "")):
-                    norm_tag = r.get_tag(tag.replace("_normed", ""))
+                base_tag = tag.replace("_normed", "")
+                if r.has_tag(base_tag):
+                    norm_tag = r.get_tag(base_tag)
                     if tag in [
                         "L1_alignment_score_normed",
                         "mate_alignment_score_normed",
@@ -169,16 +173,15 @@ def features(p: dict) -> dict:
         gini(np.array(l["clipped_3end"], dtype=np.float64)) if l["clipped_3end"] else 0
     )
     f["n_unique_5end"], f["n_unique_3end"] = len(set(l["5end"])), len(set(l["3end"]))
-    f["n_clipped_3end"], f["n_unique_clipped_3end"] = len(l["clipped_3end"]), len(
-        set(l["clipped_3end"])
-    )
+    f["n_clipped_3end"] = len(l["clipped_3end"])
+    f["n_unique_clipped_3end"] = len(set(l["clipped_3end"]))
 
     return f
 
 
 if __name__ == "__main__":
 
-    from pyslavseq.preprocessing import df2tabix
+    from pyslavseq.io import write_tabix
 
     logger = logging.getLogger(__name__)
 
@@ -189,21 +192,20 @@ if __name__ == "__main__":
     )
 
     read_filter = (
-        lambda r: (not r.is_read2)
-        and r.is_mapped
-        and (not r.is_supplementary)
-        and (not r.is_secondary)
+        lambda r: (not r.is_read2) and r.is_mapped and (not r.is_supplementary)
     )
 
     # read the peaks from the bed file
-    logger.info(f"Reading peaks from {snakemake.input.bed}")
-    peaks = pr.read_bed(snakemake.input.bed).df  # type: ignore
+    logger.info(f"Reading peaks from {snakemake.input.bed[0]}")
+    peaks = pr.read_bed(snakemake.input.bed[0]).df  # type: ignore
 
     # open the bam file, extract reads in the peaks, and extract features
     logger.info(
         f"Extracting features for {len(peaks)} peaks from reads of {snakemake.input.bam}"
     )
-    with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:  # type: ignore
+
+    # open bam files
+    with pysam.AlignmentFile(snakemake.input.bam, "rb") as bam:
         res = []
         for p in peaks.itertuples():
             # get the reads in the peak from the bam
@@ -215,26 +217,40 @@ if __name__ == "__main__":
                 "Chromosome": p.Chromosome,
                 "Start": p.Start,
                 "End": p.End,
+                "locus": f"{p.Chromosome}:{p.Start}-{p.End}",
                 "reads": list(reads),
             }
 
-            # get the features for the peak
+            logger.info(
+                f"Extracting features from {len(w['reads'])} reads from {p.Chromosome}:{p.Start}-{p.End}"
+            )
             res.append(features(w))
 
-    peaks = pd.DataFrame.from_records(res).query("n_reads > 0").reset_index(drop=True)
+        # get into a dataframe
+        peaks = (
+            pd.DataFrame.from_records(res).query("n_reads > 0").reset_index(drop=True)
+        )
 
+        # normalize slavseq features
+        norm_factor = bam.count(read_callback="all") / 1e6
+        for f in [
+            "n_reads",
+            "n_fwd",
+            "n_rev",
+            "n_ref_reads",
+            "n_contigs",
+            "n_proper_pairs",
+            "n_duplicates",
+            "n_clipped_3end",
+        ]:
+            peaks[f"{f}_rpm"] = peaks[f] / norm_factor
+
+    # close the bam file
     logger.info("Adding additional features")
     peaks["width"] = peaks["End"] - peaks["Start"]
-    peaks["locus"] = (
-        peaks["Chromosome"].astype(str)
-        + ":"
-        + peaks["Start"].astype(str)
-        + "-"
-        + peaks["End"].astype(str)
-    )
-    peaks["orientation_bias"] = (
-        np.maximum(peaks["n_fwd"], peaks["n_rev"]) / peaks["n_reads"]
-    )
+    peaks["orientation_bias"] = (peaks["n_fwd"] - peaks["n_rev"]).abs() / peaks[
+        "n_reads"
+    ]
     peaks["frac_proper_pairs"] = peaks["n_proper_pairs"] / peaks["n_reads"]
     peaks["frac_duplicates"] = peaks["n_duplicates"] / (
         peaks["n_reads"] + peaks["n_duplicates"]
@@ -247,12 +263,9 @@ if __name__ == "__main__":
     )
 
     # TODO compute features of neighboring peaks?
-
-    cell_id = Path(snakemake.input.bam).name.rstrip(".tagged.sorted.bam")
-    peaks["cell_id"] = cell_id
-    donor_id = Path(snakemake.input.bam).parent.name
-    peaks["donor_id"] = donor_id
+    peaks["cell_id"] = snakemake.wildcards.sample  # type: ignore
+    peaks["donor_id"] = snakemake.wildcards.donor  # type: ignore
 
     # write to file
-    logger.info(f"Writing features to {snakemake.output.bed}")
-    df2tabix(peaks, snakemake.output.bed)  # type: ignore
+    logger.info(f"Writing features to {snakemake.output.bed}")  # type: ignore
+    write_tabix(peaks, snakemake.output.bed)  # type: ignore
